@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../screens/voucher_screen.dart';
 
 class VoucherWidget extends StatelessWidget {
   final String voucherCode;
@@ -28,7 +29,23 @@ class VoucherWidget extends StatelessWidget {
         const SizedBox(height: 8),
 
         GestureDetector(
-          onTap: onTap,
+          onTap: () async {
+            // Navigate to voucher selection screen
+            final selectedVoucher = await Navigator.push<String>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VoucherScreen(
+                  appliedVoucherCode: voucherApplied ? voucherCode : null,
+                ),
+              ),
+            );
+
+            // Handle the selected voucher
+            if (selectedVoucher != null) {
+              // This would need to call a method in the parent widget
+              // to update the voucher
+            }
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             decoration: BoxDecoration(
@@ -47,7 +64,7 @@ class VoucherWidget extends StatelessWidget {
 
                 Expanded(
                   child: Text(
-                    voucherApplied ? "Voucher digunakan: $voucherCode" : "Gunakan Voucher",
+                    voucherApplied ? "Voucher applied: $voucherCode" : "Ketuk untuk menggunakan voucher",
                     style: TextStyle(
                       fontSize: 14,
                       color: voucherApplied ? Colors.black : Colors.grey,

@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/payment_methode_screen.dart';
+import 'package:baraja_app/screens/voucher_screen.dart'; // Add the import for VoucherScreen
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
@@ -34,15 +35,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // Metode Pembayaran
   String selectedPaymentMethod = "Gopay (Rp85.000)";
 
-  // Data voucher
-  String voucherCode = "";
-  bool voucherApplied = false;
+  // Data voucher - updated variables
+  String? selectedVoucherCode;
+  String voucherDescription = "";
+  int discountAmount = 0;
+
+  // Calculate the discount amount based on the selected voucher
+  int calculateDiscount(int subtotal) {
+    if (selectedVoucherCode == null) return 0;
+
+    switch (selectedVoucherCode) {
+      case 'DISC10':
+      // 10% discount up to Rp20.000
+        final discount = (subtotal * 0.1).round();
+        return discount > 20000 ? 20000 : discount;
+      case 'DISC15':
+      // 15% discount up to Rp25.000 with minimum spend Rp20.000
+        if (subtotal >= 20000) {
+          final discount = (subtotal * 0.15).round();
+          return discount > 25000 ? 25000 : discount;
+        }
+        return 0;
+      default:
+        return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     // Gunakan CartProvider untuk mendapatkan data keranjang
     final cartProvider = Provider.of<CartProvider>(context);
     final List<CartItem> cartItems = cartProvider.items;
+
+    // Calculate the current discount amount
+    final int subtotal = cartProvider.totalPrice;
+    final int discount = calculateDiscount(subtotal);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -172,12 +199,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     const SizedBox(height: 16),
 
-                    // Voucher
+                    // Updated Voucher Widget with integration
                     VoucherWidget(
-                      voucherCode: voucherCode,
-                      voucherApplied: voucherApplied,
-                      onTap: () {
-                        // Navigasi ke halaman input voucher
+                      voucherCode: selectedVoucherCode ?? "",
+                      voucherApplied: selectedVoucherCode != null,
+                      onTap: () async {
+                        // Navigate to voucher selection screen
+                        final result = await Navigator.push<String>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VoucherScreen(
+                              appliedVoucherCode: selectedVoucherCode,
+                            ),
+                          ),
+                        );
+
+                        // If we get a result back, update the selected voucher
+                        if (result != null) {
+                          setState(() {
+                            selectedVoucherCode = result;
+
+                            // Set description based on the voucher code
+                            switch (result) {
+                              case 'DISC10':
+                                voucherDescription = 'Disc 10% up to Rp20.000';
+                                break;
+                              case 'DISC15':
+                                voucherDescription = 'Disc 15% up to Rp25.000';
+                                break;
+                              default:
+                                voucherDescription = 'Voucher applied';
+                            }
+                          });
+                        }
                       },
                     ),
 
@@ -188,9 +242,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
           ),
 
-          // Ringkasan Pembayaran & Tombol Checkout
+          // Updated Checkout Summary with discount
           CheckoutSummary(
-            totalPrice: cartProvider.totalPrice,
+            totalPrice: subtotal,
+            discount: discount,
+            voucherCode: selectedVoucherCode,
             onCheckoutPressed: () {
               // Implementasi proses checkout
               // ignore: avoid_print
@@ -206,11 +262,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 print("Waktu ambil: ${pickupTime?.format(context)}");
               }
 
-              // Menampilkan informasi checkout
+              // Menampilkan informasi checkout with discount
+              final int finalTotal = subtotal - discount;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                      "Pesanan berhasil: ${cartProvider.totalItems} item, total ${formatCurrency(cartProvider.totalPrice)}"
+                      "Pesanan berhasil: ${cartProvider.totalItems} item, total ${formatCurrency(finalTotal)}"
                   ),
                   duration: const Duration(seconds: 2),
                 ),
