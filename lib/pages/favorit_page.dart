@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../widgets/classic_app_bar.dart';
+import '../widgets/utils/classic_app_bar.dart';
 
 class FavoritePage extends StatelessWidget {
   const FavoritePage({super.key});

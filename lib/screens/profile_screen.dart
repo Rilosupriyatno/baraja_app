@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../widgets/profile_header.dart';
-import '../widgets/point_card.dart';
-import '../widgets/menu_item.dart';
+import '../widgets/profile/profile_header.dart';
+import '../widgets/profile/point_card.dart';
+import '../widgets/menu/menu_item.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ProfileScreen extends StatelessWidget {

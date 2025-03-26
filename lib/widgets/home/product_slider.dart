@@ -1,13 +1,12 @@
+import 'package:baraja_app/widgets/home/product_card.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/product.dart';
-import 'product_card.dart';
+import '../../models/product.dart';
 
 class ProductSlider extends StatefulWidget {
   final List<Product> products;
   final String title;
   final bool isBundle;
-  final NumberFormat currencyFormatter;
+  final Function(int) formatPrice; // Changed from NumberFormat to Function(int)
 
 
   const ProductSlider({
@@ -15,7 +14,7 @@ class ProductSlider extends StatefulWidget {
     required this.products,
     required this.title,
     this.isBundle = false,
-    required this.currencyFormatter,
+    required this.formatPrice, // Updated parameter name and type
   });
 
   @override
@@ -81,8 +80,8 @@ class _ProductSliderState extends State<ProductSlider> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4
+                      horizontal: 4,
+                      vertical: 4
                     // vertical: isActive ? 0 : 15,
                   ),
                   width: 210, // Set width to 210 for square shape
@@ -90,8 +89,7 @@ class _ProductSliderState extends State<ProductSlider> {
                     product: widget.products[productIndex],
                     isActive: isActive,
                     bundleText: widget.isBundle ? '2 Items' : null,
-                      currencyFormatter: widget.currencyFormatter,
-                    // currencyFormatter: null,
+                    // No longer need to pass currencyFormatter, ProductCard should use formatCurrency directly
                   ),
                 ),
               );

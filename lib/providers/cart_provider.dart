@@ -23,6 +23,7 @@ class CartProvider with ChangeNotifier {
 
     notifyListeners(); // Perbarui UI
   }
+
   void increaseQuantity(int index) {
     if (index >= 0 && index < _items.length) {
       _items[index].quantity++;
@@ -30,6 +31,17 @@ class CartProvider with ChangeNotifier {
     }
   }
 
+  void decreaseQuantity(int index) {
+    if (index >= 0 && index < _items.length) {
+      if (_items[index].quantity > 1) {
+        _items[index].quantity--;
+        notifyListeners();
+      } else {
+        // Jika quantity = 1, hapus item
+        removeFromCart(index);
+      }
+    }
+  }
 
   void removeFromCart(int index) {
     _items.removeAt(index);
@@ -43,6 +55,6 @@ class CartProvider with ChangeNotifier {
 
   int get totalItems => _items.fold(0, (sum, item) => sum + item.quantity);
 
-  double get totalPrice =>
+  int get totalPrice =>
       _items.fold(0, (sum, item) => sum + (item.price * item.quantity));
 }

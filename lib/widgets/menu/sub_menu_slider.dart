@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/category.dart';
-import '../theme/app_theme.dart';
+import '../../models/category.dart';
+import '../../theme/app_theme.dart';
 
 /// Widget untuk slider horizontal sub-menu
 class SubMenuSlider extends StatelessWidget {

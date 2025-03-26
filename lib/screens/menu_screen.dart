@@ -1,12 +1,12 @@
-import 'package:baraja_app/widgets/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import '../data/product_data.dart';
 import '../models/category.dart';
 import '../models/product.dart';
-import '../widgets/checkout_button.dart';
-import '../widgets/menu_selector.dart';
-import '../widgets/product_grid.dart';
-import '../widgets/sub_menu_slider.dart';
+import '../widgets/detail_product/checkout_button.dart';
+import '../widgets/menu/menu_selector.dart';
+import '../widgets/menu/product_grid.dart';
+import '../widgets/menu/sub_menu_slider.dart';
+import '../widgets/utils/classic_app_bar.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});

@@ -3,10 +3,11 @@ import 'package:baraja_app/pages/favorit_page.dart';
 import 'package:baraja_app/pages/notification_page.dart';
 import 'package:baraja_app/providers/cart_provider.dart';
 import 'package:baraja_app/screens/cart_screen.dart';
-import 'package:baraja_app/screens/checkout_screen.dart';
+import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:baraja_app/screens/menu_screen.dart';
+import 'package:baraja_app/screens/payment_methode_screen.dart';
 import 'package:baraja_app/screens/product_detail_screen.dart';
-import 'package:baraja_app/widgets/navigation_bar.dart';
+import 'package:baraja_app/widgets/utils/navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -75,10 +76,15 @@ final GoRouter _router = GoRouter(
         path: '/cart',
         builder: (context, state) => const CartScreen(),
     ),
-    GoRoute(
-      path: '/checkout',
-      builder: (context, state) => const CheckoutScreen(),
+  GoRoute(
+        path: '/checkout',
+        builder: (context, state) => const CheckoutPage()
     ),
+    GoRoute(
+        path: '/paymentMethode',
+        builder: (context, state) => const PaymentMethodScreen()
+    ),
+
 
   //   profile routes
     GoRoute(

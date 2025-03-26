@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/cart_item.dart';
+import '../../models/cart_item.dart';
+import '../../utils/currency_formatter.dart';
 
 class CartItemCard extends StatelessWidget {
   final CartItem item;
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
-  final NumberFormat currencyFormatter;
+
+  // Tidak lagi memerlukan NumberFormat currencyFormatter
 
   const CartItemCard({
     super.key,
     required this.item,
     required this.onIncrease,
     required this.onDecrease,
-    required this.currencyFormatter,
   });
 
   @override
@@ -25,7 +25,7 @@ class CartItemCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1), // Menggunakan withOpacity sebagai pengganti withValues
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -68,8 +68,9 @@ class CartItemCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Menggunakan formatCurrency langsung daripada currencyFormatter
                     Text(
-                      currencyFormatter.format(item.price * item.quantity),
+                      formatCurrency(item.price * item.quantity),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

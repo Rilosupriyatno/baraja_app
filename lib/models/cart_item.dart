@@ -1,4 +1,3 @@
-// Cart Item Model
 class CartItem {
   final String name;
   final String imageUrl;

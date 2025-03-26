@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../data/product_data.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
-import '../widgets/cart_item_card.dart';
+import '../widgets/cart/cart_item_card.dart';
+import '../utils/currency_formatter.dart'; // Import fungsi format mata uang
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -15,33 +15,30 @@ class CartScreen extends StatefulWidget {
 }
 
 class CartScreenState extends State<CartScreen> {
-  final NumberFormat currencyFormatter =
-  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp.', decimalDigits: 0);
+  // Menghapus NumberFormat currencyFormatter karena sekarang menggunakan formatCurrency
+
   List<CartItem> cartItems = ProductData.allProducts.map((product) => CartItem(
     name: product.name,
     imageUrl: product.imageUrl,
-    price: (product.discountPrice ?? 0).toInt(), // Ensures discountPrice is not null
-    additional: (product.addons?.isNotEmpty ?? false) // Use ?.isNotEmpty to prevent null checks
+    price: (product.discountPrice ?? 0).toInt(),
+    additional: (product.addons?.isNotEmpty ?? false)
         ? product.addons!.first.name
         : 'Tanpa Tambahan',
-    topping: (product.toppings?.isNotEmpty ?? false) // Use ?.isNotEmpty to prevent null checks
+    topping: (product.toppings?.isNotEmpty ?? false)
         ? product.toppings!.first.name
         : 'Tanpa Topping',
   )).toList();
-
-
-
 
   int get totalPrice => cartItems.fold(0, (total, item) => total + (item.price * item.quantity));
 
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
-    final cartItems = cartProvider.items; // Ambil item dari CartProvider
+    final cartItems = cartProvider.items;
 
     return Scaffold(
-      backgroundColor: Colors.white, // Warna body tetap putih
-      extendBodyBehindAppBar: true,  // Agar transisi lebih halus
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -59,43 +56,41 @@ class CartScreenState extends State<CartScreen> {
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                    final item = cartItems[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: CartItemCard(
-                        item: item,
-                        currencyFormatter: currencyFormatter,
-                        // onIncrease: () {
-                        //   setState(() => item.quantity++);
-                        //   cartProvider.notifyListeners(); // Perbarui UI
-                        // },
-                        onIncrease: () {
-                          final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                          int index = cartProvider.items.indexOf(item);
-                          if (index != -1) {
-                            cartProvider.increaseQuantity(index);
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                  final item = cartItems[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: CartItemCard(
+                      item: item,
+                      // Tidak lagi memerlukan currencyFormatter
+                      onIncrease: () {
+                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                        int index = cartProvider.items.indexOf(item);
+                        if (index != -1) {
+                          cartProvider.increaseQuantity(index);
+                        }
+                      },
+                      onDecrease: () {
+                        // Menggunakan provider langsung untuk konsistensi
+                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                        int index = cartProvider.items.indexOf(item);
+                        if (index != -1) {
+                          if (item.quantity > 1) {
+                            cartProvider.decreaseQuantity(index);
+                          } else {
+                            cartProvider.removeFromCart(index);
                           }
-                        },
-                        onDecrease: () {
-                          setState(() {
-                            if (item.quantity > 1) {
-                              item.quantity--;
-                            } else {
-                              cartProvider.removeFromCart(index); // Hapus dari cart
-                            }
-                          });
-                        },
-                      ),
-                    );
-                  },
-                  childCount: cartItems.length,
-                ),
+                        }
+                      },
+                    ),
+                  );
+                },
+                childCount: cartItems.length,
               ),
+            ),
           ),
-          // Tombol Tambah Pesanan di bawah item terakhir
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
@@ -107,7 +102,7 @@ class CartScreenState extends State<CartScreen> {
                   minimumSize: const Size(double.infinity, 50),
                   backgroundColor: Colors.green,
                 ),
-                icon: const Icon(Icons.add_circle_rounded, color: Colors.white), // Ikon Plus
+                icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
                 label: const Text(
                   'Tambah Pesanan',
                   style: TextStyle(color: Colors.white, fontSize: 16),
@@ -117,23 +112,21 @@ class CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
-
-
       bottomNavigationBar: Material(
-        elevation: 4, // Memberikan efek bayangan
-        shadowColor: Colors.grey.shade300, // Warna bayangan lebih soft
+        elevation: 4,
+        shadowColor: Colors.grey.shade300,
         color: Colors.white,
-        clipBehavior: Clip.none, // Pastikan bayangan tidak terpotong
+        clipBehavior: Clip.none,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.4), // Warna bayangan lebih tegas
-                spreadRadius: 1, // Lebar penyebaran bayangan
-                blurRadius: 6, // Seberapa blur bayangannya
-                offset: const Offset(0, -3), // Posisi bayangan ke atas (-Y)
+                color: Colors.grey.withOpacity(0.4), // Menggunakan withOpacity yang lebih standar
+                spreadRadius: 1,
+                blurRadius: 6,
+                offset: const Offset(0, -3),
               ),
             ],
           ),
@@ -144,21 +137,21 @@ class CartScreenState extends State<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  Text(currencyFormatter.format(totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  // Menggunakan formatCurrency untuk menampilkan total harga
+                  Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: cartItems.isEmpty ? null : () {
-              // Navigasi ke CheckoutScreen
-              context.push('/checkout'); // Pastikan Anda sudah menambahkan route ini di router Anda
-            },
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
-              backgroundColor: Colors.green,
-            ),
-            child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
-          ),
+              ElevatedButton(
+                onPressed: cartItems.isEmpty ? null : () {
+                  context.push('/checkout');
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
+              ),
             ],
           ),
         ),

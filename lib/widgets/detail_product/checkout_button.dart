@@ -1,8 +1,7 @@
-import 'package:baraja_app/screens/cart_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../providers/cart_provider.dart';
+import '../../providers/cart_provider.dart';
 
 class CheckoutButton extends StatelessWidget {
   const CheckoutButton({super.key});

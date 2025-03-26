@@ -1,4 +1,3 @@
-import 'package:baraja_app/screens/checkout_screen.dart';
 import 'package:baraja_app/screens/home_screen.dart';
 import 'package:baraja_app/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -18,13 +17,6 @@ class PersistentNavigationBar extends StatelessWidget {
               title: "Home",
             ),
           ),
-          // PersistentTabConfig(
-          //   screen: const CheckoutScreen(),
-          //   item: ItemConfig(
-          //     icon: const Icon(Icons.message),
-          //     title: "Messages",
-          //   ),
-          // ),
           PersistentTabConfig(
             screen: const ProfileScreen(),
             item: ItemConfig(

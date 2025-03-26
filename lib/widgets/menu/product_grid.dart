@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_app/widgets/menu_product_card.dart';
-
-import '../models/product.dart';
+import '../../models/product.dart';
+import 'menu_product_card.dart';
 
 /// Widget untuk menampilkan grid produk dengan 2 kolom
 class ProductGrid extends StatelessWidget {

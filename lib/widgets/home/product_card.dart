@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
 
 class ProductCard extends StatelessWidget {
   final Product product;
   final bool isActive;
   final String? bundleText;
-  final NumberFormat currencyFormatter;
 
+  // Removed the NumberFormat parameter as we're now using formatCurrency directly
   const ProductCard({
     super.key,
     required this.product,
     this.isActive = false,
     this.bundleText,
-    required this.currencyFormatter,
   });
 
   @override
@@ -39,7 +38,7 @@ class ProductCard extends StatelessWidget {
               boxShadow: isActive
                   ? [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withOpacity(0.2),
                   blurRadius: 3,
                   spreadRadius: 1,
                   offset: const Offset(2, 0), // Bayangan ke kanan
@@ -47,7 +46,7 @@ class ProductCard extends StatelessWidget {
               ]
                   : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 2,
                   spreadRadius: 1,
                   offset: const Offset(2, 0), // Bayangan ke kanan
@@ -74,7 +73,7 @@ class ProductCard extends StatelessWidget {
                         Center(
                           child: Icon(
                             Icons.coffee,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: Colors.white.withOpacity(0.7),
                             size: 60,
                           ),
                         ),
@@ -128,7 +127,8 @@ class ProductCard extends StatelessWidget {
 
                         // Original price
                         Text(
-                          currencyFormatter.format(product.originalPrice),
+                          formatCurrency(product.originalPrice?.round() ?? 0)
+                          , // Changed to use formatCurrency directly
                           style: const TextStyle(
                             fontSize: 12,
                             decoration: TextDecoration.lineThrough,
@@ -137,7 +137,7 @@ class ProductCard extends StatelessWidget {
 
                         // Discount price
                         Text(
-                          currencyFormatter.format(product.discountPrice),
+                          formatCurrency(product.discountPrice?.round() ?? 0), // Changed to use formatCurrency directly
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,

@@ -1,11 +1,11 @@
-import 'package:baraja_app/widgets/checkout_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../data/product_data.dart';
 import '../theme/app_theme.dart';
-import '../widgets/product_slider.dart';
-import '../widgets/promo_slider.dart';
+import '../widgets/detail_product/checkout_button.dart';
+import '../widgets/home/product_slider.dart';
+import '../widgets/home/promo_slider.dart';
+import '../utils/currency_formatter.dart'; // Import formatCurrency function
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,8 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final NumberFormat currencyFormatter =
-    NumberFormat.currency(locale: 'id_ID', symbol: 'Rp.', decimalDigits: 0);
+    // Removed NumberFormat currencyFormatter declaration
     final coffeeProducts = ProductData.getProducts();
     final promoItems = ProductData.getPromoItems();
 
@@ -52,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.4),
+                            color: Colors.black.withOpacity(0.4), // Using withOpacity instead of withValues
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -71,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
+                          color: Colors.black.withOpacity(0.4), // Using withOpacity instead of withValues
                           blurRadius: 3,
                           offset: const Offset(0, 2),
                         ),
@@ -175,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 16,),
                       ProductSlider(
                         products: coffeeProducts,
-                        currencyFormatter:currencyFormatter,
+                        formatPrice: formatCurrency, // Using formatCurrency function instead of NumberFormat
                         title: 'Untuk Kamu',
                       ),
                       const SizedBox(height: 16),
@@ -183,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         products: coffeeProducts,
                         title: 'Rekomendasi',
                         isBundle: true,
-                        currencyFormatter: currencyFormatter,
+                        formatPrice: formatCurrency, // Using formatCurrency function instead of NumberFormat
                       ),
                       const SizedBox(height: 10),
                     ],

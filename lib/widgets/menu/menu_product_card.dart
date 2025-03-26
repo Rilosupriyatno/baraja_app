@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import '../models/product.dart';
-import '../theme/app_theme.dart';
+import '../../models/product.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
 
 class MenuProductCard extends StatelessWidget {
   final Product product;
@@ -16,8 +16,7 @@ class MenuProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final NumberFormat currencyFormatter =
-    NumberFormat.currency(locale: 'id_ID', symbol: 'Rp.', decimalDigits: 0);
+    // Tidak perlu lagi membuat NumberFormat currencyFormatter
     return GestureDetector(
       onTap: () {
         context.push('/product/${product.id}');
@@ -29,7 +28,7 @@ class MenuProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withOpacity(0.2), // Menggunakan withOpacity alih-alih withValues
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -59,7 +58,7 @@ class MenuProductCard extends StatelessWidget {
                     Center(
                       child: Icon(
                         Icons.coffee,
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: Colors.white.withOpacity(0.7), // Menggunakan withOpacity alih-alih withValues
                         size: 60,
                       ),
                     ),
@@ -72,7 +71,7 @@ class MenuProductCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
-                                                      ),
+                          ),
                           child: Text(
                             bundleText!,
                             style: TextStyle(
@@ -103,8 +102,7 @@ class MenuProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currencyFormatter.format(product.originalPrice),
-                      // 'Rp.${product.originalPrice}',
+                      formatCurrency(product.originalPrice?.round() ?? 0), // Menggunakan formatCurrency
                       style: TextStyle(
                         decoration: TextDecoration.lineThrough,
                         color: Colors.grey[600],
@@ -112,8 +110,7 @@ class MenuProductCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      currencyFormatter.format(product.discountPrice),
-                      // 'Rp.${product.discountPrice}',
+                      formatCurrency(product.discountPrice?.round() ?? 0), // Menggunakan formatCurrency
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
