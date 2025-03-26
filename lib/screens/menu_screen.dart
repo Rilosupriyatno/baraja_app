@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import '../data/product_data.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../widgets/checkout_button.dart';
 import '../widgets/menu_selector.dart';
 import '../widgets/product_grid.dart';
 import '../widgets/sub_menu_slider.dart';
 
-class MenuPage extends StatefulWidget {
-  const MenuPage({super.key});
+class MenuScreen extends StatefulWidget {
+  const MenuScreen({super.key});
 
   @override
-  State<MenuPage> createState() => _MenuPageState();
+  State<MenuScreen> createState() => _MenuScreenState();
 }
 
-class _MenuPageState extends State<MenuPage> {
+class _MenuScreenState extends State<MenuScreen> {
   // Selected menu (Makanan atau Minuman)
   String selectedMenu = 'Minuman';
 
@@ -64,31 +65,10 @@ class _MenuPageState extends State<MenuPage> {
               child: ProductGrid(products: filteredProducts),
             ),
 
-            // Checkout button
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  // Tambahkan logika checkout di sini
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF076A3B),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text(
-                  'Produk yang mau di checkout',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
           ],
         ),
       ),
+      floatingActionButton: const CheckoutButton(),
     );
   }
 }

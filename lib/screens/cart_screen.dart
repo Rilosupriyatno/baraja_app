@@ -7,28 +7,16 @@ import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/cart_item_card.dart';
 
-class CartPage extends StatefulWidget {
-  const CartPage({super.key});
+class CartScreen extends StatefulWidget {
+  const CartScreen({super.key});
 
   @override
-  CartPageState createState() => CartPageState();
+  CartScreenState createState() => CartScreenState();
 }
 
-class CartPageState extends State<CartPage> {
+class CartScreenState extends State<CartScreen> {
   final NumberFormat currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp.', decimalDigits: 0);
-
-  // List<CartItem> cartItems = ProductData.allProducts.map((product) => CartItem(
-  //   name: product.name ?? 'Tanpa Nama',
-  //   imageUrl: product.imageUrl ?? '',
-  //   price: product.discountPrice?.toInt() ?? 0, // Mengonversi double? ke int dengan default 0
-  //   additional: (product.addons != null && product.addons!.isNotEmpty)
-  //       ? product.addons!.first.name
-  //       : 'Tanpa Tambahan',
-  //   topping: (product.toppings != null && product.toppings!.isNotEmpty)
-  //       ? product.toppings!.first.name
-  //       : 'Tanpa Topping',
-  // )).toList();
   List<CartItem> cartItems = ProductData.allProducts.map((product) => CartItem(
     name: product.name,
     imageUrl: product.imageUrl,
@@ -160,14 +148,17 @@ class CartPageState extends State<CartPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: cartItems.isEmpty ? null : () {},
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
-              ),
+          ElevatedButton(
+            onPressed: cartItems.isEmpty ? null : () {
+              // Navigasi ke CheckoutScreen
+              context.push('/checkout'); // Pastikan Anda sudah menambahkan route ini di router Anda
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ),
             ],
           ),
         ),

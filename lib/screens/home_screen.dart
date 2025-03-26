@@ -1,3 +1,4 @@
+import 'package:baraja_app/widgets/checkout_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -6,14 +7,14 @@ import '../theme/app_theme.dart';
 import '../widgets/product_slider.dart';
 import '../widgets/promo_slider.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final NumberFormat currencyFormatter =
@@ -22,6 +23,7 @@ class _HomePageState extends State<HomePage> {
     final promoItems = ProductData.getPromoItems();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -36,21 +38,21 @@ class _HomePageState extends State<HomePage> {
                 alignment: Alignment.bottomCenter,
                 children: [
                   Positioned(
-                    top: 50, // Naikkan ke atas
-                    left: 6,
-                    right: 6,
+                    top: 65, // Naikkan ke atas
+                    left: 0,
+                    right: 0,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      // padding: const EdgeInsets.symmetric(horizontal: 2),
                       height: 50,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(14),
-                          topRight: Radius.circular(14),
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
+                            color: Colors.black.withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -69,8 +71,8 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 3,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -153,16 +155,18 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               Transform.translate(
-                offset: const Offset(0, -15), // Geser ke atas 10 pixel
+                offset: const Offset(0, -10), // Geser ke atas 10 pixel
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.only(left: 2, right: 2, bottom: 10),
-                  margin: const EdgeInsets.only(left: 6, right: 6), // Hapus margin bottom
+                  // margin: const EdgeInsets.only(left: 6, right: 6), // Hapus margin bottom
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(14),
-                      bottomRight: Radius.circular(14),
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
                     ),
                   ),
                   child: Column(
@@ -190,6 +194,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+      floatingActionButton: const CheckoutButton(),
     );
   }
 }

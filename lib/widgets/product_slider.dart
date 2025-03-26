@@ -82,6 +82,7 @@ class _ProductSliderState extends State<ProductSlider> {
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(
                     horizontal: 4,
+                    vertical: 4
                     // vertical: isActive ? 0 : 15,
                   ),
                   width: 210, // Set width to 210 for square shape

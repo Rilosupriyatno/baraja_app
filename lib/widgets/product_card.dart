@@ -21,7 +21,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.0),
+      padding: const EdgeInsets.symmetric(vertical: 0.0),
       child: SizedBox(
         width: 210, // Set width to 210 for square shape
         height: 210, // Set height to 210 for square shape
@@ -29,6 +29,7 @@ class ProductCard extends StatelessWidget {
           onTap: () {
             context.push('/product/${product.id}');
           },
+
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             clipBehavior: Clip.antiAlias,
@@ -46,8 +47,8 @@ class ProductCard extends StatelessWidget {
               ]
                   : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 3,
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 2,
                   spreadRadius: 1,
                   offset: const Offset(2, 0), // Bayangan ke kanan
                 ),
