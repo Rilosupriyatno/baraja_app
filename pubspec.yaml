@@ -46,6 +46,7 @@ dependencies:
   firebase_core: ^3.12.1
   firebase_auth: ^5.5.1
   google_sign_in: ^6.3.0
+  shared_preferences: ^2.5.3
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
 #  google_sign_in: latest_version

@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,13 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -44,20 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (mounted) {
-        context.go('/main');  // Use context.go instead of context.push for replacement
+        context.go('/main');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
-
-      // Show error snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_errorMessage ?? 'Login failed'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Log the error to the console
+      print('Login error: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -70,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithGoogle() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -80,18 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
         context.go('/main');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
-
-      // Show more detailed error snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_errorMessage ?? 'Google login failed'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      // Log the error to the console
+      print('Google login error: $e');
     } finally {
       if (mounted) {
         setState(() {

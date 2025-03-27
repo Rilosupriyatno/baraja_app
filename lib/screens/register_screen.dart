@@ -39,15 +39,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_acceptedTerms) {
-      setState(() {
-        _errorMessage = 'You must accept the Terms of Use and Privacy Policy';
-      });
+      print('You must accept the Terms of Use and Privacy Policy');
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -58,17 +55,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       // Update user display name
-      if (authService.currentUser != null) {
-        await authService.currentUser!.updateDisplayName(_nameController.text.trim());
+      if (authService.currentUser  != null) {
+        await authService.currentUser !.updateDisplayName(_nameController.text.trim());
       }
 
       if (mounted) {
         context.push('/');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      // Log the error to the console
+      print('Registration error: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -80,15 +76,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _registerWithGoogle() async {
     if (!_acceptedTerms) {
-      setState(() {
-        _errorMessage = 'You must accept the Terms of Use and Privacy Policy';
-      });
+      print('You must accept the Terms of Use and Privacy Policy');
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -98,9 +91,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         context.push('/main');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      // Log the error to the console
+      print('Google registration error: $e');
     } finally {
       if (mounted) {
         setState(() {

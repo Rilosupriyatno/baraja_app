@@ -1,24 +1,11 @@
-import 'package:baraja_app/pages/account_settings_page.dart';
-import 'package:baraja_app/pages/favorit_page.dart';
-import 'package:baraja_app/pages/notification_page.dart';
 import 'package:baraja_app/providers/cart_provider.dart';
-import 'package:baraja_app/screens/cart_screen.dart';
-import 'package:baraja_app/screens/checkout_page.dart';
-import 'package:baraja_app/screens/login_screen.dart';
-import 'package:baraja_app/screens/menu_screen.dart';
-import 'package:baraja_app/screens/payment_methode_screen.dart';
-import 'package:baraja_app/screens/product_detail_screen.dart';
-import 'package:baraja_app/screens/register_screen.dart';
-import 'package:baraja_app/screens/voucher_screen.dart';
+import 'package:baraja_app/providers/order_provider.dart';
+import 'package:baraja_app/routes/app_router.dart';
 import 'package:baraja_app/services/auth_service.dart';
-import 'package:baraja_app/widgets/utils/navigation_bar.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'data/product_data.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -31,6 +18,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => CartProvider()),
+        ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => AuthService()),
       ],
       child: const MyApp(),
@@ -47,89 +35,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Coffee Shop App',
       theme: AppTheme.themeData,
-      routerConfig: _router,
+      routerConfig: AppRouter.getRouter(),
     );
   }
 }
-
-// Konfigurasi GoRouter
-final GoRouter _router = GoRouter(
-  routes: [
-    // auth routes
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    // main routes
-    GoRoute(
-      path: '/main',
-      builder: (context, state) => const PersistentNavigationBar(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeScreen(),
-    ),
-    GoRoute(
-      path: '/menu',
-      builder: (context, state) => const MenuScreen(),
-    ),
-    GoRoute(
-      path: '/product/:id',
-      builder: (context, state) {
-        final productId = state.pathParameters['id']!;
-        final product = ProductData.getProductById(productId);
-
-        if (product == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
-            body: const Center(child: Text("Produk tidak ditemukan.")),
-          );
-        }
-
-        return ProductDetailScreen(product: product);
-      },
-    ),
-
-    // payment route
-    GoRoute(
-        path: '/cart',
-        builder: (context, state) => const CartScreen(),
-    ),
-  GoRoute(
-        path: '/checkout',
-        builder: (context, state) => const CheckoutPage()
-    ),
-    GoRoute(
-        path: '/paymentMethod',
-        builder: (context, state) => const PaymentMethodScreen()
-    ),
-    GoRoute(
-      path: '/voucher',
-      builder: (context, state) {
-        // Ambil parameter dari GoRouter
-        final appliedVoucherCode = state.extra as String?;
-        return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
-      },
-    ),
-
-
-  //   profile routes
-    GoRoute(
-        path: '/favorite',
-        builder: (context, state) => const FavoritePage(),
-    ),
-    GoRoute(
-        path: '/notification',
-        builder: (context, state) => const NotificationPage(),
-    ),
-    GoRoute(
-        path: '/settings',
-        builder: (context, state) => const AccountSettingsPage(),
-    ),
-  ],
-  navigatorKey: GlobalKey<NavigatorState>(),
-);
