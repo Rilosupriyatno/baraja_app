@@ -4,25 +4,38 @@ import 'package:baraja_app/pages/notification_page.dart';
 import 'package:baraja_app/providers/cart_provider.dart';
 import 'package:baraja_app/screens/cart_screen.dart';
 import 'package:baraja_app/screens/checkout_page.dart';
+import 'package:baraja_app/screens/login_screen.dart';
 import 'package:baraja_app/screens/menu_screen.dart';
 import 'package:baraja_app/screens/payment_methode_screen.dart';
 import 'package:baraja_app/screens/product_detail_screen.dart';
+import 'package:baraja_app/screens/register_screen.dart';
 import 'package:baraja_app/screens/voucher_screen.dart';
+import 'package:baraja_app/services/auth_service.dart';
 import 'package:baraja_app/widgets/utils/navigation_bar.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'data/product_data.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
-void main() {
-  runApp( MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (context) => CartProvider()),
-    ],
-    child: const MyApp(),
-  ),);
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => CartProvider()),
+        ChangeNotifierProvider(create: (context) => AuthService()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -42,9 +55,18 @@ class MyApp extends StatelessWidget {
 // Konfigurasi GoRouter
 final GoRouter _router = GoRouter(
   routes: [
-    // main routes
+    // auth routes
     GoRoute(
       path: '/',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterScreen(),
+    ),
+    // main routes
+    GoRoute(
+      path: '/main',
       builder: (context, state) => const PersistentNavigationBar(),
     ),
     GoRoute(
