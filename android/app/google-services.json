@@ -43,14 +43,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "388953744470-2oljncio8mo0h55jnalamvm7a88qrfvl.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.baraja.baraja_app",
-            "certificate_hash": "20616d05d9d2b29917517aea1e75ee167264fc58"
-          }
-        },
-        {
           "client_id": "388953744470-jq8aaq3ngbaivd2hs8r33abb2s4dm982.apps.googleusercontent.com",
           "client_type": 3
         }
