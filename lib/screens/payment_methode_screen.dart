@@ -1,4 +1,7 @@
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
@@ -29,7 +32,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       name: 'Transfer Bank',
       description: '(Automatic Check)',
       icon: Icons.account_balance,
-      color: Colors.brown,
+      color: AppTheme.primaryColor,
       isExpandable: true,
     ),
   ];
@@ -41,18 +44,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Metode Pembayaran',
-          style: TextStyle(color: Colors.black),
-        ),
-      ),
+      appBar: const ClassicAppBar(title: 'Metode Pembayaran'),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 16),
         itemCount: _paymentMethods.length,
@@ -104,7 +96,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
           // Handle adding a new card
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.brown,
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
           minimumSize: const Size(60, 36),
           shape: RoundedRectangleBorder(

@@ -7,6 +7,7 @@ import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:baraja_app/screens/menu_screen.dart';
 import 'package:baraja_app/screens/payment_methode_screen.dart';
 import 'package:baraja_app/screens/product_detail_screen.dart';
+import 'package:baraja_app/screens/voucher_screen.dart';
 import 'package:baraja_app/widgets/utils/navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -81,8 +82,16 @@ final GoRouter _router = GoRouter(
         builder: (context, state) => const CheckoutPage()
     ),
     GoRoute(
-        path: '/paymentMethode',
+        path: '/paymentMethod',
         builder: (context, state) => const PaymentMethodScreen()
+    ),
+    GoRoute(
+      path: '/voucher',
+      builder: (context, state) {
+        // Ambil parameter dari GoRouter
+        final appliedVoucherCode = state.extra as String?;
+        return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
+      },
     ),
 
 

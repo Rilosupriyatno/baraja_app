@@ -80,40 +80,6 @@ class CartItemWidget extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Row(
-                //   children: [
-                //     // Tombol Edit
-                //     Container(
-                //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                //       decoration: BoxDecoration(
-                //         border: Border.all(color: Colors.grey.shade300),
-                //         borderRadius: BorderRadius.circular(4),
-                //       ),
-                //       child: const Row(
-                //         children: [
-                //           Icon(Icons.edit, size: 16),
-                //           SizedBox(width: 4),
-                //           Text("Edit", style: TextStyle(fontSize: 12)),
-                //         ],
-                //       ),
-                //     ),
-                //
-                //     const SizedBox(width: 8),
-                //
-                //     // Tombol Delete
-                //     GestureDetector(
-                //       onTap: onRemove,
-                //       child: Container(
-                //         padding: const EdgeInsets.all(4),
-                //         decoration: BoxDecoration(
-                //           border: Border.all(color: Colors.grey.shade300),
-                //           borderRadius: BorderRadius.circular(4),
-                //         ),
-                //         child: const Icon(Icons.delete_outline, size: 16),
-                //       ),
-                //     ),
-                //   ],
-                // ),
               ],
             ),
           ),

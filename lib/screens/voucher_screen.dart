@@ -1,4 +1,7 @@
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
 
 class VoucherScreen extends StatefulWidget {
   final String? appliedVoucherCode;
@@ -80,21 +83,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        title: const Text(
-          'Voucher',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(selectedVoucherCode),
-        ),
-      ),
+      appBar: const ClassicAppBar(title: 'Voucher'),
       body: Column(
         children: [
           // Voucher input field
@@ -175,7 +164,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
                       Navigator.of(context).pop(selectedVoucherCode);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5D4037),
+                      backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -224,11 +213,11 @@ class VoucherItem extends StatelessWidget {
   final VoidCallback? onTap;
 
   const VoucherItem({
-    Key? key,
+    super.key,
     required this.voucher,
     required this.isSelected,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -260,7 +249,7 @@ class VoucherItem extends StatelessWidget {
                         return Icon(
                           Icons.card_giftcard,
                           size: 32,
-                          color: voucher.isDisabled ? Colors.grey : Colors.brown,
+                          color: voucher.isDisabled ? Colors.grey : AppTheme.primaryColor,
                         );
                       },
                     ),

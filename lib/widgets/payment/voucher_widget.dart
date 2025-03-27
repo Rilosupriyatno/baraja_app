@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../screens/voucher_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class VoucherWidget extends StatelessWidget {
   final String voucherCode;
   final bool voucherApplied;
-  final VoidCallback onTap;
+  final Function(String) onVoucherSelected; // Callback function
 
   const VoucherWidget({
     super.key,
     required this.voucherCode,
     required this.voucherApplied,
-    required this.onTap,
+    required this.onVoucherSelected,
   });
 
   @override
@@ -25,57 +25,36 @@ class VoucherWidget extends StatelessWidget {
             fontSize: 16,
           ),
         ),
-
         const SizedBox(height: 8),
-
         GestureDetector(
           onTap: () async {
-            // Navigate to voucher selection screen
-            final selectedVoucher = await Navigator.push<String>(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VoucherScreen(
-                  appliedVoucherCode: voucherApplied ? voucherCode : null,
-                ),
-              ),
+            final selectedVoucher = await context.push<String>(
+              '/voucher',
+              extra: voucherApplied ? voucherCode : null,
             );
 
-            // Handle the selected voucher
+
             if (selectedVoucher != null) {
-              // This would need to call a method in the parent widget
-              // to update the voucher
+              onVoucherSelected(selectedVoucher); // Pass back to parent
             }
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(
-                  Icons.confirmation_number_outlined,
-                  color: Colors.grey,
-                  size: 20,
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Text(
-                    voucherApplied ? "Voucher applied: $voucherCode" : "Ketuk untuk menggunakan voucher",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: voucherApplied ? Colors.black : Colors.grey,
-                    ),
+                Text(
+                  voucherApplied ? "Voucher: $voucherCode" : "Pilih Voucher",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: voucherApplied ? Colors.green : Colors.grey,
                   ),
                 ),
-
-                const Icon(
-                  Icons.chevron_right,
-                  color: Colors.grey,
-                ),
+                const Icon(Icons.arrow_forward_ios, size: 16),
               ],
             ),
           ),

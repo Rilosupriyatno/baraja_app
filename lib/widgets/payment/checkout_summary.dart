@@ -1,3 +1,4 @@
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
 
@@ -94,7 +95,7 @@ class CheckoutSummary extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onCheckoutPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5D4037),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
