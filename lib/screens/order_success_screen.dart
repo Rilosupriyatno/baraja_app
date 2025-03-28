@@ -1,3 +1,4 @@
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -102,7 +103,7 @@ class OrderSuccessScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => context.go('/tracking', extra: orderId),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.brown,
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(

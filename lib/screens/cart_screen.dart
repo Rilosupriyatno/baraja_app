@@ -1,3 +1,4 @@
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -100,7 +101,7 @@ class CartScreenState extends State<CartScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppTheme.primaryColor,
                 ),
                 icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
                 label: const Text(
@@ -148,7 +149,7 @@ class CartScreenState extends State<CartScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppTheme.primaryColor,
                 ),
                 child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
               ),

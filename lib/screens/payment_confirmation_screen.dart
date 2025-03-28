@@ -1,3 +1,4 @@
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -98,7 +99,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () => _confirmPayment(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.brown,
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
@@ -234,10 +235,18 @@ class PaymentConfirmationScreen extends StatelessWidget {
     // Generate a unique order ID (using timestamp)
     final String orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
 
-    // Create a new order
+    // Create a new order with new instances of CartItem
     final Order newOrder = Order(
       id: orderId,
-      items: List.from(items),
+      items: items.map((item) => CartItem(
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        additional: item.additional,
+        topping: item.topping,
+        // Include any other necessary fields from CartItem
+        imageUrl: item.imageUrl, // Assuming there's an imageUrl field
+      )).toList(),
       orderType: orderType,
       tableNumber: tableNumber,
       deliveryAddress: deliveryAddress,
@@ -257,12 +266,5 @@ class PaymentConfirmationScreen extends StatelessWidget {
 
     // Navigate to order success screen
     context.go('/orderSuccess?id=$orderId');
-    // context.go('/orderSuccess', extra: orderId);
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => OrderSuccessScreen(orderId: orderId),
-    //   ),
-    // );
   }
 }

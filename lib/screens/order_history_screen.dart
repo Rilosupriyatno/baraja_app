@@ -1,3 +1,5 @@
+import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/widgets/utils/name_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -31,39 +33,34 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'History Orders',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.black,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.brown,
-          tabs: const [
-            Tab(text: 'Process'),
-            Tab(text: 'Done'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      appBar: const NameAppBar(title: 'Riwayat'),
+      body: Column(
         children: [
-          // Tab 1: Process (Ongoing orders)
-          _buildOrdersList(isCompleted: false),
+          TabBar(
+            controller: _tabController,
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: AppTheme.primaryColor,
+            tabs: const [
+              Tab(text: 'Process'),
+              Tab(text: 'Done'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Process (Ongoing orders)
+                _buildOrdersList(isCompleted: false),
 
-          // Tab 2: Done (Completed orders)
-          _buildOrdersList(isCompleted: true),
+                // Tab 2: Done (Completed orders)
+                _buildOrdersList(isCompleted: true),
+              ],
+            ),
+          ),
         ],
       ),
+      backgroundColor: Colors.white,
     );
   }
 
@@ -118,7 +115,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       },
     );
   }
-
   Widget _buildOrderItem(BuildContext context, Order order) {
     // Get first item as the representative
     final firstItem = order.items.first;
@@ -167,6 +163,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
+                    overflow: TextOverflow.ellipsis, // Prevent overflow
                   ),
                   const SizedBox(height: 4),
 
@@ -177,6 +174,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                       fontSize: 12,
                       color: Colors.grey[600],
                     ),
+                    overflow: TextOverflow.ellipsis, // Prevent overflow
                   ),
 
                   // If there are more items, show count
@@ -190,6 +188,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                           color: Colors.grey[600],
                           fontStyle: FontStyle.italic,
                         ),
+                        overflow: TextOverflow.ellipsis, // Prevent overflow
                       ),
                     ),
 
@@ -205,8 +204,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                           // Implement reorder functionality
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.brown,
-                          side: const BorderSide(color: Colors.brown),
+                          foregroundColor: AppTheme.primaryColor,
+                          side: const BorderSide(color: AppTheme.primaryColor),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 4,
@@ -219,7 +218,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                           style: TextStyle(fontSize: 12),
                         ),
                       ),
-                      buildRatingWidget(),
+                      // buildRatingWidget(),
                     ],
                   )
                       : OutlinedButton(
@@ -228,8 +227,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                       context.go('/tracking', extra: order.id);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.brown,
-                      side: const BorderSide(color: Colors.brown),
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 4,
@@ -287,28 +286,28 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     return customizations.join(', ');
   }
 
-  Widget buildRatingWidget() {
-    return Row(
-      children: [
-        const Icon(Icons.star, color: Colors.amber, size: 16),
-        const SizedBox(width: 4),
-        Text(
-          '5',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Review',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget buildRatingWidget() {
+  //   return Row(
+  //     children: [
+  //       const Icon(Icons.star, color: Colors.amber, size: 16),
+  //       const SizedBox(width: 4),
+  //       Text(
+  //         '5',
+  //         style: TextStyle(
+  //           fontSize: 12,
+  //           color: Colors.grey[700],
+  //           fontWeight: FontWeight.bold,
+  //         ),
+  //       ),
+  //       const SizedBox(width: 8),
+  //       Text(
+  //         'Review',
+  //         style: TextStyle(
+  //           fontSize: 12,
+  //           color: Colors.grey[600],
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 }

@@ -118,7 +118,7 @@ class AppRouter {
             final Map<String, dynamic> extras = state.extra as Map<String, dynamic>;
 
             return PaymentConfirmationScreen(
-              items: extras['items'] as List<CartItem>,
+              items: (extras['items'] as List).cast<CartItem>(),
               orderType: extras['orderType'] as OrderType,
               tableNumber: extras['tableNumber'] as String,
               deliveryAddress: extras['deliveryAddress'] as String,

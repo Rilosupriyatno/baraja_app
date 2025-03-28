@@ -26,31 +26,49 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Points and Voucher Row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: PointCard(
                       label: 'Point',
-                      value: '500',
+                      value: Text(
+                        '200',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       color: Color(0xFF0D8E54),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Expanded(
+                  SizedBox(width: 4),
+                  Expanded(
                     child: PointCard(
-                      label: 'Point',
-                      value: '500',
-                      color: Color(0xFF0D8E54),
+                      label: 'Rank',
+                      value: Icon(
+                        Icons.star, // Gunakan ikon sesuai keinginan
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      color: Color(0xFF0E9658),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Expanded(
                     child: PointCard(
                       label: 'Voucher',
-                      value: '5',
-                      color: Colors.green.shade300,
+                      value: Text(
+                        '5',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      color: Color(0xFF0E9D5D),
                     ),
                   ),
                 ],
