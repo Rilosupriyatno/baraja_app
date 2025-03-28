@@ -1,4 +1,3 @@
-  import 'package:baraja_app/screens/payment_confirmation_screen.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
   import 'package:flutter/material.dart';
   import 'package:go_router/go_router.dart';
@@ -250,69 +249,21 @@ import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
                   );
                   return;
                 }
-
-                // Navigate to payment confirmation screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PaymentConfirmationScreen(
-                      items: List.from(cartItems),
-                      orderType: selectedOrderType,
-                      tableNumber: tableNumber,
-                      deliveryAddress: deliveryAddress,
-                      pickupTime: pickupTime,
-                      paymentMethod: selectedPaymentMethod,
-                      subtotal: subtotal,
-                      discount: discount,
-                      total: subtotal - discount,
-                      voucherCode: selectedVoucherCode,
-                    ),
-                  ),
-                );
-
                 // Atau menggunakan go_router jika Anda menggunakan routing dengan go_router:
-                // context.push('/paymentConfirmation', extra: {
-                //   'items': List.from(cartItems),
-                //   'orderType': selectedOrderType,
-                //   'tableNumber': tableNumber,
-                //   'deliveryAddress': deliveryAddress,
-                //   'pickupTime': pickupTime,
-                //   'paymentMethod': selectedPaymentMethod,
-                //   'subtotal': subtotal,
-                //   'discount': discount,
-                //   'total': subtotal - discount,
-                //   'voucherCode': selectedVoucherCode,
-                // });
+                context.push('/paymentConfirmation', extra: {
+                  'items': List.from(cartItems),
+                  'orderType': selectedOrderType,
+                  'tableNumber': tableNumber,
+                  'deliveryAddress': deliveryAddress,
+                  'pickupTime': pickupTime,
+                  'paymentMethod': selectedPaymentMethod,
+                  'subtotal': subtotal,
+                  'discount': discount,
+                  'total': subtotal - discount,
+                  'voucherCode': selectedVoucherCode,
+                });
+                cartProvider.clearCart(); // Uncomment jika ingin mengosongkan keranjang
               },
-              // onCheckoutPressed: () {
-              //   // Implementasi proses checkout
-              //   // ignore: avoid_print
-              //   print("Checkout with $selectedOrderType");
-              //   if (selectedOrderType == OrderType.dineIn) {
-              //     // ignore: avoid_print
-              //     print("Nomor meja: $tableNumber");
-              //   } else if (selectedOrderType == OrderType.delivery) {
-              //     // ignore: avoid_print
-              //     print("Alamat pengantaran: $deliveryAddress");
-              //   } else {
-              //     // ignore: avoid_print
-              //     print("Waktu ambil: ${pickupTime?.format(context)}");
-              //   }
-              //
-              //   // Menampilkan informasi checkout with discount
-              //   final int finalTotal = subtotal - discount;
-              //   ScaffoldMessenger.of(context).showSnackBar(
-              //     SnackBar(
-              //       content: Text(
-              //           "Pesanan berhasil: ${cartProvider.totalItems} item, total ${formatCurrency(finalTotal)}"
-              //       ),
-              //       duration: const Duration(seconds: 2),
-              //     ),
-              //   );
-              //
-              //   // Bersihkan keranjang setelah checkout
-              //   cartProvider.clearCart(); // Uncomment jika ingin mengosongkan keranjang
-              // },
             ),
           ],
         ),

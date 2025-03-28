@@ -47,13 +47,18 @@ dependencies:
   firebase_auth: ^5.5.1
   google_sign_in: ^6.3.0
   shared_preferences: ^2.5.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
 #  google_sign_in: latest_version
 
 dev_dependencies:
+  hive_generator: ^2.0.0
+  build_runner: ^2.3.0
   flutter_test:
     sdk: flutter
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

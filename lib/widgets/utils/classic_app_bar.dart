@@ -1,5 +1,6 @@
 // File: lib/widgets/custom_app_bar.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Custom AppBar
 class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -17,7 +18,14 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0.5,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            // Navigasi ke halaman utama atau lakukan aksi lain
+            GoRouter.of(context).go('/main'); // Sesuaikan dengan rute yang benar
+          }
+        },
       ),
       title: Text(
         title,

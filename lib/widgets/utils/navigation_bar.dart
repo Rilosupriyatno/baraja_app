@@ -21,7 +21,7 @@ class PersistentNavigationBar extends StatelessWidget {
           PersistentTabConfig(
             screen: const OrderHistoryScreen(),
             item: ItemConfig(
-              icon: const Icon(Icons.home),
+              icon: const Icon(Icons.history_edu),
               title: "History",
             ),
           ),

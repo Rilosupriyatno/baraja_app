@@ -43,10 +43,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
             fontWeight: FontWeight.bold,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.black,
