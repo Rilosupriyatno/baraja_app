@@ -1,262 +1,318 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../models/cart_item.dart';
 import '../models/order.dart';
-import '../models/order_type.dart';
 import '../providers/order_provider.dart';
 import '../utils/currency_formatter.dart';
-import '../widgets/utils/classic_app_bar.dart';
 
-class OrderHistoryScreen extends StatelessWidget {
+class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
+
+  @override
+  State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
+}
+
+class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Riwayat Pesanan'),
-      body: Consumer<OrderProvider>(
-        builder: (context, orderProvider, child) {
-          final List<Order> orders = orderProvider.allOrders;
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'History Orders',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.black,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.brown,
+          tabs: const [
+            Tab(text: 'Process'),
+            Tab(text: 'Done'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Tab 1: Process (Ongoing orders)
+          _buildOrdersList(isCompleted: false),
 
-          if (orders.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada riwayat pesanan',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => context.go('/'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.brown,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Pesan Sekarang'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Sort orders by order time (newest first)
-          orders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return _buildOrderCard(context, order);
-            },
-          );
-        },
+          // Tab 2: Done (Completed orders)
+          _buildOrdersList(isCompleted: true),
+        ],
       ),
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, Order order) {
-    // Status color based on order status
-    Color statusColor;
-    switch (order.status) {
-      case OrderStatus.pending:
-        statusColor = Colors.orange;
-        break;
-      case OrderStatus.processing:
-      case OrderStatus.onTheWay:
-      case OrderStatus.ready:
-        statusColor = Colors.blue;
-        break;
-      case OrderStatus.completed:
-        statusColor = Colors.green;
-        break;
-      case OrderStatus.cancelled:
-        statusColor = Colors.red;
-        break;
-    }
+  Widget _buildOrdersList({required bool isCompleted}) {
+    return Consumer<OrderProvider>(
+      builder: (context, orderProvider, child) {
+        // Filter orders based on tab
+        final List<Order> orders = orderProvider.allOrders.where((order) {
+          if (isCompleted) {
+            return order.status == OrderStatus.completed;
+          } else {
+            return order.status != OrderStatus.completed &&
+                order.status != OrderStatus.cancelled;
+          }
+        }).toList();
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        // Sort by date, newest first
+        orders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
+
+        if (orders.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.receipt_long,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isCompleted
+                      ? 'Belum ada pesanan selesai'
+                      : 'Belum ada pesanan dalam proses',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: orders.length,
+          itemBuilder: (context, index) {
+            return _buildOrderItem(context, orders[index]);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOrderItem(BuildContext context, Order order) {
+    // Get first item as the representative
+    final firstItem = order.items.first;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: () => context.go('/tracking', extra: order.id),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Order ID and date
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product image
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                image: DecorationImage(
+                  image: NetworkImage(firstItem.imageUrl),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Product details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Order #${order.id.substring(order.id.length - 8)}',
+                    firstItem.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                   ),
+                  const SizedBox(height: 4),
+
+                  // Item customizations
                   Text(
-                    _formatDate(order.orderTime),
+                    _buildCustomizationText(firstItem),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
 
-              // Order status
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  order.statusText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Items preview (showing first 2 items and "+X more" if applicable)
-              ...order.items.take(2).map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Text(
-                      '${item.quantity}x',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
+                  // If there are more items, show count
+                  if (order.items.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        item.name,
-                        style: const TextStyle(fontSize: 14),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-              if (order.items.length > 2)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '+ ${order.items.length - 2} item lainnya',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-
-              // Order type and total
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _getOrderTypeIcon(order.orderType),
-                        size: 16,
-                        color: Colors.grey[700],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _getOrderTypeText(order.orderType),
+                        '+ ${order.items.length - 1} more items',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
+                    ),
+
+                  const SizedBox(height: 8),
+
+                  // Action button
+                  order.status == OrderStatus.completed
+                      ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () {
+                          // Implement reorder functionality
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.brown,
+                          side: const BorderSide(color: Colors.brown),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Order Again',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      buildRatingWidget(),
                     ],
-                  ),
-                  Text(
-                    formatCurrency(order.total),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  )
+                      : OutlinedButton(
+                    onPressed: () {
+                      // Navigate to tracking using GoRouter
+                      context.go('/tracking', extra: order.id);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.brown,
+                      side: const BorderSide(color: Colors.brown),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      'Tracking Order',
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+            ),
 
-              // Track order button
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => context.go('/tracking', extra: order.id),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.brown,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 36),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            // Price
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  formatCurrency(firstItem.price),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
-                  child: const Text('Lacak Pesanan'),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(height: 4),
+                Text(
+                  'x${firstItem.quantity}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Helper method to format date
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  String _buildCustomizationText(CartItem item) {
+    List<String> customizations = [];
+
+    if (item.additional != '-') {
+      customizations.add(item.additional);
+    }
+
+    if (item.topping != '-') {
+      customizations.add(item.topping);
+    }
+
+    return customizations.join(', ');
   }
 
-  // Helper to get order type icon
-  IconData _getOrderTypeIcon(OrderType type) {
-    switch (type) {
-      case OrderType.dineIn:
-        return Icons.restaurant;
-      case OrderType.delivery:
-        return Icons.delivery_dining;
-      case OrderType.pickup:
-        return Icons.takeout_dining;
-    }
-  }
-
-  // Helper to get order type text
-  String _getOrderTypeText(OrderType type) {
-    switch (type) {
-      case OrderType.dineIn:
-        return 'Makan di Tempat';
-      case OrderType.delivery:
-        return 'Pengantaran';
-      case OrderType.pickup:
-        return 'Ambil Sendiri';
-    }
+  Widget buildRatingWidget() {
+    return Row(
+      children: [
+        const Icon(Icons.star, color: Colors.amber, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          '5',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Review',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
   }
 }

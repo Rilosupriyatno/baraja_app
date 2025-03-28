@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/home_screen.dart';
+import 'package:baraja_app/screens/order_history_screen.dart';
 import 'package:baraja_app/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
@@ -15,6 +16,13 @@ class PersistentNavigationBar extends StatelessWidget {
             item: ItemConfig(
               icon: const Icon(Icons.home),
               title: "Home",
+            ),
+          ),
+          PersistentTabConfig(
+            screen: const OrderHistoryScreen(),
+            item: ItemConfig(
+              icon: const Icon(Icons.home),
+              title: "History",
             ),
           ),
           PersistentTabConfig(
