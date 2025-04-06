@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -162,7 +163,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.brown,
+            backgroundColor: AppTheme.primaryColor,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(

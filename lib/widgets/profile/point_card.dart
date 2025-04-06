@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class PointCard extends StatelessWidget {
   final String label;
-  final String value;
+  final Widget value;
   final Color color;
 
   const PointCard({
@@ -32,14 +32,7 @@ class PointCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          value, // Menampilkan widget (bisa teks atau ikon)
         ],
       ),
     );
