@@ -3,12 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class PointButtons extends StatelessWidget {
-  const PointButtons({super.key});
+  final String? points;
+  final int vouchers;
+
+  const PointButtons({
+    super.key,
+    this.points,
+    this.vouchers = 3,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const int userPoints = 120;
-    const int userVouchers = 3;
+    // Use the provided points or default to 0
+    final userPoints = points != null ? points! : '0';
+    final userVouchers = vouchers;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10.0),

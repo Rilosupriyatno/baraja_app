@@ -72,7 +72,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               const Text('Order tidak ditemukan'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/'),
+                onPressed: () => context.go('/main'),
                 child: const Text('Kembali ke Beranda'),
               ),
             ],

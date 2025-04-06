@@ -60,7 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       if (mounted) {
-        context.push('/');
+        context.push('/login');
       }
     } catch (e) {
       // Log the error to the console
@@ -266,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const Text('Sudah punya akun?'),
                       TextButton(
                         onPressed: () {
-                          context.push('/');
+                          context.push('/login');
                         },
                         child: const Text(
                           'Masuk',

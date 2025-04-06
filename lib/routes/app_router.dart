@@ -8,6 +8,8 @@ import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
 import '../screens/cart_screen.dart';
 import '../screens/checkout_page.dart';
+import '../screens/init_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/order_history_screen.dart';
 import '../screens/order_success_screen.dart';
@@ -25,12 +27,15 @@ class AppRouter {
       initialLocation: '/',
       routes: [
         // Existing routes (home, cart, etc.)
-
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const InitScreen(),
+        ),
 
         // auth routes
         GoRoute(
-          path: '/',
-          builder: (context, state) => const MainNavigationBar(),
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
         ),
         GoRoute(
           path: '/register',

@@ -1,11 +1,22 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final String? baseUrl = dotenv.env['BASE_URL'];
+  Map<String, dynamic>? _user;
+  String? _jwtToken;
+
+  Map<String, dynamic>? get user => _user;
+  String? get jwtToken => _jwtToken;
+
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -46,53 +57,127 @@ class AuthService with ChangeNotifier {
     }
   }
 
-  // Login dengan Google
-  Future<UserCredential> signInWithGoogle() async {
+  Future<void> signInWithGoogle() async {
     try {
-      // Trigger authentication flow
+      // Step 1: Google Sign-In
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        throw Exception('Google sign in aborted by user');
+        throw Exception('Login dibatalkan oleh pengguna');
       }
 
-      // Obtain auth details from request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Print out authentication details for debugging
-      print('Access Token: ${googleAuth.accessToken}');
-      print('ID Token: ${googleAuth.idToken}');
-
-      // Validate tokens
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw Exception('Google authentication tokens are missing');
+      if (googleAuth.idToken == null || googleAuth.accessToken == null) {
+        throw Exception('Token Google tidak lengkap');
       }
 
-      // Create new credential
+      // Step 2: Firebase Auth (Opsional, bisa dilewati kalau hanya pakai backend sendiri)
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken!,
-        idToken: googleAuth.idToken!,
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the Google credential
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      notifyListeners();
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      print('FirebaseAuthException: ${e.code} - ${e.message}');
-      throw Exception('Firebase Authentication Error: ${e.message}');
-    } on PlatformException catch (e) {
-      print('PlatformException: ${e.code} - ${e.message}');
-      throw Exception('Platform Error during Google Sign-In: ${e.message}');
+      await _auth.signInWithCredential(credential);
+
+      // Step 3: Kirim idToken ke backend
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': googleAuth.idToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('Login sukses: ${responseData['user']['email']}');
+        print('Token JWT dari backend: ${responseData['token']}');
+        _user = responseData['user'];
+        _jwtToken = responseData['token'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', _jwtToken!);
+
+        notifyListeners();
+        // Simpan token jika perlu (misalnya ke SharedPreferences)
+      } else {
+        print('Gagal login ke backend: ${response.body}');
+      }
     } catch (e) {
-      print('Unexpected error: $e');
-      throw Exception('Unexpected error during Google sign-in: $e');
+      print('Terjadi kesalahan: $e');
     }
   }
-  // Logout
-  Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
-    notifyListeners();
+
+  Future<void> fetchUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/user/profile'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _user = data['user'];
+        notifyListeners();
+      } else {
+        print('Gagal fetch user profile: ${response.body}');
+      }
+    } catch (e) {
+      print('Error get profile: $e');
+    }
+  }
+
+  // Add this method to your AuthService class
+  Future<bool> isLoggedIn() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) return false;
+
+      // Set the token in memory
+      _jwtToken = token;
+
+      // Try to fetch the user profile to validate the token
+      await fetchUserProfile();
+
+      // If we have user data, the token is valid
+      return _user != null;
+    } catch (e) {
+      print('Error checking login status: $e');
+      return false;
+    }
+  }
+
+  Future<void> logoutFromGoogle() async {
+    try {
+      // Step 1: Logout dari Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+        _user = null;
+        _jwtToken = null;
+        notifyListeners();
+
+        print('Logout dari Google Sign-In berhasil');
+      }
+
+      // Step 2: Logout dari Firebase (jika kamu pakai FirebaseAuth)
+      await FirebaseAuth.instance.signOut();
+      print('Logout dari Firebase Auth berhasil');
+
+      // Step 3: Hapus token JWT backend (jika kamu simpan ke SharedPreferences)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      print('Token backend dihapus');
+
+      // ✅ Tambahkan redirect atau navigasi ke halaman login jika perlu
+      // Navigator.of(context).pushReplacementNamed('/login');
+    } catch (e) {
+      print('Terjadi kesalahan saat logout: $e');
+    }
   }
 
   // Handler untuk FirebaseAuthException

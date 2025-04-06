@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../data/product_data.dart';
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/home/action_button.dart';
@@ -16,27 +18,47 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.fetchUserProfile();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final userData = authService.user;
     final coffeeProducts = ProductData.getProducts();
-    // final promoItems = ProductData.getPromoItems();
 
     return Scaffold(
       backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
-        title: const Row(
+        elevation: 0,
+        title: Row(
           children: [
             Text(
-              'Hai, Rilo',
-              style: TextStyle(
+              'Hai, ${userData?['username'] ?? 'User'}',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
             ),
-            SizedBox(width: 8),
-            Icon(Icons.waving_hand, color: Colors.amber),
+            const SizedBox(width: 8),
+            const Icon(Icons.waving_hand, color: Colors.amber),
           ],
         ),
         actions: [
@@ -49,24 +71,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
           onRefresh: () async {
-            await Future.delayed(const Duration(seconds: 1));
-            // Bisa diganti dengan fungsi fetch data dari API atau DB
+            await _loadUserData();
           },
           child: ListView(
-            // padding: const EdgeInsets.only(bottom: 100),
             children: [
-              // Promo Carousel
               const PromoCarousel(),
-
-              const Padding(padding: EdgeInsets.all(16.0)),
-
-              // Action Buttons
+              const SizedBox(height: 16),
               const ActionButtons(),
-
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 18.0), // ⬅️ Tambahkan jarak kanan kiri
+                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 18.0),
                 child: Column(
                   children: [
                     ProductSlider(
@@ -84,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
             ],
           ),
         ),
