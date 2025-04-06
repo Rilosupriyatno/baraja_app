@@ -47,6 +47,8 @@ dependencies:
   firebase_auth: ^5.5.1
   google_sign_in: ^6.3.0
   shared_preferences: ^2.5.3
+  carousel_slider: ^5.0.0
+  smooth_page_indicator: ^1.2.1
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
 #  google_sign_in: latest_version

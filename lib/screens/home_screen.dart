@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
 import '../data/product_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
+import '../widgets/home/action_button.dart';
 import '../widgets/home/product_slider.dart';
-import '../widgets/home/promo_slider.dart';
-import '../utils/currency_formatter.dart'; // Import formatCurrency function
+import '../widgets/home/promo_carousel.dart';
+import '../utils/currency_formatter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,178 +18,73 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    // Removed NumberFormat currencyFormatter declaration
     final coffeeProducts = ProductData.getProducts();
-    final promoItems = ProductData.getPromoItems();
+    // final promoItems = ProductData.getPromoItems();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
+        title: const Row(
+          children: [
+            Text(
+              'Hai, Rilo',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.waving_hand, color: Colors.amber),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            color: Colors.black,
+            onPressed: () {},
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await Future.delayed(const Duration(seconds: 1));
+            // Bisa diganti dengan fungsi fetch data dari API atau DB
+          },
+          child: ListView(
+            // padding: const EdgeInsets.only(bottom: 100),
             children: [
-              // Promo banner
-              SizedBox(
-                height: 200,
-                child: PromoSlider(promoItems: promoItems),
-              ),
-              Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  Positioned(
-                    top: 65, // Naikkan ke atas
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      // padding: const EdgeInsets.symmetric(horizontal: 2),
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(10),
-                          topRight: Radius.circular(10),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.4), // Using withOpacity instead of withValues
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+              // Promo Carousel
+              const PromoCarousel(),
 
-                  Container(
-                    width: double.infinity,
-                    // padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                    padding: const EdgeInsets.only(left: 16, right: 30, top: 10, bottom: 10),
-                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.4), // Using withOpacity instead of withValues
-                          blurRadius: 3,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+              const Padding(padding: EdgeInsets.all(16.0)),
+
+              // Action Buttons
+              const ActionButtons(),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 18.0), // ⬅️ Tambahkan jarak kanan kiri
+                child: Column(
+                  children: [
+                    ProductSlider(
+                      products: coffeeProducts,
+                      formatPrice: formatCurrency,
+                      title: 'Untuk Kamu',
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Hai, Rilo',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  'Point 200',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber[300],
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.star,
-                                    color: AppTheme.primaryColor,
-                                    size: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        Container(
-                          width: 1, // Lebar garis
-                          height: 40, // Tinggi garis
-                          color: Colors.white, // Warna garis
-                          // margin: const EdgeInsets.symmetric(horizontal: 5), // Jarak antara teks dan garis
-                        ),
-                        InkWell(
-                          onTap: () {
-                            context.push('/menu');
-                          },
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.grid_view,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'All Menu',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
+                    const SizedBox(height: 16),
+                    ProductSlider(
+                      products: coffeeProducts,
+                      title: 'Rekomendasi',
+                      isBundle: true,
+                      formatPrice: formatCurrency,
                     ),
-                  ),
-                ],
-              ),
-              Transform.translate(
-                offset: const Offset(0, -10), // Geser ke atas 10 pixel
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(left: 2, right: 2, bottom: 10),
-                  // margin: const EdgeInsets.only(left: 6, right: 6), // Hapus margin bottom
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(8),
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 16,),
-                      ProductSlider(
-                        products: coffeeProducts,
-                        formatPrice: formatCurrency, // Using formatCurrency function instead of NumberFormat
-                        title: 'Untuk Kamu',
-                      ),
-                      const SizedBox(height: 16),
-                      ProductSlider(
-                        products: coffeeProducts,
-                        title: 'Rekomendasi',
-                        isBundle: true,
-                        formatPrice: formatCurrency, // Using formatCurrency function instead of NumberFormat
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
+                  ],
                 ),
-              )
+              ),
+
             ],
           ),
         ),

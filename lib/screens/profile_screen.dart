@@ -1,7 +1,7 @@
+import 'package:baraja_app/widgets/profile/point_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/profile/profile_header.dart';
-import '../widgets/profile/point_card.dart';
 import '../widgets/menu/menu_item.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -26,36 +26,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Points and Voucher Row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: PointCard(
-                      label: 'Point',
-                      value: '500',
-                      color: Color(0xFF0D8E54),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Expanded(
-                    child: PointCard(
-                      label: 'Point',
-                      value: '500',
-                      color: Color(0xFF0D8E54),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: PointCard(
-                      label: 'Voucher',
-                      value: '5',
-                      color: Colors.green.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const PointButtons(),
 
             const SizedBox(height: 30),
 

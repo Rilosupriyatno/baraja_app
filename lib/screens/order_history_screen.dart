@@ -1,3 +1,5 @@
+import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -32,29 +34,25 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'History Orders',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.black,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.brown,
-          tabs: const [
-            Tab(text: 'Process'),
-            Tab(text: 'Done'),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const ClassicAppBar(title: 'History'),
+            Material(
+              color: Colors.white,
+              child: TabBar(
+                controller: _tabController,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: AppTheme.primaryColor,
+                tabs: const [
+                  Tab(text: 'Process'),
+                  Tab(text: 'Done'),
+                ],
+              ),
+            ),
           ],
         ),
       ),

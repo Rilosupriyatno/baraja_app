@@ -8,7 +8,6 @@ import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
 import '../screens/cart_screen.dart';
 import '../screens/checkout_page.dart';
-import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/order_history_screen.dart';
 import '../screens/order_success_screen.dart';
@@ -31,7 +30,7 @@ class AppRouter {
         // auth routes
         GoRoute(
           path: '/',
-          builder: (context, state) => const LoginScreen(),
+          builder: (context, state) => const MainNavigationBar(),
         ),
         GoRoute(
           path: '/register',
@@ -43,7 +42,7 @@ class AppRouter {
         // main routes
         GoRoute(
           path: '/main',
-          builder: (context, state) => const PersistentNavigationBar(),
+          builder: (context, state) => const MainNavigationBar(),
         ),
         GoRoute(
           path: '/menu',
