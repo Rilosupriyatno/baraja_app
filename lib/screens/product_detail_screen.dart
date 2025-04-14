@@ -9,11 +9,12 @@ import '../utils/currency_formatter.dart'; // Import the currency formatter util
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/detail_product/quantity_selector.dart';
 import '../widgets/utils/custom_app_bar.dart';
+import '../services/product_service.dart'; // Import ProductService
 
 class ProductDetailScreen extends StatefulWidget {
-  final Product product;
+  final String productId; // Menggunakan ID produk sebagai parameter
 
-  const ProductDetailScreen({super.key, required this.product});
+  const ProductDetailScreen({super.key, required this.productId});
 
   @override
   ProductDetailScreenState createState() => ProductDetailScreenState();
@@ -23,13 +24,35 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
   int quantity = 1;
   List<Topping> selectedToppings = [];
   Addon? selectedAddon;
+  Product? product;
   final Color primaryColor = const Color(0xFF076A3B);
+
+  @override
+  void initState() {
+    super.initState();
+    // Memanggil API untuk mendapatkan produk berdasarkan ID
+    _loadProduct();
+  }
+
+  // Fungsi untuk memuat produk
+  Future<void> _loadProduct() async {
+    try {
+      final fetchedProduct = await ProductService.getProductById(widget.productId);
+      setState(() {
+        product = fetchedProduct;
+      });
+    } catch (e) {
+      // Tangani error jika produk tidak ditemukan atau terjadi kesalahan
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat produk: $e')),
+      );
+    }
+  }
 
   // Menghitung total harga berdasarkan produk, jumlah, topping dan add-on yang dipilih
   double calculateTotal() {
-    double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
-    double toppingsTotal = selectedToppings.fold(
-        0, (sum, topping) => sum + topping.price);
+    double basePrice = product?.discountPrice ?? product?.originalPrice ?? 0;
+    double toppingsTotal = selectedToppings.fold(0, (sum, topping) => sum + topping.price);
     double addonPrice = selectedAddon?.price ?? 0;
 
     return (basePrice + toppingsTotal + addonPrice) * quantity;
@@ -62,8 +85,11 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Product product = widget.product;
-    // Removed NumberFormat declaration since we're now using formatCurrency
+    if (product == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -80,10 +106,10 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                   Container(
                     height: 200,
                     width: double.infinity,
-                    color: product.imageColor ?? Colors.grey.shade300,
-                    child: product.imageUrl.isNotEmpty
+                    color: product!.imageColor ?? Colors.grey.shade300,
+                    child: product!.imageUrl.isNotEmpty
                         ? Image.network(
-                      product.imageUrl,
+                      product!.imageUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return const Center(
@@ -113,7 +139,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                product.name,
+                                product!.name,
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -130,7 +156,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         Row(
                           children: [
                             Text(
-                              formatCurrency((product.discountPrice ?? product.originalPrice ?? 0).toInt()),
+                              formatCurrency((product!.discountPrice ?? product!.originalPrice ?? 0).toInt()),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -138,9 +164,9 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            if (product.discountPrice != null && product.originalPrice != null)
+                            if (product!.discountPrice != null && product!.originalPrice != null)
                               Text(
-                                formatCurrency(product.originalPrice!.toInt()),
+                                formatCurrency(product!.originalPrice!.toInt()),
                                 style: const TextStyle(
                                   fontSize: 14,
                                   decoration: TextDecoration.lineThrough,
@@ -148,7 +174,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                             const SizedBox(width: 8),
-                            if (product.discountPercentage != null)
+                            if (product!.discountPercentage != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,
@@ -159,7 +185,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  '-${product.discountPercentage}%',
+                                  '-${product!.discountPercentage}%',
                                   style: const TextStyle(
                                     color: Colors.red,
                                     fontSize: 12,
@@ -170,7 +196,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          product.description,
+                          product!.description,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,
@@ -178,7 +204,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
 
                         // Bagian Topping (Multiple Choice)
-                        if (product.toppings != null && product.toppings!.isNotEmpty) ...[
+                        if (product!.toppings != null && product!.toppings!.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           const Text(
                             'Tambah Topping (Pilihan Ganda)',
@@ -188,7 +214,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...product.toppings!.map((topping) => CheckboxListTile(
+                          ...product!.toppings!.map((topping) => CheckboxListTile(
                             title: Text(topping.name),
                             subtitle: Text(
                               formatCurrency(topping.price.toInt()),
@@ -204,7 +230,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         ],
 
                         // Bagian Add-ons (Single Choice)
-                        if (product.addons != null && product.addons!.isNotEmpty) ...[
+                        if (product!.addons != null && product!.addons!.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           const Text(
                             'Tambahan (Pilihan Tunggal)',
@@ -214,7 +240,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...product.addons!.map((addon) => RadioListTile<Addon>(
+                          ...product!.addons!.map((addon) => RadioListTile<Addon>(
                             title: Text(addon.name),
                             subtitle: Text(
                               formatCurrency(addon.price.toInt()),
@@ -238,13 +264,13 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
       floatingActionButton: const CheckoutButton(),
-      bottomNavigationBar:  Container(
+      bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05), // Using withOpacity instead of withValues
+              color: Colors.black.withOpacity(0.05),
               spreadRadius: 1,
               blurRadius: 10,
             ),
@@ -278,7 +304,6 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                 ],
               ),
             ),
-
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -296,8 +321,8 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                   String addonText = selectedAddon != null ? selectedAddon!.name : '-';
 
                   CartItem newItem = CartItem(
-                    name: widget.product.name,
-                    imageUrl: widget.product.imageUrl,
+                    name: product!.name,
+                    imageUrl: product!.imageUrl,
                     price: totalPrice.toInt(),
                     additional: addonText,
                     topping: toppingsText,
@@ -315,7 +340,6 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
       ),
-      // Bottom bar dengan total harga dan tombol tambah ke keranjang
     );
   }
 }

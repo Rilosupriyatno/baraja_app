@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../data/product_data.dart';
+import '../services/product_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/home/action_button.dart';
 import '../widgets/home/product_slider.dart';
 import '../widgets/home/promo_carousel.dart';
-import '../utils/currency_formatter.dart';
+import '../models/product.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
+  List<Product> _products = [];
+  List<Product> _recommendedProducts = [];
 
   @override
   void initState() {
@@ -27,12 +29,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.fetchUserProfile();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.fetchUserProfile();
+
+      // Dapatkan semua produk
+      final products = await ProductService.fetchMenuItems();
+
+      // Contoh untuk mendapatkan rekomendasi produk
+      // Bisa dimodifikasi sesuai dengan kebutuhan bisnis Anda
+      // Misalnya bisa menggunakan kategori tertentu dengan:
+      // final recommended = await ProductService.getProductsByCategory('recommended');
+
+      // Untuk sementara gunakan produk yang sama
+      final recommended = List<Product>.from(products);
+
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _recommendedProducts = recommended;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: $e')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -40,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final userData = authService.user;
-    final coffeeProducts = ProductData.getProducts();
 
     return Scaffold(
       backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
@@ -74,9 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-          onRefresh: () async {
-            await _loadUserData();
-          },
+          onRefresh: _loadUserData,
           child: ListView(
             children: [
               const PromoCarousel(),
@@ -87,16 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     ProductSlider(
-                      products: coffeeProducts,
-                      formatPrice: formatCurrency,
+                      products: _products,
                       title: 'Untuk Kamu',
                     ),
                     const SizedBox(height: 16),
                     ProductSlider(
-                      products: coffeeProducts,
+                      products: _recommendedProducts,
                       title: 'Rekomendasi',
                       isBundle: true,
-                      formatPrice: formatCurrency,
                     ),
                   ],
                 ),

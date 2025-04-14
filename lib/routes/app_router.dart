@@ -19,6 +19,7 @@ import '../screens/payment_method_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/voucher_screen.dart';
+import '../services/product_service.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
@@ -53,22 +54,50 @@ class AppRouter {
           path: '/menu',
           builder: (context, state) => const MenuScreen(),
         ),
+        // GoRoute(
+        //   path: '/product/:id',
+        //   builder: (context, state) {
+        //     final productId = state.pathParameters['id']!;
+        //     final product = ProductData.getProductById(productId);
+        //
+        //     if (product == null) {
+        //       return Scaffold(
+        //         appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
+        //         body: const Center(child: Text("Produk tidak ditemukan.")),
+        //       );
+        //     }
+        //
+        //     return ProductDetailScreen(product: product);
+        //   },
+        // ),
         GoRoute(
           path: '/product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id']!;
-            final product = ProductData.getProductById(productId);
 
-            if (product == null) {
-              return Scaffold(
-                appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
-                body: const Center(child: Text("Produk tidak ditemukan.")),
-              );
-            }
+            return FutureBuilder(
+              future: ProductService.getProductById(productId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-            return ProductDetailScreen(product: product);
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                  return Scaffold(
+                    appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
+                    body: const Center(child: Text("Produk tidak ditemukan.")),
+                  );
+                }
+
+                final product = snapshot.data!;
+                return ProductDetailScreen(product: product);
+              },
+            );
           },
         ),
+
         GoRoute(
           path: '/cart',
           builder: (context, state) => const CartScreen(),

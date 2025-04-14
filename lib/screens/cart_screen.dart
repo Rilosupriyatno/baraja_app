@@ -2,11 +2,12 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../data/product_data.dart';
+import '../data/product_data.dart'; // You can keep this if it's still used
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/cart/cart_item_card.dart';
 import '../utils/currency_formatter.dart'; // Import fungsi format mata uang
+import '../services/product_service.dart'; // Import ProductService
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -16,19 +17,43 @@ class CartScreen extends StatefulWidget {
 }
 
 class CartScreenState extends State<CartScreen> {
-  // Menghapus NumberFormat currencyFormatter karena sekarang menggunakan formatCurrency
+  List<CartItem> cartItems = [];
+  bool isLoading = true;
 
-  List<CartItem> cartItems = ProductData.allProducts.map((product) => CartItem(
-    name: product.name,
-    imageUrl: product.imageUrl,
-    price: (product.discountPrice ?? 0).toInt(),
-    additional: (product.addons?.isNotEmpty ?? false)
-        ? product.addons!.first.name
-        : 'Tanpa Tambahan',
-    topping: (product.toppings?.isNotEmpty ?? false)
-        ? product.toppings!.first.name
-        : 'Tanpa Topping',
-  )).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  // Fetch products from the ProductService
+  void _loadProducts() async {
+    try {
+      final fetchedProducts = await ProductService.fetchMenuItems();
+      setState(() {
+        cartItems = fetchedProducts.map((product) {
+          return CartItem(
+            name: product.name,
+            imageUrl: product.imageUrl,
+            price: (product.discountPrice ?? 0).toInt(),
+            additional: (product.addons?.isNotEmpty ?? false)
+                ? product.addons!.first.name
+                : 'Tanpa Tambahan',
+            topping: (product.toppings?.isNotEmpty ?? false)
+                ? product.toppings!.first.name
+                : 'Tanpa Topping',
+          );
+        }).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      // Handle error here, maybe show a snackbar
+      print('Failed to load products: $e');
+    }
+  }
 
   int get totalPrice => cartItems.fold(0, (total, item) => total + (item.price * item.quantity));
 
@@ -40,7 +65,9 @@ class CartScreenState extends State<CartScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
-      body: CustomScrollView(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : CustomScrollView(
         slivers: [
           SliverAppBar(
             pinned: true,
@@ -65,7 +92,6 @@ class CartScreenState extends State<CartScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: CartItemCard(
                       item: item,
-                      // Tidak lagi memerlukan currencyFormatter
                       onIncrease: () {
                         final cartProvider = Provider.of<CartProvider>(context, listen: false);
                         int index = cartProvider.items.indexOf(item);
@@ -74,7 +100,6 @@ class CartScreenState extends State<CartScreen> {
                         }
                       },
                       onDecrease: () {
-                        // Menggunakan provider langsung untuk konsistensi
                         final cartProvider = Provider.of<CartProvider>(context, listen: false);
                         int index = cartProvider.items.indexOf(item);
                         if (index != -1) {
@@ -124,7 +149,7 @@ class CartScreenState extends State<CartScreen> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.4), // Menggunakan withOpacity yang lebih standar
+                color: Colors.grey.withOpacity(0.4),
                 spreadRadius: 1,
                 blurRadius: 6,
                 offset: const Offset(0, -3),
@@ -138,7 +163,6 @@ class CartScreenState extends State<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  // Menggunakan formatCurrency untuk menampilkan total harga
                   Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
