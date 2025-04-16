@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
-import '../models/topping.dart';
-import '../models/addon.dart';
 import '../providers/cart_provider.dart';
 import '../utils/currency_formatter.dart'; // Import the currency formatter utility
 import '../widgets/detail_product/checkout_button.dart';

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
 
-import '../models/addon.dart';
 import '../models/category.dart';
-import '../models/topping.dart';
 
 // ProductData class that contains all data
 class ProductData {
@@ -145,12 +143,4 @@ class ProductData {
       return null;
     }
   }
-
-  // static Product? getProductById(String id) {
-  //   return allProducts.firstWhere(
-  //         (product) => product.id == id,
-  //     orElse: () => null as Product, // Casting ke Product agar tidak error
-  //   );
-  // }
 }
-
