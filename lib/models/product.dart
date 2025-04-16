@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_app/models/topping.dart';
-
-import 'addon.dart';
 
 class Product {
   final String id;
@@ -33,7 +30,29 @@ class Product {
   });
 }
 
+class Topping {
+  final String id;
+  final String name;
+  final double price;
 
+  Topping({
+    required this.id,
+    required this.name,
+    required this.price,
+  });
+}
+
+class Addon {
+  final String id;
+  final String name;
+  final double price;
+
+  Addon({
+    required this.id,
+    required this.name,
+    required this.price,
+  });
+}
 
 class PromoItem {
   final String title;
