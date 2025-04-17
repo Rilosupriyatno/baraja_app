@@ -8,7 +8,6 @@ import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
 import '../screens/cart_screen.dart';
 import '../screens/checkout_page.dart';
-import '../screens/init_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/order_history_screen.dart';
@@ -29,7 +28,7 @@ class AppRouter {
         // Existing routes (home, cart, etc.)
         GoRoute(
           path: '/',
-          builder: (context, state) => const InitScreen(),
+          builder: (context, state) => const LoginScreen(),
         ),
 
         // auth routes
