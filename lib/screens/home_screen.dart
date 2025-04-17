@@ -1,7 +1,8 @@
+// home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../data/product_data.dart';
+import '../services/product_service.dart'; // Import ProductService
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
@@ -9,6 +10,7 @@ import '../widgets/home/action_button.dart';
 import '../widgets/home/product_slider.dart';
 import '../widgets/home/promo_carousel.dart';
 import '../utils/currency_formatter.dart';
+import '../models/product.dart'; // Import Product model
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,20 +21,57 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
+  List<Product> _products = [];
+  List<Product> _discountedProducts = [];
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadData();
   }
 
-  Future<void> _loadUserData() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.fetchUserProfile();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load user data and products in parallel
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final productService = ProductService();
+
+      await Future.wait([
+        authService.fetchUserProfile(),
+        _fetchProducts(productService),
+      ]);
+    } catch (e) {
+      // Handle error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load data: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchProducts(ProductService productService) async {
+    try {
+      final products = await productService.getProducts();
+      print(products);
+      final discountedProducts = await productService.getDiscountedProducts();
+
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _discountedProducts = discountedProducts;
+        });
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch products: $e');
     }
   }
 
@@ -40,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final userData = authService.user;
-    final coffeeProducts = ProductData.getProducts();
 
     return Scaffold(
       backgroundColor: AppTheme.whitePrimary.scaffoldBackgroundColor,
@@ -74,9 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-          onRefresh: () async {
-            await _loadUserData();
-          },
+          onRefresh: _loadData,
           child: ListView(
             children: [
               const PromoCarousel(),
@@ -87,13 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     ProductSlider(
-                      products: coffeeProducts,
+                      products: _discountedProducts.isNotEmpty ? _discountedProducts : _products,
                       formatPrice: formatCurrency,
                       title: 'Untuk Kamu',
                     ),
                     const SizedBox(height: 16),
                     ProductSlider(
-                      products: coffeeProducts,
+                      products: _products,
                       title: 'Rekomendasi',
                       isBundle: true,
                       formatPrice: formatCurrency,
