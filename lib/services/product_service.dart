@@ -10,6 +10,7 @@ class ProductService {
 
   ProductService();
 
+
   Future<List<Product>> getProducts() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/menu/menu-items'));
@@ -87,7 +88,7 @@ class ProductService {
     }
   }
 
-  // Helper function to assign color locally
+  //Helper function to assign color locally
   Color generateImageColor(String mainCategory) {
     switch (mainCategory.toLowerCase()) {
       case 'makanan':
