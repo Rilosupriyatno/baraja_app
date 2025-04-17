@@ -7,7 +7,6 @@ import '../services/auth_service.dart';
 import '../widgets/auth/auth_button.dart';
 import '../widgets/auth/custom_text_field.dart';
 import '../widgets/auth/logo_widget.dart';
-import '../widgets/auth/social_login_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -37,68 +36,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (!_acceptedTerms) {
-      print('You must accept the Terms of Use and Privacy Policy');
+      setState(() {
+        _errorMessage = 'Anda harus menyetujui syarat dan ketentuan.';
+      });
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.registerWithEmailAndPassword(
+        _nameController.text.trim(),
         _emailController.text.trim(),
-        _passwordController.text,
+        _passwordController.text.trim(),
       );
-
-      // Update user display name
-      if (authService.currentUser  != null) {
-        await authService.currentUser !.updateDisplayName(_nameController.text.trim());
-      }
-
-      if (mounted) {
-        context.push('/login');
-      }
+      context.go('/home'); // ganti dengan rute tujuan setelah registrasi sukses
     } catch (e) {
-      // Log the error to the console
-      print('Registration error: $e');
+      setState(() {
+        _errorMessage = e.toString();
+      });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _registerWithGoogle() async {
-    if (!_acceptedTerms) {
-      print('You must accept the Terms of Use and Privacy Policy');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle();
-      if (mounted) {
-        context.push('/main');
-      }
-    } catch (e) {
-      // Log the error to the console
-      print('Google registration error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -254,12 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  SocialLoginButton(
-                    text: 'Lanjutkan dengan Google',
-                    icon: 'assets/images/google_logo.svg',
-                    onPressed: _registerWithGoogle,
-                  ),
-                  const SizedBox(height: 32),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

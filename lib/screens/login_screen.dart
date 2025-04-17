@@ -22,11 +22,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+
     super.dispose();
   }
+  Future<void> _checkLoginStatus() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isLoggedIn = await authService.checkLoginStatus();
+
+    if (isLoggedIn && mounted) {
+      context.go('/main');
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 

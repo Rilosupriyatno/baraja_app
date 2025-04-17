@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               label: 'Keluar',
               iconColor: Colors.red, // Merah
               onTap: () async {
-                await Provider.of<AuthService>(context, listen: false).logoutFromGoogle();
+                await Provider.of<AuthService>(context, listen: false).logout();
                 context.go('/login');
               },
             ),
