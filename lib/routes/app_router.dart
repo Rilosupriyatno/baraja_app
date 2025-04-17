@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/product_data.dart';
 import '../models/cart_item.dart';
 import '../models/order_type.dart';
+import '../models/product.dart';
 import '../pages/account_settings_page.dart';
 import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
@@ -18,6 +18,7 @@ import '../screens/payment_method_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/voucher_screen.dart';
+import '../services/product_service.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
@@ -56,18 +57,55 @@ class AppRouter {
           path: '/product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id']!;
-            final product = ProductData.getProductById(productId);
+            final productService = ProductService();
 
-            if (product == null) {
-              return Scaffold(
-                appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
-                body: const Center(child: Text("Produk tidak ditemukan.")),
-              );
-            }
+            return FutureBuilder<Product?>(
+              future: productService.getProductById(productId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-            return ProductDetailScreen(product: product);
+                if (snapshot.hasError) {
+                  return Scaffold(
+                    appBar: AppBar(title: const Text("Error")),
+                    body: Center(child: Text('Terjadi kesalahan: ${snapshot.error}')),
+                  );
+                }
+
+                final product = snapshot.data;
+
+                if (product == null) {
+                  return Scaffold(
+                    appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
+                    body: const Center(child: Text("Produk tidak ditemukan.")),
+                  );
+                }
+
+                return ProductDetailScreen(product: product);
+              },
+            );
           },
         ),
+
+        // GoRoute(
+        //   path: '/product/:id',
+        //   builder: (context, state) {
+        //     final productId = state.pathParameters['id']!;
+        //     final product = ProductData.getProductById(productId);
+        //
+        //     if (product == null) {
+        //       return Scaffold(
+        //         appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
+        //         body: const Center(child: Text("Produk tidak ditemukan.")),
+        //       );
+        //     }
+        //
+        //     return ProductDetailScreen(product: product);
+        //   },
+        // ),
         GoRoute(
           path: '/cart',
           builder: (context, state) => const CartScreen(),

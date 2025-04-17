@@ -40,79 +40,81 @@ class PaymentConfirmationScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const ClassicAppBar(title: 'Konfirmasi Pembayaran'),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Informasi Pembayaran
-                  _buildSectionTitle('Informasi Pembayaran'),
-                  _buildInfoItem('Metode Pembayaran', paymentMethod),
-                  const SizedBox(height: 8),
-                  _buildInfoItem('Total Pembayaran', formatCurrency(total)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Informasi Pembayaran
+                    _buildSectionTitle('Informasi Pembayaran'),
+                    _buildInfoItem('Metode Pembayaran', paymentMethod),
+                    const SizedBox(height: 8),
+                    _buildInfoItem('Total Pembayaran', formatCurrency(total)),
 
-                  const Divider(height: 32),
+                    const Divider(height: 32),
 
-                  // Informasi Order
-                  _buildSectionTitle('Informasi Pesanan'),
-                  _buildInfoItem('Tipe Pesanan', _getOrderTypeText()),
+                    // Informasi Order
+                    _buildSectionTitle('Informasi Pesanan'),
+                    _buildInfoItem('Tipe Pesanan', _getOrderTypeText()),
 
-                  if (orderType == OrderType.dineIn && tableNumber.isNotEmpty)
-                    _buildInfoItem('Nomor Meja', tableNumber),
+                    if (orderType == OrderType.dineIn && tableNumber.isNotEmpty)
+                      _buildInfoItem('Nomor Meja', tableNumber),
 
-                  if (orderType == OrderType.delivery && deliveryAddress.isNotEmpty)
-                    _buildInfoItem('Alamat Pengantaran', deliveryAddress),
+                    if (orderType == OrderType.delivery && deliveryAddress.isNotEmpty)
+                      _buildInfoItem('Alamat Pengantaran', deliveryAddress),
 
-                  if (orderType == OrderType.pickup && pickupTime != null)
-                    _buildInfoItem('Waktu Pengambilan',
-                        '${pickupTime!.hour}:${pickupTime!.minute.toString().padLeft(2, '0')}'),
+                    if (orderType == OrderType.pickup && pickupTime != null)
+                      _buildInfoItem('Waktu Pengambilan',
+                          '${pickupTime!.hour}:${pickupTime!.minute.toString().padLeft(2, '0')}'),
 
-                  const Divider(height: 32),
+                    const Divider(height: 32),
 
-                  // Detail Pesanan
-                  _buildSectionTitle('Detail Pesanan'),
-                  ...items.map((item) => _buildOrderItem(item)),
+                    // Detail Pesanan
+                    _buildSectionTitle('Detail Pesanan'),
+                    ...items.map((item) => _buildOrderItem(item)),
 
-                  const Divider(height: 32),
+                    const Divider(height: 32),
 
-                  // Rincian Biaya
-                  _buildSectionTitle('Rincian Biaya'),
-                  _buildInfoItem('Subtotal', formatCurrency(subtotal)),
-                  if (discount > 0) ...[
-                    _buildInfoItem('Diskon', '- ${formatCurrency(discount)}'),
-                    if (voucherCode != null && voucherCode!.isNotEmpty)
-                      _buildInfoItem('Voucher', voucherCode!),
+                    // Rincian Biaya
+                    _buildSectionTitle('Rincian Biaya'),
+                    _buildInfoItem('Subtotal', formatCurrency(subtotal)),
+                    if (discount > 0) ...[
+                      _buildInfoItem('Diskon', '- ${formatCurrency(discount)}'),
+                      if (voucherCode != null && voucherCode!.isNotEmpty)
+                        _buildInfoItem('Voucher', voucherCode!),
+                    ],
+                    const Divider(height: 16),
+                    _buildInfoItem('Total', formatCurrency(total), isBold: true),
                   ],
-                  const Divider(height: 16),
-                  _buildInfoItem('Total', formatCurrency(total), isBold: true),
-                ],
-              ),
-            ),
-          ),
-
-          // Button Konfirmasi
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () => _confirmPayment(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Konfirmasi Pembayaran',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+
+            // Button Konfirmasi
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () => _confirmPayment(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Konfirmasi Pembayaran',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
