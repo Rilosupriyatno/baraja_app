@@ -84,106 +84,108 @@ class _VoucherScreenState extends State<VoucherScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const ClassicAppBar(title: 'Voucher'),
-      body: Column(
-        children: [
-          // Voucher input field
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _voucherController,
-              decoration: InputDecoration(
-                hintText: 'Enter the voucher code here',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide.none,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Voucher input field
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _voucherController,
+                decoration: InputDecoration(
+                  hintText: 'Enter the voucher code here',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
               ),
             ),
-          ),
 
-          // Voucher list
-          Expanded(
-            child: ListView.builder(
-              itemCount: _vouchers.length,
-              itemBuilder: (context, index) {
-                final voucher = _vouchers[index];
-                final isSelected = voucher.code == selectedVoucherCode;
+            // Voucher list
+            Expanded(
+              child: ListView.builder(
+                itemCount: _vouchers.length,
+                itemBuilder: (context, index) {
+                  final voucher = _vouchers[index];
+                  final isSelected = voucher.code == selectedVoucherCode;
 
-                return VoucherItem(
-                  voucher: voucher,
-                  isSelected: isSelected,
-                  onTap: voucher.isDisabled
-                      ? null
-                      : () {
-                    setState(() {
-                      selectedVoucherCode = isSelected ? null : voucher.code;
-                    });
-                  },
-                );
-              },
-            ),
-          ),
-
-          // Bottom action area
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  offset: const Offset(0, -1),
-                  blurRadius: 3,
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Selection count text
-                const Text(
-                  '1 promo dipilih',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Apply button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(selectedVoucherCode);
+                  return VoucherItem(
+                    voucher: voucher,
+                    isSelected: isSelected,
+                    onTap: voucher.isDisabled
+                        ? null
+                        : () {
+                      setState(() {
+                        selectedVoucherCode = isSelected ? null : voucher.code;
+                      });
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                  );
+                },
+              ),
+            ),
+
+            // Bottom action area
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    offset: const Offset(0, -1),
+                    blurRadius: 3,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Selection count text
+                  const Text(
+                    '1 promo dipilih',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
-                    child: const Text(
-                      'Gunakan',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Apply button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(selectedVoucherCode);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Gunakan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -54,8 +54,14 @@ class ProductService {
             return Product(
               id: productJson['id'],
               name: productJson['name'],
-              category: productJson['category'],
-              mainCategory: productJson['mainCategory'],
+              category: productJson['category'] is List
+                  ? (productJson['category'] as List).join(', ')
+                  : productJson['category'] ?? 'Uncategorized',
+
+              mainCategory: productJson['mainCategory'] is List
+                  ? (productJson['mainCategory'] as List).join(', ')
+                  : productJson['mainCategory'] ?? 'Uncategorized',
+
               imageUrl: productJson['imageUrl'],
               originalPrice: productJson['originalPrice'].toDouble(),
               discountPrice: productJson['discountPrice']?.toDouble() ??

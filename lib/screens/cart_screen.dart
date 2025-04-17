@@ -113,47 +113,49 @@ class CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: Material(
-        elevation: 4,
-        shadowColor: Colors.grey.shade300,
-        color: Colors.white,
-        clipBehavior: Clip.none,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.4), // Menggunakan withOpacity yang lebih standar
-                spreadRadius: 1,
-                blurRadius: 6,
-                offset: const Offset(0, -3),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  // Menggunakan formatCurrency untuk menampilkan total harga
-                  Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: cartItems.isEmpty ? null : () {
-                  context.push('/checkout');
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                  backgroundColor: AppTheme.primaryColor,
+      bottomNavigationBar: SafeArea(
+        child: Material(
+          elevation: 4,
+          shadowColor: Colors.grey.shade300,
+          color: Colors.white,
+          clipBehavior: Clip.none,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.4), // Menggunakan withOpacity yang lebih standar
+                  spreadRadius: 1,
+                  blurRadius: 6,
+                  offset: const Offset(0, -3),
                 ),
-                child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
-              ),
-            ],
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    // Menggunakan formatCurrency untuk menampilkan total harga
+                    Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: cartItems.isEmpty ? null : () {
+                    context.push('/checkout');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                  child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ),
+              ],
+            ),
           ),
         ),
       ),

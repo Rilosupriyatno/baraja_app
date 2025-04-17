@@ -236,81 +236,83 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
       floatingActionButton: const CheckoutButton(),
-      bottomNavigationBar:  Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05), // Using withOpacity instead of withValues
-              spreadRadius: 1,
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            QuantitySelector(
-              quantity: quantity,
-              onChanged: updateQuantity,
-              primaryColor: primaryColor,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Total:',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  Text(
-                    formatCurrency(calculateTotal().toInt()),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
+      bottomNavigationBar:  SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05), // Using withOpacity instead of withValues
+                spreadRadius: 1,
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              QuantitySelector(
+                quantity: quantity,
+                onChanged: updateQuantity,
+                primaryColor: primaryColor,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Total:',
+                      style: TextStyle(fontSize: 12),
                     ),
+                    Text(
+                      formatCurrency(calculateTotal().toInt()),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                ],
-              ),
-            ),
+                  onPressed: () {
+                    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                    final double totalPrice = calculateTotal();
 
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () {
-                  final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                  final double totalPrice = calculateTotal();
+                    // Gabungkan topping dan add-on menjadi string agar lebih mudah dibandingkan
+                    String toppingsText = selectedToppings.isNotEmpty
+                        ? selectedToppings.map((e) => e.name).join(', ')
+                        : '-';
+                    String addonText = selectedAddon != null ? selectedAddon!.name : '-';
 
-                  // Gabungkan topping dan add-on menjadi string agar lebih mudah dibandingkan
-                  String toppingsText = selectedToppings.isNotEmpty
-                      ? selectedToppings.map((e) => e.name).join(', ')
-                      : '-';
-                  String addonText = selectedAddon != null ? selectedAddon!.name : '-';
-
-                  CartItem newItem = CartItem(
-                    name: widget.product.name,
-                    imageUrl: widget.product.imageUrl,
-                    price: totalPrice.toInt(),
-                    additional: addonText,
-                    topping: toppingsText,
-                    quantity: quantity,
-                  );
-                  cartProvider.addToCart(newItem);
-                },
-                child: const Text(
-                  'Tambah ke Keranjang',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, ),
+                    CartItem newItem = CartItem(
+                      name: widget.product.name,
+                      imageUrl: widget.product.imageUrl,
+                      price: totalPrice.toInt(),
+                      additional: addonText,
+                      topping: toppingsText,
+                      quantity: quantity,
+                    );
+                    cartProvider.addToCart(newItem);
+                  },
+                  child: const Text(
+                    'Tambah ke Keranjang',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       // Bottom bar dengan total harga dan tombol tambah ke keranjang

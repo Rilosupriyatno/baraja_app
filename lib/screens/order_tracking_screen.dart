@@ -84,73 +84,80 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const ClassicAppBar(title: 'Lacak Pesanan'),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // Force refresh untuk keperluan demo
-          setState(() {});
-          return Future.delayed(const Duration(milliseconds: 500));
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Order ID dan waktu pemesanan
-              Text(
-                'ID Pesanan: ${order.id}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            // Force refresh untuk keperluan demo
+            setState(() {});
+            return Future.delayed(const Duration(milliseconds: 500));
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Order ID dan waktu pemesanan
+                Text(
+                  'ID Pesanan: ${order.id}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
+                const SizedBox(height: 4),
 
-              Text(
-                'Waktu Pesan: ${OrderTrackingHelper.formatDateTime(order.orderTime)}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
+                Text(
+                  'Waktu Pesan: ${OrderTrackingHelper.formatDateTime(order.orderTime)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Widget-widget yang sudah direfaktor
-              OrderStatusCard(order: order),
-              const SizedBox(height: 24),
+                // Widget-widget yang sudah direfaktor
+                OrderStatusCard(order: order),
+                const SizedBox(height: 24),
 
-              OrderTimeline(order: order),
-              const SizedBox(height: 24),
+                OrderTimeline(order: order),
+                const SizedBox(height: 24),
 
-              OrderSummaryCard(order: order),
-              const SizedBox(height: 24),
+                OrderSummaryCard(order: order),
+                const SizedBox(height: 24),
 
-              OrderDetailsCard(order: order),
-              const SizedBox(height: 24),
+                OrderDetailsCard(order: order),
+                const SizedBox(height: 24),
 
-              // Contact support section
-              Center(
-                child: TextButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Fitur hubungi customer service belum tersedia'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.support_agent),
-                  label: const Text('Hubungi Customer Service'),
+                // Contact support section
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Fitur hubungi customer service belum tersedia'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.support_agent),
+                    label: const Text('Hubungi Customer Service'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
 
       // Button untuk demo update status
-      bottomNavigationBar: order.status != OrderStatus.completed && order.status != OrderStatus.cancelled ?
-      Padding(
-        padding: const EdgeInsets.all(16.0),
+      bottomNavigationBar: order.status != OrderStatus.completed && order.status != OrderStatus.cancelled
+          ? Padding(
+        padding: EdgeInsets.fromLTRB(
+          16.0,
+          16.0,
+          16.0,
+          16.0 + MediaQuery.of(context).padding.bottom,
+        ),
         child: ElevatedButton(
           onPressed: () {
             // Manual update untuk keperluan demo
@@ -175,7 +182,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
-      ) : null,
+      )
+          : null,
+
     );
   }
 }
