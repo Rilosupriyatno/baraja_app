@@ -22,8 +22,8 @@ class ProductData {
         Topping(id: '2', name: 'Whipped Cream', price: 3000),
       ],
       addons: [
-        Addon(id: '1', name: 'Cookies', price: 8000),
-        Addon(id: '2', name: 'Chocolate Bar', price: 10000),
+        Addon(id: '1', name: 'Cookies', price: 8000, options: []),
+        Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
     ),
     Product(
@@ -41,8 +41,8 @@ class ProductData {
         Topping(id: '2', name: 'Whipped Cream', price: 3000),
       ],
       addons: [
-        Addon(id: '1', name: 'Cookies', price: 8000),
-        Addon(id: '2', name: 'Chocolate Bar', price: 10000),
+        Addon(id: '1', name: 'Cookies', price: 8000, options: []),
+        Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
     ),
     Product(
@@ -60,8 +60,8 @@ class ProductData {
         Topping(id: '2', name: 'Whipped Cream', price: 3000),
       ],
       addons: [
-        Addon(id: '1', name: 'Cookies', price: 8000),
-        Addon(id: '2', name: 'Chocolate Bar', price: 10000),
+        Addon(id: '1', name: 'Cookies', price: 8000, options: []),
+        Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
     ),
     Product(
@@ -79,8 +79,8 @@ class ProductData {
         Topping(id: '2', name: 'Whipped Cream', price: 3000),
       ],
       addons: [
-        Addon(id: '1', name: 'Cookies', price: 8000),
-        Addon(id: '2', name: 'Chocolate Bar', price: 10000),
+        Addon(id: '1', name: 'Cookies', price: 8000, options: []),
+        Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
     ),
     Product(
@@ -98,8 +98,8 @@ class ProductData {
         Topping(id: '2', name: 'Whipped Cream', price: 3000),
       ],
       addons: [
-        Addon(id: '1', name: 'Cookies', price: 8000),
-        Addon(id: '2', name: 'Chocolate Bar', price: 10000),
+        Addon(id: '1', name: 'Cookies', price: 8000, options: []),
+        Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
     ),
   ];
