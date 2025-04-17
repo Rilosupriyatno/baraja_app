@@ -1,20 +1,20 @@
-import 'package:baraja_app/widgets/home/product_card.dart';
+// product_slider.dart
 import 'package:flutter/material.dart';
+import 'package:baraja_app/widgets/home/product_card.dart';
 import '../../models/product.dart';
 
 class ProductSlider extends StatefulWidget {
   final List<Product> products;
   final String title;
   final bool isBundle;
-  final Function(int) formatPrice; // Changed from NumberFormat to Function(int)
-
+  final Function(int) formatPrice;
 
   const ProductSlider({
     super.key,
     required this.products,
     required this.title,
     this.isBundle = false,
-    required this.formatPrice, // Updated parameter name and type
+    required this.formatPrice,
   });
 
   @override
@@ -46,6 +46,31 @@ class _ProductSliderState extends State<ProductSlider> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.products.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 1.0),
+            child: Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const SizedBox(
+            height: 210,
+            child: Center(
+              child: Text("No products available"),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -61,7 +86,7 @@ class _ProductSliderState extends State<ProductSlider> {
         ),
         const SizedBox(height: 10),
         SizedBox(
-          height: 210, // Keep height at 210
+          height: 210,
           child: PageView.builder(
             controller: _pageController,
             scrollDirection: Axis.horizontal,
@@ -72,24 +97,26 @@ class _ProductSliderState extends State<ProductSlider> {
                   ? widget.products.length - 1 - index
                   : index;
 
+              // Check to prevent index out of bounds
+              if (productIndex < 0 || productIndex >= widget.products.length) {
+                return const SizedBox.shrink();
+              }
+
               bool isActive = index == _currentPage;
 
               return Padding(
-                // padding: EdgeInsets.only(left: index == 0 ? 5.0 : 1.0, right: 0.0),
                 padding: const EdgeInsets.symmetric(horizontal: 0.0),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: const EdgeInsets.symmetric(
                       horizontal: 4,
                       vertical: 4
-                    // vertical: isActive ? 0 : 15,
                   ),
-                  width: 210, // Set width to 210 for square shape
+                  width: 210,
                   child: ProductCard(
                     product: widget.products[productIndex],
                     isActive: isActive,
                     bundleText: widget.isBundle ? '2 Items' : null,
-                    // No longer need to pass currencyFormatter, ProductCard should use formatCurrency directly
                   ),
                 ),
               );

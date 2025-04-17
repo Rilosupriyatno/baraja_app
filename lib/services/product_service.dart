@@ -12,7 +12,7 @@ class ProductService {
 
   Future<List<Product>> getProducts() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/menu-items'));
+      final response = await http.get(Uri.parse('$baseUrl/api/menu/menu-items'));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -51,14 +51,14 @@ class ProductService {
               discountPercentage = productJson['discountPercentage'].toString();
             }
 
-            // Convert color string to Color object if provided
-            Color? imageColor;
-            if (productJson['imageColor'] != null && productJson['imageColor'] is String) {
-              String colorHex = productJson['imageColor'].toString().replaceFirst('#', '');
-              if (colorHex.length == 6) {
-                imageColor = Color(int.parse('0xFF$colorHex'));
-              }
-            }
+            // // Convert color string to Color object if provided
+            // Color? imageColor;
+            // if (productJson['imageColor'] != null && productJson['imageColor'] is String) {
+            //   String colorHex = productJson['imageColor'].toString().replaceFirst('#', '');
+            //   if (colorHex.length == 6) {
+            //     imageColor = Color(int.parse('0xFF$colorHex'));
+            //   }
+            // }
 
             return Product(
               id: productJson['id'],
@@ -72,16 +72,19 @@ class ProductService {
               discountPercentage: discountPercentage,
               toppings: toppings,
               addons: addons,
-              imageColor: imageColor,
+              // imageColor: imageColor,
             );
           }).toList();
         } else {
-          throw Exception('Failed to load products: ${jsonData['message'] ?? 'Unknown error'}');
+          debugPrint('API returned error: ${jsonData['message'] ?? 'Unknown error'}');
+          throw Exception('Failed to load products');
         }
       } else {
-        throw Exception('Failed to load products: HTTP ${response.statusCode}');
+        debugPrint('HTTP error: ${response.statusCode}');
+        throw Exception('Failed to load products');
       }
     } catch (e) {
+      debugPrint('Exception caught in getProducts(): $e');
       throw Exception('Failed to load products: $e');
     }
   }
