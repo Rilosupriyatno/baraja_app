@@ -20,17 +20,51 @@ class ProductDetailScreen extends StatefulWidget {
 class ProductDetailScreenState extends State<ProductDetailScreen> {
   int quantity = 1;
   List<Topping> selectedToppings = [];
-  Addon? selectedAddon;
+  Map<String, AddonOption?> selectedAddonOptions = {};
   final Color primaryColor = const Color(0xFF076A3B);
+
+  @override
+  @override
+  void initState() {
+    super.initState();
+    // Initialize default addon options if available
+    if (widget.product.addons != null) {
+      for (var addon in widget.product.addons!) {
+        // Find default option if any
+        AddonOption? defaultOption;
+        try {
+          defaultOption = addon.options.firstWhere(
+                  (option) => option.isDefault
+          );
+        } catch (e) {
+          // No default option found, use first option if available
+          if (addon.options.isNotEmpty) {
+            defaultOption = addon.options.first;
+          }
+        }
+
+        if (defaultOption != null) {
+          selectedAddonOptions[addon.id] = defaultOption;
+        }
+      }
+    }
+  }
 
   // Menghitung total harga berdasarkan produk, jumlah, topping dan add-on yang dipilih
   double calculateTotal() {
     double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
     double toppingsTotal = selectedToppings.fold(
         0, (sum, topping) => sum + topping.price);
-    double addonPrice = selectedAddon?.price ?? 0;
 
-    return (basePrice + toppingsTotal + addonPrice) * quantity;
+    // Calculate addon options price
+    double addonOptionsTotal = 0;
+    selectedAddonOptions.forEach((addonId, option) {
+      if (option != null) {
+        addonOptionsTotal += option.price;
+      }
+    });
+
+    return (basePrice + toppingsTotal + addonOptionsTotal) * quantity;
   }
 
   // Menangani penambahan/pengurangan jumlah produk
@@ -51,17 +85,16 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
     });
   }
 
-  // Menangani perubahan pada pilihan add-on
-  void selectAddon(Addon? addon) {
+  // Menangani perubahan pada pilihan add-on option
+  void selectAddonOption(String addonId, AddonOption? option) {
     setState(() {
-      selectedAddon = addon;
+      selectedAddonOptions[addonId] = option;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final Product product = widget.product;
-    // Removed NumberFormat declaration since we're now using formatCurrency
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -201,30 +234,48 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                           )),
                         ],
 
-                        // Bagian Add-ons (Single Choice)
+                        // Bagian Add-ons (Single Choice per Addon)
                         if (product.addons != null && product.addons!.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           const Text(
-                            'Tambahan (Pilihan Tunggal)',
+                            'Tambahan',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...product.addons!.map((addon) => RadioListTile<Addon>(
-                            title: Text(addon.name),
-                            subtitle: Text(
-                              formatCurrency(addon.price.toInt()),
-                              style: TextStyle(color: primaryColor),
-                            ),
-                            value: addon,
-                            groupValue: selectedAddon,
-                            activeColor: primaryColor,
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            onChanged: (value) => selectAddon(value),
-                          )),
+                          ...product.addons!.map((addon) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                                  child: Text(
+                                    addon.name,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                ...addon.options.map((option) => RadioListTile<AddonOption>(
+                                  title: Text(option.label),
+                                  subtitle: Text(
+                                    formatCurrency(option.price.toInt()),
+                                    style: TextStyle(color: primaryColor),
+                                  ),
+                                  value: option,
+                                  groupValue: selectedAddonOptions[addon.id],
+                                  activeColor: primaryColor,
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  onChanged: (value) => selectAddonOption(addon.id, value),
+                                )),
+                                // const Divider(), // Add a divider between different addon groups
+                              ],
+                            );
+                          }),
                         ],
                       ],
                     ),
@@ -243,7 +294,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05), // Using withOpacity instead of withValues
+                color: Colors.black.withOpacity(0.05),
                 spreadRadius: 1,
                 blurRadius: 10,
               ),
@@ -288,11 +339,21 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                     final cartProvider = Provider.of<CartProvider>(context, listen: false);
                     final double totalPrice = calculateTotal();
 
-                    // Gabungkan topping dan add-on menjadi string agar lebih mudah dibandingkan
+                    // Gather selected topping names
                     String toppingsText = selectedToppings.isNotEmpty
                         ? selectedToppings.map((e) => e.name).join(', ')
                         : '-';
-                    String addonText = selectedAddon != null ? selectedAddon!.name : '-';
+
+                    // Gather selected addon option labels
+                    List<String> addonOptions = [];
+                    selectedAddonOptions.forEach((addonId, option) {
+                      if (option != null) {
+                        // Find the addon name
+                        final addon = widget.product.addons!.firstWhere((a) => a.id == addonId);
+                        addonOptions.add('${addon.name}: ${option.label}');
+                      }
+                    });
+                    String addonText = addonOptions.isNotEmpty ? addonOptions.join(', ') : '-';
 
                     CartItem newItem = CartItem(
                       name: widget.product.name,
@@ -302,7 +363,16 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                       topping: toppingsText,
                       quantity: quantity,
                     );
+
                     cartProvider.addToCart(newItem);
+
+                    // Show a confirmation message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${widget.product.name} ditambahkan ke keranjang'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   },
                   child: const Text(
                     'Tambah ke Keranjang',
@@ -315,7 +385,6 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       ),
-      // Bottom bar dengan total harga dan tombol tambah ke keranjang
     );
   }
 }

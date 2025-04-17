@@ -46,11 +46,27 @@ class Addon {
   final String id;
   final String name;
   final double price;
+  final List<AddonOption> options;
 
   Addon({
     required this.id,
     required this.name,
     required this.price,
+    required this.options,
+  });
+}
+
+class AddonOption {
+  final String id;
+  final String label;
+  final double price;
+  final bool isDefault;
+
+  AddonOption({
+    required this.id,
+    required this.label,
+    required this.price,
+    required this.isDefault,
   });
 }
 
