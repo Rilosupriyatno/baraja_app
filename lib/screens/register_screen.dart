@@ -55,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      context.go('/home'); // ganti dengan rute tujuan setelah registrasi sukses
+      context.go('/main'); // ganti dengan rute tujuan setelah registrasi sukses
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();

@@ -22,16 +22,16 @@ class AuthService with ChangeNotifier {
 // ==============================
   Future<void> registerWithEmailAndPassword(String name, String email, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/register'), // pastikan endpoint ini benar
+      Uri.parse('$baseUrl/api/auth/signup'), // pastikan endpoint ini benar
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'name': name,
+        'username': name,
         'email': email,
         'password': password,
       }),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       final responseData = jsonDecode(response.body);
       _user = responseData['user'];
       _jwtToken = responseData['token'];
@@ -96,7 +96,7 @@ class AuthService with ChangeNotifier {
   // ==============================
   Future<void> loginWithEmailAndPassword(String email, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/login'),
+      Uri.parse('$baseUrl/api/auth/signin'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': email, 'password': password}),
     );
