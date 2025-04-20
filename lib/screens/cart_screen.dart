@@ -2,11 +2,10 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../data/product_data.dart';
-import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/cart/cart_item_card.dart';
-import '../utils/currency_formatter.dart'; // Import fungsi format mata uang
+import '../utils/currency_formatter.dart';
+import '../services/product_service.dart'; // Import ProductService
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -16,21 +15,15 @@ class CartScreen extends StatefulWidget {
 }
 
 class CartScreenState extends State<CartScreen> {
-  // Menghapus NumberFormat currencyFormatter karena sekarang menggunakan formatCurrency
+  // Initialize ProductService
+  final ProductService _productService = ProductService();
+  final bool _isLoading = false;
 
-  List<CartItem> cartItems = ProductData.allProducts.map((product) => CartItem(
-    name: product.name,
-    imageUrl: product.imageUrl,
-    price: (product.discountPrice ?? 0).toInt(),
-    additional: (product.addons?.isNotEmpty ?? false)
-        ? product.addons!.first.name
-        : 'Tanpa Tambahan',
-    topping: (product.toppings?.isNotEmpty ?? false)
-        ? product.toppings!.first.name
-        : 'Tanpa Topping',
-  )).toList();
-
-  int get totalPrice => cartItems.fold(0, (total, item) => total + (item.price * item.quantity));
+  @override
+  void initState() {
+    super.initState();
+    // We don't need to load products here as we'll use the CartProvider
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,43 +48,68 @@ class CartScreenState extends State<CartScreen> {
             ),
             title: const Text('Keranjang', style: TextStyle(color: Colors.black)),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                  final item = cartItems[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: CartItemCard(
-                      item: item,
-                      // Tidak lagi memerlukan currencyFormatter
-                      onIncrease: () {
-                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                        int index = cartProvider.items.indexOf(item);
-                        if (index != -1) {
+          if (_isLoading)
+            const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (cartItems.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Keranjang Anda kosong',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tambahkan menu favorit Anda',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                    final item = cartItems[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: CartItemCard(
+                        item: item,
+                        onIncrease: () {
                           cartProvider.increaseQuantity(index);
-                        }
-                      },
-                      onDecrease: () {
-                        // Menggunakan provider langsung untuk konsistensi
-                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                        int index = cartProvider.items.indexOf(item);
-                        if (index != -1) {
+                        },
+                        onDecrease: () {
                           if (item.quantity > 1) {
                             cartProvider.decreaseQuantity(index);
                           } else {
                             cartProvider.removeFromCart(index);
                           }
-                        }
-                      },
-                    ),
-                  );
-                },
-                childCount: cartItems.length,
+                        },
+                      ),
+                    );
+                  },
+                  childCount: cartItems.length,
+                ),
               ),
             ),
-          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
@@ -125,7 +143,7 @@ class CartScreenState extends State<CartScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.4), // Menggunakan withOpacity yang lebih standar
+                  color: Colors.grey.withOpacity(0.4),
                   spreadRadius: 1,
                   blurRadius: 6,
                   offset: const Offset(0, -3),
@@ -139,7 +157,6 @@ class CartScreenState extends State<CartScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    // Menggunakan formatCurrency untuk menampilkan total harga
                     Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
