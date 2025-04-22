@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/cart/cart_item_card.dart';
 import '../utils/currency_formatter.dart';
-import '../services/product_service.dart'; // Import ProductService
+// Import ProductService
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -16,7 +16,6 @@ class CartScreen extends StatefulWidget {
 
 class CartScreenState extends State<CartScreen> {
   // Initialize ProductService
-  final ProductService _productService = ProductService();
   final bool _isLoading = false;
 
   @override

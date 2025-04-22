@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
 
-import '../models/category.dart';
 
 // ProductData class that contains all data
 class ProductData {
@@ -119,22 +118,22 @@ class ProductData {
   }
 
   // Subcategories
-  static final Map<String, List<Category>> subMenus = {
-    'Makanan': [
-      Category(id: '1', name: 'Snack'),
-      Category(id: '2', name: 'Main Course'),
-      Category(id: '3', name: 'Dessert'),
-      Category(id: '4', name: 'Pastry'),
-      Category(id: '5', name: 'Breakfast'),
-    ],
-    'Minuman': [
-      Category(id: '6', name: 'Coffee'),
-      Category(id: '7', name: 'Non Coffee'),
-      Category(id: '8', name: 'Tea'),
-      Category(id: '9', name: 'Smoothies'),
-      Category(id: '10', name: 'Juice'),
-    ],
-  };
+  // static final Map<String, List<Category>> subMenus = {
+  //   'Makanan': [
+  //     Category(id: '1', name: 'Snack'),
+  //     Category(id: '2', name: 'Main Course'),
+  //     Category(id: '3', name: 'Dessert'),
+  //     Category(id: '4', name: 'Pastry'),
+  //     Category(id: '5', name: 'Breakfast'),
+  //   ],
+  //   'Minuman': [
+  //     Category(id: '6', name: 'Coffee'),
+  //     Category(id: '7', name: 'Non Coffee'),
+  //     Category(id: '8', name: 'Tea'),
+  //     Category(id: '9', name: 'Smoothies'),
+  //     Category(id: '10', name: 'Juice'),
+  //   ],
+  // };
 
   static Product? getProductById(String id) {
     try {
