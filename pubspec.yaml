@@ -52,6 +52,7 @@ dependencies:
   http: ^1.3.0
   flutter_dotenv: ^5.2.1
   flutter_native_splash: ^2.4.6
+#  midtrans_sdk: ^0.4.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
 #  google_sign_in: latest_version

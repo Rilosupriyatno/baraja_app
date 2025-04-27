@@ -80,7 +80,10 @@ class AuthService with ChangeNotifier {
         _jwtToken = responseData['token'];
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _jwtToken!);
+        await prefs.setString('userId', _user?['_id']); // simpan userId
+        await prefs.setString('username', _user?['name']); // simpan userId
+        await prefs.setString('token', _jwtToken!);    // simpan token
+
 
         notifyListeners();
       } else {

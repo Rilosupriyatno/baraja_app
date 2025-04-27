@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -16,6 +19,8 @@ class PaymentConfirmationScreen extends StatelessWidget {
   final String deliveryAddress;
   final TimeOfDay? pickupTime;
   final String paymentMethod;
+  final String bankName;
+  final String bankCode;
   final int subtotal;
   final int discount;
   final int total;
@@ -29,6 +34,8 @@ class PaymentConfirmationScreen extends StatelessWidget {
     required this.deliveryAddress,
     required this.pickupTime,
     required this.paymentMethod,
+    required this.bankName,
+    required this.bankCode,
     required this.subtotal,
     required this.discount,
     required this.total,
@@ -51,7 +58,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
                   children: [
                     // Informasi Pembayaran
                     _buildSectionTitle('Informasi Pembayaran'),
-                    _buildInfoItem('Metode Pembayaran', paymentMethod),
+                    _buildInfoItem('Metode Pembayaran', bankName),
                     const SizedBox(height: 8),
                     _buildInfoItem('Total Pembayaran', formatCurrency(total)),
 
@@ -233,7 +240,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
   }
 
   // Confirm payment and create order
-  void _confirmPayment(BuildContext context) {
+  Future<void> _confirmPayment(BuildContext context) async {
     // Generate a unique order ID (using timestamp)
     final String orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
 
@@ -261,7 +268,28 @@ class PaymentConfirmationScreen extends StatelessWidget {
       orderTime: DateTime.now(),
       status: OrderStatus.processing, // Payment confirmed, order is now processing
     );
+    final Map<String, dynamic> paymentData = {
+      "payment_type": paymentMethod,
+      "transaction_details": {
+        "order_id": orderId,
+        "gross_amount": total,
+      },
+      "bank_transfer": {
+        "bank": bankCode,
+      }
+    };
 
+    // Kirim ke backend
+    final response = await http.post(
+      Uri.parse('https://cf8d-103-166-9-245.ngrok-free.app/api/charge'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(paymentData),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print(responseData);
+    }
     // Save order to provider
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
     orderProvider.addOrder(newOrder);
