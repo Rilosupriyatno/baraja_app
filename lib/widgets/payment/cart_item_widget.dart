@@ -16,6 +16,37 @@ class CartItemWidget extends StatelessWidget {
     required this.onRemove,
   });
 
+  Widget _buildImage(String url) {
+    // Check if url is empty or null first
+    if (url.isEmpty) {
+      return Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.image_not_supported),
+      );
+    }
+
+    // Then check if it's a valid URL
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.image_not_supported),
+      );
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Colors.grey[300],
+          child: const Icon(Icons.image_not_supported),
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -38,10 +69,8 @@ class CartItemWidget extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(8),
-              image: DecorationImage(
-                image: NetworkImage(item.imageUrl), // Corrected
-                fit: BoxFit.cover,
-              ),
+            ),
+            child: ClipRRect(child: _buildImage(item.imageUrl),
             ),
           ),
 
@@ -60,24 +89,19 @@ class CartItemWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Tambahan: ${item.additional}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      "Topping: ${item.topping}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                Text(
+                  "Tambahan: ${item.additional}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  "Topping: ${item.topping}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -98,11 +122,16 @@ class CartItemWidget extends StatelessWidget {
               Row(
                 children: [
                   // Tombol kurangi
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: onDecrease,
+                  GestureDetector(
+                    onTap: onDecrease,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(Icons.remove, size: 16),
+                    ),
                   ),
 
                   Container(
@@ -119,13 +148,32 @@ class CartItemWidget extends StatelessWidget {
                   ),
 
                   // Tombol tambah
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: onIncrease,
+                  GestureDetector(
+                    onTap: onIncrease,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(Icons.add, size: 16),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+
+              // Tombol hapus
+              GestureDetector(
+                onTap: onRemove,
+                child: Text(
+                  "Hapus",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),

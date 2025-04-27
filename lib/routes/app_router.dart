@@ -165,6 +165,8 @@ class AppRouter {
               deliveryAddress: extras['deliveryAddress'] as String,
               pickupTime: extras['pickupTime'] as TimeOfDay?,
               paymentMethod: extras['paymentMethod'] as String,
+              bankName: extras['bankName'] as String,
+              bankCode: extras['bankCode'] as String,
               subtotal: extras['subtotal'] as int,
               discount: extras['discount'] as int,
               total: extras['total'] as int,

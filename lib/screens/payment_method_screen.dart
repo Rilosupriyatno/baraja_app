@@ -1,50 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/Paymenyt_methode_service.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
-class PaymentMethodScreen extends StatelessWidget {
+class PaymentMethodScreen extends StatefulWidget {
   const PaymentMethodScreen({super.key});
 
   @override
+  State<PaymentMethodScreen> createState() => _PaymentMethodScreenState();
+}
+
+class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
+  List<Map<String, dynamic>> paymentMethods = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPaymentMethods();
+  }
+
+  // Fetch payment methods via service
+  Future<void> fetchPaymentMethods() async {
+    try {
+      final service = PaymentMethodeService();
+      final methods = await service.fetchPaymentMethods();
+      setState(() {
+        paymentMethods = methods;
+      });
+    } catch (e) {
+      print('Error fetching payment methods: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // List metode pembayaran yang tersedia
-    final List<Map<String, dynamic>> paymentMethods = [
-      {
-        'name': 'Gopay',
-        'logo': 'assets/icons/gopay.png',
-        'balance': 85000,
-      },
-      {
-        'name': 'OVO',
-        'logo': 'assets/icons/ovo.png',
-        'balance': 50000,
-      },
-      {
-        'name': 'DANA',
-        'logo': 'assets/icons/dana.png',
-        'balance': 100000,
-      },
-      {
-        'name': 'ShopeePay',
-        'logo': 'assets/icons/shopeepay.png',
-        'balance': 75000,
-      },
-      {
-        'name': 'BCA',
-        'logo': 'assets/icons/bca.png',
-        'isBank': true,
-      },
-      {
-        'name': 'Mandiri',
-        'logo': 'assets/icons/mandiri.png',
-        'isBank': true,
-      },
-      {
-        'name': 'Tunai',
-        'logo': 'assets/icons/cash.png',
-        'isCash': true,
-      },
-    ];
+    if (paymentMethods.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -56,37 +50,38 @@ class PaymentMethodScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final method = paymentMethods[index];
           final bool isBank = method['isBank'] ?? false;
-          final bool isCash = method['isCash'] ?? false;
-          final int? balance = method['balance'];
 
-          String displayText = method['name'];
-          if (balance != null) {
-            displayText += ' (Rp${balance.toString()})';
-          }
+          Color color = Colors.grey;
+          try {
+            color = Color(int.parse(method['color'].substring(1, 7), radix: 16) + 0xFF000000);
+          } catch (_) {}
 
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.grey[200],
+              backgroundColor: color,
               child: Icon(
-                _getPaymentMethodIcon(method['name']),
-                color: Colors.grey[700],
+                _getIconData(method['icon']),
+                color: Colors.white,
+                size: 24,
               ),
-              // You can use Image.asset if you have actual logos
-              // child: Image.asset(
-              //   method['logo'],
-              //   width: 24,
-              //   height: 24,
-              // ),
             ),
-            title: Text(displayText),
-            subtitle: isBank
-                ? const Text('Transfer Bank')
-                : isCash
-                ? const Text('Bayar di tempat')
-                : const Text('E-wallet'),
+            title: Text(
+              method['name'],
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(method['payment_method_name']),
+            trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // Return the selected payment method back to the checkout screen
-              context.pop(displayText);
+              final result = {
+                'payment_method': method['payment_method'],
+                'payment_method_name': method['payment_method_name'],
+                'name': method['name'],
+                'bank_code': method['bank_code'] ?? '',
+              };
+
+              context.pop(result);
             },
           );
         },
@@ -94,21 +89,22 @@ class PaymentMethodScreen extends StatelessWidget {
     );
   }
 
-  // Helper to get icons for payment methods
-  IconData _getPaymentMethodIcon(String methodName) {
-    switch (methodName.toLowerCase()) {
-      case 'gopay':
-      case 'ovo':
-      case 'dana':
-      case 'shopeepay':
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'account_balance_wallet':
         return Icons.account_balance_wallet;
-      case 'bca':
-      case 'mandiri':
+      case 'payments':
+        return Icons.payments;
+      case 'payment':
+        return Icons.payment;
+      case 'shopping_bag':
+        return Icons.shopping_bag;
+      case 'account_balance':
         return Icons.account_balance;
-      case 'tunai':
+      case 'money':
         return Icons.money;
       default:
-        return Icons.payment;
+        return Icons.payment; // Default icon
     }
   }
 }
