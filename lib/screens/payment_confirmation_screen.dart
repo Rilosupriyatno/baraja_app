@@ -1,14 +1,12 @@
-import 'dart:convert';
 
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
 import '../providers/order_provider.dart';
+import '../services/confirm_service.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
@@ -18,9 +16,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
   final String tableNumber;
   final String deliveryAddress;
   final TimeOfDay? pickupTime;
-  final String paymentMethod;
-  final String bankName;
-  final String bankCode;
+  final Map<String, String?> paymentDetails;
   final int subtotal;
   final int discount;
   final int total;
@@ -33,9 +29,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
     required this.tableNumber,
     required this.deliveryAddress,
     required this.pickupTime,
-    required this.paymentMethod,
-    required this.bankName,
-    required this.bankCode,
+    required this.paymentDetails,
     required this.subtotal,
     required this.discount,
     required this.total,
@@ -58,7 +52,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
                   children: [
                     // Informasi Pembayaran
                     _buildSectionTitle('Informasi Pembayaran'),
-                    _buildInfoItem('Metode Pembayaran', bankName),
+                    _buildInfoItem('Metode Pembayaran', paymentDetails['bankName']!),
                     const SizedBox(height: 8),
                     _buildInfoItem('Total Pembayaran', formatCurrency(total)),
 
@@ -195,17 +189,17 @@ class PaymentConfirmationScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (item.additional != '-')
+                if (item.addons != '-')
                   Text(
-                    'Additional: ${item.additional}',
+                    'Additional: ${item.addons}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
                     ),
                   ),
-                if (item.topping != '-')
+                if (item.toppings != '-')
                   Text(
-                    'Topping: ${item.topping}',
+                    'Topping: ${item.toppings}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
@@ -248,11 +242,12 @@ class PaymentConfirmationScreen extends StatelessWidget {
     final Order newOrder = Order(
       id: orderId,
       items: items.map((item) => CartItem(
+        id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        additional: item.additional,
-        topping: item.topping,
+        addons: item.addons,
+        toppings: item.toppings,
         // Include any other necessary fields from CartItem
         imageUrl: item.imageUrl, // Assuming there's an imageUrl field
       )).toList(),
@@ -260,7 +255,7 @@ class PaymentConfirmationScreen extends StatelessWidget {
       tableNumber: tableNumber,
       deliveryAddress: deliveryAddress,
       pickupTime: pickupTime,
-      paymentMethod: paymentMethod,
+      paymentDetails: paymentDetails,
       subtotal: subtotal,
       discount: discount,
       total: total,
@@ -268,33 +263,14 @@ class PaymentConfirmationScreen extends StatelessWidget {
       orderTime: DateTime.now(),
       status: OrderStatus.processing, // Payment confirmed, order is now processing
     );
-    final Map<String, dynamic> paymentData = {
-      "payment_type": paymentMethod,
-      "transaction_details": {
-        "order_id": orderId,
-        "gross_amount": total,
-      },
-      "bank_transfer": {
-        "bank": bankCode,
-      }
-    };
+    final ConfirmService confirmService = ConfirmService();
 
-    // Kirim ke backend
-    final response = await http.post(
-      Uri.parse('https://cf8d-103-166-9-245.ngrok-free.app/api/charge'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(paymentData),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      print(responseData);
-    }
+    await confirmService.sendOrder(newOrder);
     // Save order to provider
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
     orderProvider.addOrder(newOrder);
 
     // Navigate to order success screen
-    context.go('/orderSuccess?id=$orderId');
+    // context.go('/orderSuccess?id=$orderId');
   }
 }

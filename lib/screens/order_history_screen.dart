@@ -278,12 +278,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   String _buildCustomizationText(CartItem item) {
     List<String> customizations = [];
 
-    if (item.additional != '-') {
-      customizations.add(item.additional);
+    if (item.addons != '-') {
+      customizations.add(item.addons as String);
     }
 
-    if (item.topping != '-') {
-      customizations.add(item.topping);
+    if (item.toppings != '-') {
+      customizations.add(item.toppings as String);
     }
 
     return customizations.join(', ');

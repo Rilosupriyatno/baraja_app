@@ -83,7 +83,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Gunakan CartProvider untuk mendapatkan data keranjang
     final cartProvider = Provider.of<CartProvider>(context);
     final List<CartItem> cartItems = cartProvider.items;
-print(selectedBankCode);
+// print(selectedBankCode);
     // Calculate the current discount amount
     final int subtotal = cartProvider.totalPrice;
     final int discount = calculateDiscount(subtotal);
@@ -303,21 +303,34 @@ print(selectedBankCode);
 
               try {
                 // Buat instance OrderService
-                final orderService =  serviceorder.OrderService();;
+                final orderService =  serviceorder.OrderService();
+                final List<Map<String, dynamic>> items = cartItems.map((item) => {
+                  'productId': item.id,
+                  'productName': item.name,
+                  'price': item.price,
+                  'quantity': item.quantity,
+                  'addons': item.addons,
+                  'toppings': item.toppings,
+                }).toList();
+
+
+                // Buat map untuk paymentDetails
+                final Map<String, String?> paymentDetails = {
+                  'method':  selectedPaymentMethodName,
+                  'methodName': selectedPaymentMethod,
+                  'bankName': selectedBankName,
+                  'bankCode': selectedBankCode,
+                };
 
                 // Kirim order ke API
                 final orderResult = await orderService.createOrder(
-                  items: List.from(cartItems),
+                  items: items,
                   userId: userId ?? 'guest',
                   userName: userName,
                   orderType: selectedOrderType,
                   tableNumber: tableNumber,
-                  deliveryAddress: deliveryAddress,
                   pickupTime: pickupTime,
-                  paymentMethod: selectedPaymentMethod ?? '',
-                  paymentMethodName: selectedPaymentMethodName ?? '',
-                  bankName: selectedBankName,
-                  bankCode: selectedBankCode,
+                  paymentDetails:paymentDetails,
                   subtotal: subtotal,
                   discount: discount,
                   voucherCode: selectedVoucherCode,
@@ -335,10 +348,7 @@ print(selectedBankCode);
                   'tableNumber': tableNumber,
                   'deliveryAddress': deliveryAddress,
                   'pickupTime': pickupTime,
-                  'paymentMethod': selectedPaymentMethod,
-                  'paymentMethodName': selectedPaymentMethodName,
-                  'bankName': selectedBankName,
-                  'bankCode': selectedBankCode,
+                  'paymentDetails': paymentDetails,
                   'subtotal': subtotal,
                   'discount': discount,
                   'total': subtotal - discount,
@@ -347,7 +357,7 @@ print(selectedBankCode);
                 });
 
                 // Hapus cart setelah berhasil checkout
-                cartProvider.clearCart();
+                // cartProvider.clearCart();
 
               } catch (e) {
                 // Tutup loading dialog

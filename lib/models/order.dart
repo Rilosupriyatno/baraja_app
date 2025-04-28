@@ -18,7 +18,7 @@ class Order {
   final String tableNumber;
   final String deliveryAddress;
   final TimeOfDay? pickupTime;
-  final String paymentMethod;
+  final Map<String, String?> paymentDetails;
   final int subtotal;
   final int discount;
   final int total;
@@ -33,13 +33,13 @@ class Order {
     this.tableNumber = '',
     this.deliveryAddress = '',
     this.pickupTime,
-    required this.paymentMethod,
     required this.subtotal,
     required this.discount,
     required this.total,
     this.voucherCode,
     required this.orderTime,
     this.status = OrderStatus.pending,
+    required this.paymentDetails,
   });
 
   // Convert to Map for storage
@@ -50,8 +50,8 @@ class Order {
         'name': item.name,
         'imageUrl': item.imageUrl,
         'price': item.price,
-        'additional': item.additional,
-        'topping': item.topping,
+        'addons': item.addons,
+        'toppings': item.toppings,
         'quantity': item.quantity,
       }).toList(),
       'orderType': orderType.toString(),
@@ -60,7 +60,7 @@ class Order {
       'pickupTime': pickupTime != null
           ? '${pickupTime!.hour}:${pickupTime!.minute}'
           : null,
-      'paymentMethod': paymentMethod,
+      'paymentDetails': paymentDetails,
       'subtotal': subtotal,
       'discount': discount,
       'total': total,
@@ -103,18 +103,19 @@ class Order {
     return Order(
       id: map['id'],
       items: (map['items'] as List).map((itemMap) => CartItem(
+        id: itemMap['id'],
         name: itemMap['name'],
         imageUrl: itemMap['imageUrl'],
         price: itemMap['price'],
-        additional: itemMap['additional'],
-        topping: itemMap['topping'],
+        addons: itemMap['addons'],
+        toppings: itemMap['toppings'],
         quantity: itemMap['quantity'],
       )).toList(),
       orderType: orderType,
       tableNumber: map['tableNumber'] ?? '',
       deliveryAddress: map['deliveryAddress'] ?? '',
       pickupTime: pickupTime,
-      paymentMethod: map['paymentMethod'],
+      paymentDetails: map['paymentDetails'],
       subtotal: map['subtotal'],
       discount: map['discount'],
       total: map['total'],

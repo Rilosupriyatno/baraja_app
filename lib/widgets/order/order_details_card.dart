@@ -44,7 +44,7 @@ class OrderDetailsCard extends StatelessWidget {
                   '${order.pickupTime!.hour}:${order.pickupTime!.minute.toString().padLeft(2, '0')}'),
 
             // Payment method
-            _buildDetailItem('Metode Pembayaran', order.paymentMethod),
+            _buildDetailItem('Metode Pembayaran', order.paymentDetails['method']!),
 
             // Voucher if used
             if (order.voucherCode != null && order.voucherCode!.isNotEmpty)

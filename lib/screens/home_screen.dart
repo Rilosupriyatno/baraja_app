@@ -61,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchProducts(ProductService productService) async {
     try {
       final products = await productService.getProducts();
-      print(products);
+      // print(products);
       final discountedProducts = await productService.getDiscountedProducts();
 
       if (mounted) {

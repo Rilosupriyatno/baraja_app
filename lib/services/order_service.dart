@@ -20,13 +20,14 @@ class OrderService {
     String? tableNumber,
     String? deliveryAddress,
     TimeOfDay? pickupTime,
-    required String paymentMethod,
-    required String paymentMethodName,
+    String? paymentMethod,
+    String? paymentMethodName,
     String? bankName,
     String? bankCode,
     required int subtotal,
     required int discount,
     String? voucherCode,
+    required Map<String, String?> paymentDetails,
   }) async {
     try {
       // Prepare order data
@@ -41,12 +42,7 @@ class OrderService {
         'tableNumber': tableNumber,
         'deliveryAddress': deliveryAddress,
         'pickupTime': pickupTime,
-        'paymentDetails': {
-          'method': paymentMethod,
-          'methodName': paymentMethodName,
-          'bankName': bankName,
-          'bankCode': bankCode,
-        },
+        'paymentDetails': paymentDetails,
         'pricing': {
           'subtotal': subtotal,
           'discount': discount,
@@ -56,6 +52,8 @@ class OrderService {
         'orderDate': DateTime.now().toIso8601String(),
         'status': 'pending',
       };
+
+      print(orderData);
 
       // Get auth token
       final prefs = await SharedPreferences.getInstance();
