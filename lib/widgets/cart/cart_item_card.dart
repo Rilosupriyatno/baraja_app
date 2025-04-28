@@ -62,8 +62,29 @@ class CartItemCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text('Tambahan: ${item.additional}'),
-                Text('Topping: ${item.topping}'),
+                const Text('Tambahan:', style: TextStyle(fontWeight: FontWeight.bold)),
+                ...item.addons.map((addon) => Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sports_volleyball_sharp, size: 16), // Pointer icon
+                      const SizedBox(width: 8), // Spacing between pointer and text
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${addon["name"]}: ', style: const TextStyle(fontSize: 14)),
+                          Text(' ${addon["label"]}', style: const TextStyle(fontSize: 14)),
+                          Text(
+                            '  ${formatCurrency(addon["price"])}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+
+                        ],
+                      ),
+                    ],
+                  ),
+                )),
+                Text('Topping: ${item.toppings}'),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

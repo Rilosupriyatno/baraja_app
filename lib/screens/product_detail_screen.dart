@@ -339,32 +339,40 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                     final cartProvider = Provider.of<CartProvider>(context, listen: false);
                     final double totalPrice = calculateTotal();
 
-                    // Gather selected topping names
-                    String toppingsText = selectedToppings.isNotEmpty
-                        ? selectedToppings.map((e) => e.name).join(', ')
-                        : '-';
+// Gather selected topping names and prices
+                    List<Map<String, dynamic>> toppingsList = selectedToppings.map((topping) => {
+                      "name": topping.name,
+                      "price": topping.price, // pastikan `topping` ada field `price`
+                    }).toList();
 
-                    // Gather selected addon option labels
-                    List<String> addonOptions = [];
+// Gather selected addon options names and prices
+                    List<Map<String, dynamic>> addonList = [];
                     selectedAddonOptions.forEach((addonId, option) {
                       if (option != null) {
-                        // Find the addon name
                         final addon = widget.product.addons!.firstWhere((a) => a.id == addonId);
-                        addonOptions.add('${addon.name}: ${option.label}');
+                        addonList.add({
+                          "name": addon.name,
+                          "label": option.label,
+                          "price": option.price, // pastikan `option` ada field `price`
+                        });
                       }
                     });
-                    String addonText = addonOptions.isNotEmpty ? addonOptions.join(', ') : '-';
+                    // print('Addon List: $addonList');
 
+
+// Membuat CartItem
                     CartItem newItem = CartItem(
+                      id: widget.product.id,
                       name: widget.product.name,
                       imageUrl: widget.product.imageUrl,
                       price: totalPrice.toInt(),
-                      additional: addonText,
-                      topping: toppingsText,
+                      addons: addonList, // <-- sekarang addons berupa list
+                      toppings: toppingsList, // <-- sekarang toppings berupa list
                       quantity: quantity,
                     );
 
                     cartProvider.addToCart(newItem);
+
 
                     // Show a confirmation message
                     ScaffoldMessenger.of(context).showSnackBar(

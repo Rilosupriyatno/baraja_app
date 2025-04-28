@@ -10,8 +10,8 @@ class CartProvider with ChangeNotifier {
     // Cek apakah item sudah ada di keranjang
     int index = _items.indexWhere((cartItem) =>
     cartItem.name == item.name &&
-        cartItem.additional == item.additional &&
-        cartItem.topping == item.topping);
+        cartItem.addons == item.addons &&
+        cartItem.toppings == item.toppings);
 
     if (index != -1) {
       // Jika sudah ada, tambahkan jumlahnya

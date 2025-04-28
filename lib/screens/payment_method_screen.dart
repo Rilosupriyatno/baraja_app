@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../services/Paymenyt_methode_service.dart';
+import '../services/payment_methode_service.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
@@ -49,7 +49,6 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final method = paymentMethods[index];
-          final bool isBank = method['isBank'] ?? false;
 
           Color color = Colors.grey;
           try {
