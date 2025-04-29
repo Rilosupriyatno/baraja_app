@@ -2,7 +2,7 @@ flutter_native_splash:
   # Menggunakan warna dari tema Baraja (hijau primary)
   color: "#076A3B"
 
-  # Mengaktifkan gambar splash screen dan mengarahkannya ke icon.png
+  # Mengaktifkan gambar splash screen dan mengarahkannya ke icons.png
   image: "assets/images/768.png"
 
   # Konfigurasi untuk mode gelap (menggunakan warna yang sama)

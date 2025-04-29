@@ -12,7 +12,7 @@ class LogoWidget extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset(
-          'assets/icon/icon_green.png', // Make sure to add this image to your assets
+          'assets/icons/icon_green.png', // Make sure to add this image to your assets
           width: 250,
           height: 250,
           fit: BoxFit.contain,

@@ -129,7 +129,7 @@ class _MenuScreenState extends State<MenuScreen> {
     tempCategoriesMap.forEach((mainCategory, categories) {
       _categoriesMap[mainCategory] = categories
           .map((name) => Category(
-        name: name,// Gunakan icon yang sesuai
+        name: name,// Gunakan icons yang sesuai
       ))
           .toList();
     });
@@ -146,7 +146,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   }
 
-  // Helper untuk mendapatkan icon kategori
+  // Helper untuk mendapatkan icons kategori
   // IconData _getCategoryIcon(String categoryName) {
   //   // Anda bisa mengubah ini sesuai kebutuhan
   //   switch (categoryName.toLowerCase()) {

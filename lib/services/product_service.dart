@@ -21,7 +21,7 @@ class ProductService {
           final List<dynamic> productsJson = jsonData['formattedData'];
 
           return productsJson.map((productJson) {
-            debugPrint('Processing product: ${productJson['name']}');
+            // debugPrint('Processing product: ${productJson['name']}');
 
             // Parse toppings
             List<Topping>? toppings;

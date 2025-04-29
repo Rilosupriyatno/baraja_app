@@ -52,6 +52,7 @@ dependencies:
   http: ^1.3.0
   flutter_dotenv: ^5.2.1
   flutter_native_splash: ^2.4.6
+  keyboard_avoider: ^0.2.0
 #  midtrans_sdk: ^0.4.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
@@ -83,8 +84,10 @@ flutter:
   assets:
      - .env
      - assets/
+     - assets/icons/
+     - assets/images/
      - assets/images/google_logo.svg
-     - assets/icon/icon_green.png
+     - assets/icons/icon_green.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
