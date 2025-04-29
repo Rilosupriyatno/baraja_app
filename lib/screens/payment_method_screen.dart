@@ -50,19 +50,20 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         itemBuilder: (context, index) {
           final method = paymentMethods[index];
 
-          Color color = Colors.grey;
-          try {
-            color = Color(int.parse(method['color'].substring(1, 7), radix: 16) + 0xFF000000);
-          } catch (_) {}
+          // Color color = Colors.grey;
+          // try {
+          //   color = Color(int.parse(method['color'].substring(1, 7), radix: 16) + 0xFF000000);
+          // } catch (_) {}
 
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: color,
-              child: Icon(
-                _getIconData(method['icon']),
-                color: Colors.white,
-                size: 24,
-              ),
+              // backgroundColor: color,
+              backgroundImage: AssetImage('assets/icons/${method['icon']}'),
+              // child: Icon(
+              //   _getIconData(method['icons']),
+              //   color: Colors.white,
+              //   size: 24,
+              // ),
             ),
             title: Text(
               method['name'],
@@ -86,24 +87,5 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         },
       ),
     );
-  }
-
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'account_balance_wallet':
-        return Icons.account_balance_wallet;
-      case 'payments':
-        return Icons.payments;
-      case 'payment':
-        return Icons.payment;
-      case 'shopping_bag':
-        return Icons.shopping_bag;
-      case 'account_balance':
-        return Icons.account_balance;
-      case 'money':
-        return Icons.money;
-      default:
-        return Icons.payment; // Default icon
-    }
   }
 }

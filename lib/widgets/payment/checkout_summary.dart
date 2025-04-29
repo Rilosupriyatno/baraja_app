@@ -17,7 +17,6 @@ class CheckoutSummary extends StatelessWidget {
   });
 
   @override
-  @override
   Widget build(BuildContext context) {
     final int finalTotal = totalPrice - discount;
 

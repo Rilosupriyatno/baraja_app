@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
 
-class OrderTypeSelector extends StatelessWidget {
+class OrderTypeSelector extends StatefulWidget {
   final OrderType selectedType;
   final Function(OrderType) onChanged;
 
@@ -30,11 +30,56 @@ class OrderTypeSelector extends StatelessWidget {
   });
 
   @override
+  State<OrderTypeSelector> createState() => _OrderTypeSelectorState();
+}
+
+class _OrderTypeSelectorState extends State<OrderTypeSelector> {
+  // Controllers for text fields to avoid rebuilding during typing
+  late TextEditingController _tableNumberController;
+  late TextEditingController _deliveryAddressController;
+
+  // Flag to track if fields should be shown
+  bool _showFields = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tableNumberController = TextEditingController(text: widget.tableNumber);
+    _deliveryAddressController = TextEditingController(text: widget.deliveryAddress);
+
+    // Set initial show fields state
+    _showFields = true;
+  }
+
+  @override
+  void didUpdateWidget(OrderTypeSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Only update controllers when values change externally
+    if (oldWidget.tableNumber != widget.tableNumber &&
+        _tableNumberController.text != widget.tableNumber) {
+      _tableNumberController.text = widget.tableNumber;
+    }
+
+    if (oldWidget.deliveryAddress != widget.deliveryAddress &&
+        _deliveryAddressController.text != widget.deliveryAddress) {
+      _deliveryAddressController.text = widget.deliveryAddress;
+    }
+  }
+
+  @override
+  void dispose() {
+    _tableNumberController.dispose();
+    _deliveryAddressController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Tab-style selector instead of radio buttons
+        // Tab-style selector
         Container(
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
@@ -66,18 +111,35 @@ class OrderTypeSelector extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Additional fields based on selected order type
-        _buildAdditionalFields(context),
+        // Only show additional fields if _showFields is true
+        if (_showFields) _buildAdditionalFields(context),
       ],
     );
   }
 
   Widget _buildTypeTab(BuildContext context, OrderType type, String label, IconData icon) {
-    final isSelected = selectedType == type;
+    final isSelected = widget.selectedType == type;
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => onChanged(type),
+        onTap: () {
+          // Set _showFields to false before changing type to hide animation
+          setState(() {
+            _showFields = false;
+          });
+
+          // Change the type
+          widget.onChanged(type);
+
+          // Show fields after a short delay
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              setState(() {
+                _showFields = true;
+              });
+            }
+          });
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -108,7 +170,15 @@ class OrderTypeSelector extends StatelessWidget {
   }
 
   Widget _buildAdditionalFields(BuildContext context) {
-    switch (selectedType) {
+    return AnimatedOpacity(
+      opacity: _showFields ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 200),
+      child: _buildFieldsForSelectedType(context),
+    );
+  }
+
+  Widget _buildFieldsForSelectedType(BuildContext context) {
+    switch (widget.selectedType) {
       case OrderType.dineIn:
         return _buildDineInFields();
       case OrderType.delivery:
@@ -119,6 +189,7 @@ class OrderTypeSelector extends StatelessWidget {
   }
 
   Widget _buildDineInFields() {
+    // Using the controller and avoiding recreating it on each build
     return TextField(
       decoration: const InputDecoration(
         labelText: "Nomor meja",
@@ -127,12 +198,13 @@ class OrderTypeSelector extends StatelessWidget {
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       keyboardType: TextInputType.number,
-      controller: TextEditingController(text: tableNumber),
-      onChanged: onTableNumberChanged,
+      controller: _tableNumberController,
+      onChanged: widget.onTableNumberChanged,
     );
   }
 
   Widget _buildDeliveryFields() {
+    // Using the controller and avoiding recreating it on each build
     return TextField(
       decoration: const InputDecoration(
         labelText: "Alamat pengantaran",
@@ -141,8 +213,8 @@ class OrderTypeSelector extends StatelessWidget {
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       maxLines: 3,
-      controller: TextEditingController(text: deliveryAddress),
-      onChanged: onDeliveryAddressChanged,
+      controller: _deliveryAddressController,
+      onChanged: widget.onDeliveryAddressChanged,
     );
   }
 
@@ -154,11 +226,11 @@ class OrderTypeSelector extends StatelessWidget {
           onTap: () async {
             final TimeOfDay? time = await showTimePicker(
               context: context,
-              initialTime: pickupTime ?? TimeOfDay.now(),
+              initialTime: widget.pickupTime ?? TimeOfDay.now(),
             );
 
             if (time != null) {
-              onPickupTimeChanged(time);
+              widget.onPickupTimeChanged(time);
             }
           },
           child: Container(
@@ -171,11 +243,11 @@ class OrderTypeSelector extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  pickupTime != null
-                      ? "Penjemputan di: ${pickupTime!.format(context)}"
+                  widget.pickupTime != null
+                      ? "Penjemputan di: ${widget.pickupTime!.format(context)}"
                       : "Pilih waktu penjemputan",
                   style: TextStyle(
-                    color: pickupTime != null ? Colors.black : Colors.grey.shade600,
+                    color: widget.pickupTime != null ? Colors.black : Colors.grey.shade600,
                   ),
                 ),
                 const Icon(Icons.access_time),
@@ -183,7 +255,7 @@ class OrderTypeSelector extends StatelessWidget {
             ),
           ),
         ),
-        if (pickupTime != null) ...[
+        if (widget.pickupTime != null) ...[
           const SizedBox(height: 12),
           Text(
             "* Harap tiba 10-15 menit sebelum waktu penjemputan",
@@ -198,20 +270,3 @@ class OrderTypeSelector extends StatelessWidget {
     );
   }
 }
-
-// Catatan: Extension ini tidak digunakan di kode ini
-// karena kita langsung menggunakan TextEditingController
-// Contoh implementasi extension yang benar jika diperlukan:
-/*
-extension TextFieldExtension on TextField {
-  TextField copyWith({TextEditingController? controller, Function(String)? onChanged}) {
-    return TextField(
-      controller: controller ?? this.controller,
-      decoration: decoration,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      onChanged: onChanged ?? this.onChanged,
-    );
-  }
-}
-*/

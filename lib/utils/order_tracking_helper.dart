@@ -55,7 +55,7 @@ class OrderTrackingHelper {
     }
   }
 
-  // Get status icon
+  // Get status icons
   static IconData getStatusIcon(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:

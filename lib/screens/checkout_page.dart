@@ -91,6 +91,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const ClassicAppBar(title: 'Pembayaran'),
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           // Konten utama dengan scroll

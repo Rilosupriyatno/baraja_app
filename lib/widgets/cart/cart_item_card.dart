@@ -7,8 +7,6 @@ class CartItemCard extends StatelessWidget {
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
 
-  // Tidak lagi memerlukan NumberFormat currencyFormatter
-
   const CartItemCard({
     super.key,
     required this.item,
@@ -19,105 +17,281 @@ class CartItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Menggunakan withOpacity sebagai pengganti withValues
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              item.imageUrl,
-              width: 80,
-              height: 110,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
+          // Header section (image, name and price)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  item.imageUrl,
                   width: 80,
-                  height: 110,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.image_not_supported),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported),
+                    );
+                  },
                 ),
-                const Text('Tambahan:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...item.addons.map((addon) => Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.sports_volleyball_sharp, size: 16), // Pointer icon
-                      const SizedBox(width: 8), // Spacing between pointer and text
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${addon["name"]}: ', style: const TextStyle(fontSize: 14)),
-                          Text(' ${addon["label"]}', style: const TextStyle(fontSize: 14)),
-                          Text(
-                            '  ${formatCurrency(addon["price"])}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
+              ),
+              const SizedBox(width: 12),
 
-                        ],
-                      ),
-                    ],
-                  ),
-                )),
-                Text('Topping: ${item.toppings}'),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Product details (name, price)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Menggunakan formatCurrency langsung daripada currencyFormatter
                     Text(
-                      formatCurrency(item.price * item.quantity),
+                      item.name,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: onDecrease,
-                        ),
-                        Text('${item.quantity}'),
-                        IconButton(
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.add_circle_outline),
-                          onPressed: onIncrease,
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      formatCurrency(item.price),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[800],
+                      ),
                     ),
                   ],
                 ),
+              ),
+
+              // Quantity controls
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                      icon: const Icon(Icons.remove_circle, color: Colors.red, size: 20),
+                      onPressed: onDecrease,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '${item.quantity}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                      icon: const Icon(Icons.add_circle, color: Colors.green, size: 20),
+                      onPressed: onIncrease,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Divider
+          Divider(color: Colors.grey[200], thickness: 1),
+
+          // Addon and topping section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Tambahan (Addons) Section
+              if (item.addons.isNotEmpty) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tambahan:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: item.addons.map((addon) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.circle, size: 6, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${addon["name"]}: ${addon["label"]}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(addon["price"]),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
-            ),
+
+              // Topping Section
+              if ((item.toppings is String && (item.toppings as String).isNotEmpty) ||
+                  ((item.toppings as List).isNotEmpty)) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.cake, size: 16, color: Colors.deepOrange),
+                    SizedBox(width: 4),
+                    Text(
+                      'Topping:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
+                  ),
+                  child: item.toppings is List<Map<String, Object>>
+                      ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: (item.toppings as List<Map<String, Object>>).map((topping) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${topping["name"]}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (topping.containsKey("price") && topping["price"] != null)
+                            Text(
+                              formatCurrency(topping["price"] as num),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.deepOrange,
+                              ),
+                            ),
+                        ],
+                      ),
+                    )).toList(),
+                  )
+                      : Row(
+                    children: [
+                      const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.toppings is String
+                              ? item.toppings as String
+                              // ignore: unnecessary_type_check
+                              : item.toppings is List
+                              ? (item.toppings as List).join(', ')
+                              : '',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Total price at the bottom
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'Total: ',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
+              ),
+              Text(
+                formatCurrency(item.totalprice * item.quantity),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
           ),
         ],
       ),

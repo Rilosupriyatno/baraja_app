@@ -56,5 +56,5 @@ class CartProvider with ChangeNotifier {
   int get totalItems => _items.fold(0, (sum, item) => sum + item.quantity);
 
   int get totalPrice =>
-      _items.fold(0, (sum, item) => sum + (item.price * item.quantity));
+      _items.fold(0, (sum, item) => sum + (item.totalprice * item.quantity));
 }

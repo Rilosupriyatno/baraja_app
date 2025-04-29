@@ -13,21 +13,21 @@ class OrderTimeline extends StatelessWidget {
       {
         'title': 'Pesanan Dibuat',
         'description': 'Pesanan Anda telah dibuat',
-        'icon': Icons.receipt_long,
+        'icons': Icons.receipt_long,
         'time': order.orderTime,
         'isCompleted': true,
       },
       {
         'title': 'Pembayaran',
         'description': 'Pembayaran berhasil',
-        'icon': Icons.payment,
+        'icons': Icons.payment,
         'time': order.orderTime.add(const Duration(minutes: 1)),
         'isCompleted': true,
       },
       {
         'title': 'Pesanan Diproses',
         'description': 'Pesanan Anda sedang diproses',
-        'icon': Icons.restaurant,
+        'icons': Icons.restaurant,
         'time': order.status == OrderStatus.pending
             ? null
             : order.orderTime.add(const Duration(minutes: 5)),
@@ -38,7 +38,7 @@ class OrderTimeline extends StatelessWidget {
         'description': order.orderType == OrderType.delivery
             ? 'Pesanan dalam perjalanan'
             : 'Pesanan siap diambil',
-        'icon': order.orderType == OrderType.delivery ? Icons.delivery_dining : Icons.check_circle,
+        'icons': order.orderType == OrderType.delivery ? Icons.delivery_dining : Icons.check_circle,
         'time': (order.status == OrderStatus.onTheWay ||
             order.status == OrderStatus.ready ||
             order.status == OrderStatus.completed)
@@ -51,7 +51,7 @@ class OrderTimeline extends StatelessWidget {
       {
         'title': 'Pesanan Selesai',
         'description': 'Pesanan telah selesai',
-        'icon': Icons.done_all,
+        'icons': Icons.done_all,
         'time': order.status == OrderStatus.completed
             ? order.orderTime.add(const Duration(minutes: 30))
             : null,
@@ -99,7 +99,7 @@ class OrderTimeline extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            step['icon'],
+                            step['icons'],
                             color: Colors.white,
                             size: 14,
                           ),

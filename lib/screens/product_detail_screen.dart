@@ -365,7 +365,8 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                       id: widget.product.id,
                       name: widget.product.name,
                       imageUrl: widget.product.imageUrl,
-                      price: totalPrice.toInt(),
+                      price: widget.product.originalPrice!.toInt(),
+                      totalprice: totalPrice.toInt(),
                       addons: addonList, // <-- sekarang addons berupa list
                       toppings: toppingsList, // <-- sekarang toppings berupa list
                       quantity: quantity,
