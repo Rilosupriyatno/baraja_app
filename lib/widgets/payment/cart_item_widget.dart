@@ -179,13 +179,13 @@ class CartItemWidget extends StatelessWidget {
           Divider(color: Colors.grey[200], thickness: 1),
           const SizedBox(height: 8),
 
-          // Addon section
+          // Tambahan (Addons) Section
           if (item.addons.isNotEmpty) ...[
-            Row(
+            const Row(
               children: [
-                Icon(Icons.add_circle_outline, size: 16, color: Colors.blue[600]),
-                const SizedBox(width: 4),
-                const Text(
+                Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
+                SizedBox(width: 4),
+                Text(
                   'Tambahan:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -194,9 +194,9 @@ class CartItemWidget extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               margin: const EdgeInsets.only(left: 8),
               decoration: BoxDecoration(
                 color: Colors.blue.withOpacity(0.05),
@@ -206,15 +206,14 @@ class CartItemWidget extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: item.addons.map((addon) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3.0),
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.circle, size: 6, color: Colors.blue[600]),
+                            const Icon(Icons.circle, size: 6, color: Colors.blue),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -227,10 +226,10 @@ class CartItemWidget extends StatelessWidget {
                       ),
                       Text(
                         formatCurrency(addon["price"]),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Colors.blue[700],
+                          color: Colors.blue,
                         ),
                       ),
                     ],
@@ -238,16 +237,17 @@ class CartItemWidget extends StatelessWidget {
                 )).toList(),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
           ],
 
-          // Topping section
-          if (item.toppings.toString().isNotEmpty) ...[
-            Row(
+          // Topping Section
+          if ((item.toppings is String && (item.toppings as String).isNotEmpty) ||
+              ((item.toppings as List).isNotEmpty)) ...[
+            const Row(
               children: [
-                Icon(Icons.cake, size: 16, color: Colors.deepOrange[400]),
-                const SizedBox(width: 4),
-                const Text(
+                Icon(Icons.cake, size: 16, color: Colors.deepOrange),
+                SizedBox(width: 4),
+                Text(
                   'Topping:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -256,28 +256,27 @@ class CartItemWidget extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               margin: const EdgeInsets.only(left: 8),
               decoration: BoxDecoration(
                 color: Colors.deepOrange.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
               ),
-              // ignore: unnecessary_type_check
-              child: item.toppings is List<Map<String, dynamic>>
+              child: item.toppings is List<Map<String, Object>>
                   ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: (item.toppings).map((topping) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3.0),
+                children: (item.toppings as List<Map<String, Object>>).map((topping) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Row(
                           children: [
-                            Icon(Icons.circle, size: 6, color: Colors.deepOrange[400]),
+                            const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -291,10 +290,10 @@ class CartItemWidget extends StatelessWidget {
                       if (topping.containsKey("price") && topping["price"] != null)
                         Text(
                           formatCurrency(topping["price"] as num),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: Colors.deepOrange[700],
+                            color: Colors.deepOrange,
                           ),
                         ),
                     ],
@@ -303,18 +302,23 @@ class CartItemWidget extends StatelessWidget {
               )
                   : Row(
                 children: [
-                  Icon(Icons.circle, size: 6, color: Colors.deepOrange[400]),
+                  const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      item.toppings.toString(),
+                      item.toppings is String
+                          ? item.toppings as String
+                      // ignore: unnecessary_type_check
+                          : item.toppings is List
+                          ? (item.toppings as List).join(', ')
+                          : '',
                       style: const TextStyle(fontSize: 14),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
           ],
 
           // Total price at the bottom
