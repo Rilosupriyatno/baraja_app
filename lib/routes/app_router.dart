@@ -169,6 +169,8 @@ class AppRouter {
               discount: extras['discount'] as int,
               total: extras['total'] as int,
               voucherCode: extras['voucherCode'] as String?,
+              // orderTime: extras['orderTime'] as DateTime,
+              orderId: extras['orderId'] as String,
             );
           },
         ),

@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -8,6 +11,7 @@ import '../providers/order_provider.dart';
 import '../services/confirm_service.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/utils/classic_app_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentConfirmationScreen extends StatefulWidget {
   final List<CartItem> items;
@@ -20,6 +24,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int discount;
   final int total;
   final String? voucherCode;
+  final String orderId;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -33,6 +38,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     required this.discount,
     required this.total,
     this.voucherCode,
+    required this.orderId,
   });
 
   @override
@@ -50,12 +56,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   void initState() {
     super.initState();
 
-    // Generate a unique order ID (using timestamp)
-    final String orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-
     // Create new order instance
     newOrder = Order(
-      id: orderId,
+      id: widget.orderId,
       items: widget.items.map((item) => CartItem(
         id: item.id,
         name: item.name,
@@ -79,8 +82,22 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
+
     // Kirim order hanya sekali saat init
     _sendOrderOnce();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    // Optional: disconnect socket when leaving screen
+    // Note: You might want to keep the connection if needed elsewhere
+    // _socketService.disconnect();
+    super.dispose();
   }
 
   Future<void> _sendOrderOnce() async {
@@ -112,6 +129,28 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         }
       }
     }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tidak dapat membuka aplikasi GoPay'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Nomor VA berhasil disalin'),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
   }
 
   @override
@@ -238,7 +277,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           child: ElevatedButton(
             onPressed: () {
               // Navigasi ke halaman sukses atau halaman pesanan saya
-              // context.go('/orderSuccess?id=${newOrder.id}');
+              Navigator.of(context).pushReplacementNamed('/orders'); // Updated to use navigator
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -349,7 +388,39 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoItem('Nomor Virtual Account', vaNumber, isBold: true),
+          // Mengubah tampilan VA number dari Row menjadi Column
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Nomor Virtual Account',
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      vaNumber,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _copyToClipboard(vaNumber),
+                    child: const Icon(
+                      Icons.copy,
+                      size: 18,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           if (_paymentResponse!.containsKey('expiry_time'))
             _buildInfoItem('Bayar Sebelum', _paymentResponse!['expiry_time']),
 
@@ -369,8 +440,51 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_paymentResponse!.containsKey('actions')) ...[
-            const Text('QR Code:',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            (() {
+              final actions = _paymentResponse!['actions'] as List;
+              String? deeplinkUrl;
+
+
+              for (final action in actions) {
+                if (action['name'] == 'deeplink-redirect') {
+                  deeplinkUrl = action['url'];
+                }
+              }
+
+              if (deeplinkUrl != null) {
+                return ElevatedButton.icon(
+                  onPressed: () => _launchUrl(deeplinkUrl!),
+                  icon: const Icon(Icons.smartphone),
+                  label: const Text('Bayar dengan GoPay'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00ADD8), // GoPay color
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            })(),
+          ],
+
+          if (_paymentResponse!.containsKey('expiry_time'))
+            _buildInfoItem('Bayar Sebelum', _paymentResponse!['expiry_time']),
+        ],
+      );
+    } else if (paymentType == 'qris') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_paymentResponse!.containsKey('actions')) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'QRIS:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -383,13 +497,100 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.qr_code, size: 120),
+                  const SizedBox(height: 16),
+                  (() {
+                    final actions = _paymentResponse!['actions'] as List;
+                    String? qrCodeUrl;
+
+                    for (final action in actions) {
+                      if (action['name'] == 'generate-qr-code') {
+                        qrCodeUrl = action['url'];
+                        break; // Stop searching once we find the QR code URL
+                      }
+                    }
+
+                    if (qrCodeUrl != null) {
+                      return Image.network(
+                        qrCodeUrl,
+                        height: 200, // Atur tinggi sesuai kebutuhan
+                        width: 200, // Atur lebar sesuai kebutuhan
+                        fit: BoxFit.cover, // Atur cara gambar ditampilkan
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  })(),
                   const SizedBox(height: 8),
-                  const Text('Scan QR Code menggunakan aplikasi Gojek',
-                      style: TextStyle(fontSize: 14)),
+                  const Text(
+                    'Scan QRIS dengan aplikasi e-wallet atau mobile banking',
+                    style: TextStyle(fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             ),
+            if (_paymentResponse!.containsKey('expiry_time'))
+              _buildInfoItem('Bayar Sebelum', _paymentResponse!['expiry_time']),
+          ],
+        ],
+      );
+    } else if (paymentType == 'cash') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_paymentResponse!.containsKey('actions')) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Tunai:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  (() {
+                    final actions = _paymentResponse!['actions'] as List;
+                    String? qrCodeUrl;
+
+                    for (final action in actions) {
+                      if (action['name'] == 'generate-qr-code') {
+                        qrCodeUrl = action['url'];
+                        break; // Stop searching once we find the QR code URL
+                      }
+                    }
+
+                    if (qrCodeUrl != null && qrCodeUrl.startsWith('data:image')) {
+                      final base64Data = qrCodeUrl.split(',').last;
+                      final Uint8List bytes = base64Decode(base64Data);
+
+                      return Image.memory(
+                        bytes,
+                        height: 200,
+                        width: 200,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  })(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tunjukkan Qris kepada kasir untuk pembayaran tunai',
+                    style: TextStyle(fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            if (_paymentResponse!.containsKey('expiry_time'))
+              _buildInfoItem('Bayar Sebelum', _paymentResponse!['expiry_time']),
           ],
         ],
       );
@@ -408,7 +609,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             margin: const EdgeInsets.only(top: 2),
             width: 20,
             height: 20,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppTheme.primaryColor,
               shape: BoxShape.circle,
             ),
@@ -463,8 +664,148 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              if (item.addons != '-') Text('Additional: ${item.addons}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              if (item.toppings != '-') Text('Topping: ${item.toppings}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const SizedBox(width: 12),
+              // Tambahan (Addons) Section
+              if (item.addons.isNotEmpty) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tambahan:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: item.addons.map((addon) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.circle, size: 6, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${addon["name"]}: ${addon["label"]}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(addon["price"]),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(width: 12),
+              // Topping Section
+              if ((item.toppings is String && (item.toppings as String).isNotEmpty) ||
+                  ((item.toppings as List).isNotEmpty)) ...[
+                const Row(
+                  children: [
+                    Icon(Icons.cake, size: 16, color: Colors.deepOrange),
+                    SizedBox(width: 4),
+                    Text(
+                      'Topping:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
+                  ),
+                  child: item.toppings is List<Map<String, Object>>
+                      ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: (item.toppings as List<Map<String, Object>>).map((topping) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${topping["name"]}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (topping.containsKey("price") && topping["price"] != null)
+                            Text(
+                              formatCurrency(topping["price"] as num),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.deepOrange,
+                              ),
+                            ),
+                        ],
+                      ),
+                    )).toList(),
+                  )
+                      : Row(
+                    children: [
+                      const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.toppings is String
+                              ? item.toppings as String
+                          // ignore: unnecessary_type_check
+                              : item.toppings is List
+                              ? (item.toppings as List).join(', ')
+                              : '',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
           ),
         ),
@@ -483,4 +824,4 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         return 'Ambil Sendiri';
     }
   }
-}
+  }

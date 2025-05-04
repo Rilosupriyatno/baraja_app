@@ -354,7 +354,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   'discount': discount,
                   'total': subtotal - discount,
                   'voucherCode': selectedVoucherCode,
-                  'orderId': orderResult['id'] ?? orderResult['orderId'], // Tambahkan orderId dari response
+                  'orderId': orderResult['order']?['_id'] ?? '', // Tambahkan orderId dari response
                 });
 
                 // Hapus cart setelah berhasil checkout

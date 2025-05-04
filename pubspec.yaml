@@ -53,6 +53,8 @@ dependencies:
   flutter_dotenv: ^5.2.1
   flutter_native_splash: ^2.4.6
   keyboard_avoider: ^0.2.0
+  url_launcher: ^6.3.1
+  socket_io_client: ^3.1.2
 #  midtrans_sdk: ^0.4.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
