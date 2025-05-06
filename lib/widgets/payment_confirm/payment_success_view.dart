@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 import '../../models/order_type.dart';
@@ -94,7 +95,9 @@ class PaymentSuccessView extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/orders');
+              // Ganti 'yourOrderId' dengan variabel orderId sebenarnya
+
+              context.go('/orderSuccess?id=$order.id');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -109,7 +112,7 @@ class PaymentSuccessView extends StatelessWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-        ),
+        )
       ],
     );
   }

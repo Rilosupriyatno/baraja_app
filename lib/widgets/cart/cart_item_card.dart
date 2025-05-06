@@ -189,7 +189,7 @@ class CartItemCard extends StatelessWidget {
 
               // Topping Section
               if ((item.toppings is String && (item.toppings as String).isNotEmpty) ||
-                  ((item.toppings as List).isNotEmpty)) ...[
+                  (item.toppings is List && (item.toppings as List).isNotEmpty)) ...[
                 const Row(
                   children: [
                     Icon(Icons.cake, size: 16, color: Colors.deepOrange),
@@ -212,58 +212,7 @@ class CartItemCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
                   ),
-                  child: item.toppings is List<Map<String, Object>>
-                      ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: (item.toppings as List<Map<String, Object>>).map((topping) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '${topping["name"]}',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (topping.containsKey("price") && topping["price"] != null)
-                            Text(
-                              formatCurrency(topping["price"] as num),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.deepOrange,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )).toList(),
-                  )
-                      : Row(
-                    children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item.toppings is String
-                              ? item.toppings as String
-                              // ignore: unnecessary_type_check
-                              : item.toppings is List
-                              ? (item.toppings as List).join(', ')
-                              : '',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _buildToppingsWidget(item.toppings),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -284,7 +233,7 @@ class CartItemCard extends StatelessWidget {
                 ),
               ),
               Text(
-                formatCurrency(item.totalprice * item.quantity),
+                formatCurrency(item.price * item.quantity),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -296,5 +245,68 @@ class CartItemCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Helper method to build toppings widget based on type
+  Widget _buildToppingsWidget(dynamic toppings) {
+    if (toppings is List && toppings.isNotEmpty && toppings.first is Map<String, dynamic>) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: (toppings).map<Widget>((topping) {
+          if (topping is Map) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${topping["name"]}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (topping.containsKey("price") && topping["price"] != null)
+                    Text(
+                      formatCurrency(topping["price"] as num),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          } else {
+            return const SizedBox.shrink();
+          }
+        }).toList(),
+      );
+    } else {
+      return Row(
+        children: [
+          const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              toppings is String
+                  ? toppings
+                  : toppings is List
+                  ? (toppings).join(', ')
+                  : '',
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }

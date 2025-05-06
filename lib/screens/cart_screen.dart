@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/cart/cart_item_card.dart';
 import '../utils/currency_formatter.dart';
-// Import ProductService
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -15,13 +14,11 @@ class CartScreen extends StatefulWidget {
 }
 
 class CartScreenState extends State<CartScreen> {
-  // Initialize ProductService
   final bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // We don't need to load products here as we'll use the CartProvider
   }
 
   @override
@@ -96,11 +93,7 @@ class CartScreenState extends State<CartScreen> {
                           cartProvider.increaseQuantity(index);
                         },
                         onDecrease: () {
-                          if (item.quantity > 1) {
-                            cartProvider.decreaseQuantity(index);
-                          } else {
-                            cartProvider.removeFromCart(index);
-                          }
+                          cartProvider.decreaseQuantity(index);
                         },
                       ),
                     );
@@ -156,7 +149,10 @@ class CartScreenState extends State<CartScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(formatCurrency(cartProvider.totalPrice), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                        formatCurrency(cartProvider.totalPrice),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

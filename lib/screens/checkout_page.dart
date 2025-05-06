@@ -122,15 +122,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         CartItem item = entry.value;
                         return CartItemWidget(
                           item: item,
-                          onIncrease: () {
-                            cartProvider.increaseQuantity(index);
-                          },
-                          onDecrease: () {
-                            cartProvider.decreaseQuantity(index);
-                          },
-                          onRemove: () {
-                            cartProvider.removeFromCart(index);
-                          },
+                          // onIncrease: () {
+                          //   cartProvider.increaseQuantity(index);
+                          // },
+                          // onDecrease: () {
+                          //   cartProvider.decreaseQuantity(index);
+                          // },
+                          // onRemove: () {
+                          //   cartProvider.removeFromCart(index);
+                          // },
                         );
                       }),
 

@@ -4,16 +4,16 @@ import '../../utils/currency_formatter.dart';
 
 class CartItemWidget extends StatelessWidget {
   final CartItem item;
-  final VoidCallback onIncrease;
-  final VoidCallback onDecrease;
-  final VoidCallback onRemove;
+  // final VoidCallback onIncrease;
+  // final VoidCallback onDecrease;
+  // final VoidCallback onRemove;
 
   const CartItemWidget({
     super.key,
     required this.item,
-    required this.onIncrease,
-    required this.onDecrease,
-    required this.onRemove,
+    // required this.onIncrease,
+    // required this.onDecrease,
+    // required this.onRemove,
   });
 
   Widget _buildImage(String url) {
@@ -116,60 +116,60 @@ class CartItemWidget extends StatelessWidget {
                   Row(
                     children: [
                       // Tombol kurangi
-                      GestureDetector(
-                        onTap: onDecrease,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(Icons.remove, size: 16),
-                        ),
-                      ),
+                      // GestureDetector(
+                      //   onTap: onDecrease,
+                      //   child: Container(
+                      //     padding: const EdgeInsets.all(4),
+                      //     decoration: BoxDecoration(
+                      //       color: Colors.grey.shade200,
+                      //       borderRadius: BorderRadius.circular(4),
+                      //     ),
+                      //     child: const Icon(Icons.remove, size: 16),
+                      //   ),
+                      // ),
 
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                        // decoration: BoxDecoration(
+                        //   border: Border.all(color: Colors.grey.shade300),
+                        //   borderRadius: BorderRadius.circular(4),
+                        // ),
                         child: Text(
-                          "${item.quantity}",
+                          "x ${item.quantity}",
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),
 
                       // Tombol tambah
-                      GestureDetector(
-                        onTap: onIncrease,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(Icons.add, size: 16),
-                        ),
-                      ),
+                      // GestureDetector(
+                      //   onTap: onIncrease,
+                      //   child: Container(
+                      //     padding: const EdgeInsets.all(4),
+                      //     decoration: BoxDecoration(
+                      //       color: Colors.grey.shade200,
+                      //       borderRadius: BorderRadius.circular(4),
+                      //     ),
+                      //     child: const Icon(Icons.add, size: 16),
+                      //   ),
+                      // ),
                     ],
                   ),
 
                   const SizedBox(height: 8),
 
-                  // Tombol hapus
-                  GestureDetector(
-                    onTap: onRemove,
-                    child: Text(
-                      "Hapus",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  // // Tombol hapus
+                  // GestureDetector(
+                  //   onTap: onRemove,
+                  //   child: Text(
+                  //     "Hapus",
+                  //     style: TextStyle(
+                  //       fontSize: 12,
+                  //       color: Colors.red[600],
+                  //       fontWeight: FontWeight.w500,
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ],
@@ -333,7 +333,7 @@ class CartItemWidget extends StatelessWidget {
                 ),
               ),
               Text(
-                formatCurrency(item.totalprice * item.quantity),
+                formatCurrency(item.totalprice),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

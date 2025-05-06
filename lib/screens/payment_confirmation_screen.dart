@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../services/socket_service.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
@@ -10,8 +10,6 @@ import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
 import '../widgets/payment_confirm/payment_success_view.dart';
 import '../widgets/utils/classic_app_bar.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-
 
 class PaymentConfirmationScreen extends StatefulWidget {
   final List<CartItem> items;
@@ -46,17 +44,17 @@ class PaymentConfirmationScreen extends StatefulWidget {
 }
 
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
+  final SocketService _socketService = SocketService();
   late final Order newOrder;
   bool _hasSentOrder = false;
   bool _isLoading = true;
   Map<String, dynamic>? _paymentResponse;
   String? _errorMessage;
-  late IO.Socket socket;
+  bool _isListeningForPayment = false;
 
   @override
   void initState() {
     super.initState();
-    _setupSocket();
 
     // Create new order instance
     newOrder = Order(
@@ -84,8 +82,58 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
-    // Kirim order hanya sekali saat init
+    // First setup socket connection
+    _setupSocketConnection();
+
+    // Then send order
     _sendOrderOnce();
+  }
+
+  void _setupSocketConnection() {
+    if (!_isListeningForPayment) {
+      _isListeningForPayment = true;
+
+      // Connect to socket and listen for payment updates
+      _socketService.connectToSocket(
+        orderId: widget.orderId,
+        onPaymentUpdate: _handlePaymentUpdate,
+      );
+
+      // Add a delay before manually joining the room again
+      Future.delayed(const Duration(seconds: 3), () {
+        _socketService.joinOrderRoom(widget.orderId);
+      });
+    }
+  }
+
+  void _handlePaymentUpdate(Map<String, dynamic> data) {
+    print('Payment update received in screen: $data');
+
+    if (data['order_id'] == widget.orderId) {
+      print('Payment update matches our order ID');
+
+      if (mounted) {
+        setState(() {
+          _paymentResponse = {
+            ...?_paymentResponse,
+            'transaction_status': data['transaction_status'],
+          };
+        });
+      }
+
+      print('Payment status updated to: ${data['transaction_status']}');
+
+      // Update order status based on transaction status
+      if (data['transaction_status'] == 'settlement' ||
+          data['transaction_status'] == 'capture') {
+        if (mounted) {
+          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+          orderProvider.updateOrderStatus(widget.orderId, OrderStatus.completed);
+        }
+      }
+    } else {
+      print('Received payment update for different order: ${data['order_id']}');
+    }
   }
 
   Future<void> _sendOrderOnce() async {
@@ -107,6 +155,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.addOrder(newOrder);
+
+          // Make sure we're connected to socket after order is sent
+          _setupSocketConnection();
         }
       } catch (e) {
         if (mounted) {
@@ -119,31 +170,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-  void _setupSocket() {
-    socket = IO.io('https://1d3e-202-59-193-188.ngrok-free.app', <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': true,
-      'secure': true,
-    });
-    socket.onConnectError((data) {
-      print("Connection Error: $data");
-    });
-    socket.onError((data) {
-      print("General Socket Error: $data");
-    });
-
-    socket.emit('join', widget.orderId);
-    socket.onConnect((_) {
-
-      print('Connected to socket server');
-    });
-
-    socket.on('payment_created', (data) {
-      print('Payment created event received: $data');
-      // Tampilkan notifikasi atau redirect ke halaman tertentu
-    });
-
-    socket.onDisconnect((_) => print('Disconnected from socket'));
+  @override
+  void dispose() {
+    print('Disposing PaymentConfirmationScreen');
+    _socketService.dispose();
+    super.dispose();
   }
 
   @override
