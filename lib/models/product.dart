@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class Product {
   final String id;
   final String name;
-  final String category;
+  final dynamic category;
   final String mainCategory; // Makanan atau Minuman
   final String imageUrl;
   final double? originalPrice;
@@ -28,6 +28,39 @@ class Product {
     this.addons,
     this.imageColor,
   });
+  // You can add methods to help with category processing
+  List<String> getCategories() {
+    List<String> result = [];
+
+    if (category is List) {
+      for (var cat in category) {
+        if (cat != null) {
+          result.add(cat.toString());
+        }
+      }
+    } else if (category is String) {
+      result.add(category);
+    } else if (category != null) {
+      result.add(category.toString());
+    }
+
+    if (result.isEmpty) {
+      result.add('Uncategorized');
+    }
+
+    return result;
+  }
+
+  // Getter to check if this product belongs to a specific category
+  bool hasCategory(String categoryName) {
+    if (category is List) {
+      return (category as List).any((cat) =>
+      cat != null && cat.toString().toLowerCase() == categoryName.toLowerCase());
+    } else if (category is String) {
+      return category.toLowerCase() == categoryName.toLowerCase();
+    }
+    return false;
+  }
 }
 
 class Topping {

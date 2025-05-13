@@ -118,7 +118,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       )
                     else
                       ...cartItems.asMap().entries.map((entry) {
-                        int index = entry.key;
                         CartItem item = entry.value;
                         return CartItemWidget(
                           item: item,

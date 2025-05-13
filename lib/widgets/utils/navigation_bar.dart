@@ -39,12 +39,12 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       },
       child: PersistentTabView(
         controller: _controller,  // Gunakan controller
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         handleAndroidBackButtonPress: false, // Nonaktifkan default back handler
         resizeToAvoidBottomInset: true,
         stateManagement: true,
         avoidBottomPadding: true,
-        navBarOverlap: const NavBarOverlap.full(),
+        navBarOverlap: const NavBarOverlap.none(),
         tabs: [
           PersistentTabConfig(
             screen: const HomeScreen(),
@@ -55,6 +55,20 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
           ),
           PersistentTabConfig(
+            screen: const OrderHistoryScreen(),
+            item: ItemConfig(
+              icon: const Icon(Icons.card_membership_outlined),
+              title: "Voucher",
+              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+            ),
+          ),PersistentTabConfig(
+            screen: const OrderHistoryScreen(),
+            item: ItemConfig(
+              icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
+              title: "Scan",
+              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+            ),
+          ),PersistentTabConfig(
             screen: const OrderHistoryScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.history_edu_outlined),
@@ -71,10 +85,11 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
           ),
         ],
-        navBarBuilder: (navBarConfig) => Style1BottomNavBar(
+        navBarBuilder: (navBarConfig) => Style16BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
             color: Colors.white,
+            // border: Border(top: BorderSide(color: AppTheme.barajaPrimary.primaryColor, width: 1)),
           ),
         ),
       ),
