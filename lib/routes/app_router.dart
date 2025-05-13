@@ -1,3 +1,4 @@
+import 'package:baraja_app/screens/reservation_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -204,6 +205,12 @@ class AppRouter {
         GoRoute(
           path: '/history',
           builder: (context, state) => const OrderHistoryScreen(),
+        ),
+
+      //   Reservation
+        GoRoute(
+          path: '/reservation',
+          builder: (context, state) => const ReservationScreen(),
         ),
       ],
       navigatorKey: GlobalKey<NavigatorState>(),

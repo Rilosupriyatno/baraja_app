@@ -12,7 +12,12 @@ class ProductService {
 
   Future<List<Product>> getProducts() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/menu/menu-items'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/menu/menu-items'),
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      );
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -21,18 +26,16 @@ class ProductService {
           final List<dynamic> productsJson = jsonData['formattedData'];
 
           return productsJson.map((productJson) {
-            // debugPrint('Processing product: ${productJson['name']}');
-
             // Parse toppings
             List<Topping>? toppings;
             if (productJson['toppings'] != null) {
               toppings = (productJson['toppings'] as List)
                   .map((topping) => Topping(
-                id: topping['id'],
-                name: topping['name'],
+                id: topping['id'] ?? topping['_id'] ?? '',
+                name: topping['name'] ?? '',
                 price: topping['price'] is int
                     ? topping['price'].toDouble()
-                    : topping['price'],
+                    : (topping['price'] ?? 0).toDouble(),
               ))
                   .toList();
             }
@@ -47,23 +50,22 @@ class ProductService {
                 if (addon['options'] != null) {
                   options = (addon['options'] as List)
                       .map((option) => AddonOption(
-                    id: option['id'],
-                    label: option['label'],
+                    id: option['_id'] ?? option['id'] ?? '',
+                    label: option['label'] ?? '',
                     price: option['price'] is int
                         ? option['price'].toDouble()
-                        : option['price'],
-                    isDefault: option['isDefault'] ?? false,
+                        : (option['price'] ?? 0).toDouble(),
+                    isDefault: option['isdefault'] ?? option['isDefault'] ?? false,
                   ))
                       .toList();
                 }
 
                 return Addon(
-                  id: addon['id'],
-                  name: addon['name'],
+                  id: addon['_id'] ?? addon['id'] ?? '',
+                  name: addon['name'] ?? '',
                   options: options,
-                  price: 0.0, // jika memang tidak ada harga di level addon, atau sesuaikan dengan struktur data kamu
+                  price: 0.0,
                 );
-
               })
                   .toList();
             }
@@ -76,40 +78,73 @@ class ProductService {
 
             // Parse prices safely
             double originalPrice = 0.0;
-            if (productJson['originalPrice'] != null) {
+            if (productJson['price'] != null) {
+              originalPrice = productJson['price'] is int
+                  ? productJson['price'].toDouble()
+                  : double.tryParse(productJson['price'].toString()) ?? 0.0;
+            } else if (productJson['originalPrice'] != null) {
               originalPrice = productJson['originalPrice'] is int
                   ? productJson['originalPrice'].toDouble()
-                  : productJson['originalPrice'];
+                  : double.tryParse(productJson['originalPrice'].toString()) ?? 0.0;
             }
 
             double discountPrice = originalPrice;
             if (productJson['discountPrice'] != null) {
               discountPrice = productJson['discountPrice'] is int
                   ? productJson['discountPrice'].toDouble()
-                  : productJson['discountPrice'];
+                  : double.tryParse(productJson['discountPrice'].toString()) ?? 0.0;
             }
 
-            // Handle category and mainCategory
-            String category = 'Uncategorized';
-            if (productJson['category'] != null) {
-              category = productJson['category'] is List
-                  ? (productJson['category'] as List).join(', ')
-                  : productJson['category'].toString();
+            // Process category - IMPORTANT: Handle various types safely
+            dynamic rawCategory = productJson['category'] ?? 'Uncategorized';
+
+            // Keep the category in its original form (list or string)
+            // We'll process it in the MenuScreen _extractCategories method
+
+            // Default mainCategory to 'Makanan' for foods and 'Minuman' for drinks
+            String mainCategory = 'Makanan';
+
+            // Try to determine if this is a drink based on categories
+            bool isDrink = false;
+
+            if (rawCategory is List) {
+              for (var cat in rawCategory) {
+                if (cat is String &&
+                    (cat.toLowerCase().contains('coffee') ||
+                        cat.toLowerCase().contains('chocolate') ||
+                        cat.toLowerCase().contains('tea') ||
+                        cat.toLowerCase().contains('milk'))) {
+                  isDrink = true;
+                  break;
+                }
+              }
+            } else if (rawCategory is String) {
+              if (rawCategory.toLowerCase().contains('coffee') ||
+                  rawCategory.toLowerCase().contains('chocolate') ||
+                  rawCategory.toLowerCase().contains('tea') ||
+                  rawCategory.toLowerCase().contains('milk')) {
+                isDrink = true;
+              }
             }
 
-            String mainCategory = 'Uncategorized';
+            mainCategory = isDrink ? 'Minuman' : 'Makanan';
+
+            // Use explicit mainCategory if provided
             if (productJson['mainCategory'] != null) {
-              mainCategory = productJson['mainCategory'] is List
-                  ? (productJson['mainCategory'] as List).join(', ')
-                  : productJson['mainCategory'].toString();
+              if (productJson['mainCategory'] is String) {
+                mainCategory = productJson['mainCategory'];
+              } else if (productJson['mainCategory'] is List &&
+                  (productJson['mainCategory'] as List).isNotEmpty) {
+                mainCategory = productJson['mainCategory'][0].toString();
+              }
             }
 
             return Product(
-              id: productJson['id'],
-              name: productJson['name'],
-              category: category,
+              id: productJson['_id'] ?? productJson['id'] ?? '',
+              name: productJson['name'] ?? '',
+              category: rawCategory, // Pass the raw category data
               mainCategory: mainCategory,
-              imageUrl: productJson['imageUrl'] ?? '',
+              imageUrl: productJson['imageURL'] ?? productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
               description: productJson['description'] ?? '',

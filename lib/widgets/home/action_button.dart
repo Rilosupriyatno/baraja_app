@@ -25,7 +25,7 @@ class ActionButtons extends StatelessWidget {
               context: context,
               icon: Icons.calendar_month,
               label: 'Reserved',
-              route: '/reserved',
+              route: '/reservation',
             ),
           ),
         ],

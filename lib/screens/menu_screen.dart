@@ -27,7 +27,7 @@ class _MenuScreenState extends State<MenuScreen> {
   String selectedMenu = 'Minuman';
 
   // Selected sub-menu
-  String selectedSubMenu = 'Chocolate';
+  String selectedSubMenu = 'Coffee';
 
   // Loading state
   bool _isLoading = true;
@@ -69,100 +69,97 @@ class _MenuScreenState extends State<MenuScreen> {
         _isLoading = false;
         _errorMessage = 'Gagal memuat produk: ${e.toString()}';
       });
+      debugPrint('Error in _loadProducts: $e');
     }
   }
 
   // Normalisasi produk - pindahkan Uncategorized ke Makanan
   List<Product> _normalizeProducts(List<Product> products) {
-    return products.map((product) {
-      // Salin produk untuk menghindari mutasi objek asli
-      Product normalizedProduct = product;
+    return products;  // Simply return the products as-is for now
+  }
 
-      // Jika mainCategory adalah Uncategorized, ubah ke Makanan
-      if (product.mainCategory == 'Uncategorized') {
-        // Gunakan constructor dengan parameter yang diperlukan
-        // Asumsikan bahwa Product memiliki constructor yang sesuai
-        normalizedProduct = Product(
-          id: product.id,
-          name: product.name,
-          category: product.category,
-          mainCategory: 'Makanan', // Ganti Uncategorized dengan Makanan
-          imageUrl: product.imageUrl,
-          originalPrice: product.originalPrice,
-          discountPrice: product.discountPrice,
-          description: product.description,
-          discountPercentage: product.discountPercentage,
-          toppings: product.toppings,
-          addons: product.addons,
-          imageColor: product.imageColor,
-        );
+  // Extracting individual categories from product
+  List<String> _extractCategories(Product product) {
+    List<String> categories = [];
+
+    if (product.category is List) {
+      // Process each category in the list
+      for (var cat in product.category as List) {
+        if (cat != null && cat is String && !_isMongoDbId(cat) && cat.isNotEmpty) {
+          categories.add(cat);
+        }
       }
+    }
+    else if (product.category is String) {
+      String categoryStr = product.category.toString();
+      // Split by comma if it contains commas
+      if (categoryStr.contains(',')) {
+        List<String> splitCategories = categoryStr.split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty && !_isMongoDbId(e))
+            .toList();
+        categories.addAll(splitCategories);
+      } else if (!_isMongoDbId(categoryStr)) {
+        // Single category string
+        categories.add(categoryStr);
+      }
+    }
 
-      return normalizedProduct;
-    }).toList();
+    // If no valid categories found, add a default
+    if (categories.isEmpty) {
+      categories.add('General');
+    }
+
+    return categories;
+  }
+
+  // Helper to check if a string looks like a MongoDB ObjectId
+  bool _isMongoDbId(String str) {
+    // MongoDB ObjectIds are 24 character hex strings
+    return str.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(str);
   }
 
   // Membuat map kategori dari produk
   void _generateCategoriesMap(List<Product> products) {
-    // Temporary map untuk menyimpan kategori yang unik
-    Map<String, Set<String>> tempCategoriesMap = {};
+    try {
+      // Temporary map untuk menyimpan kategori yang unik
+      Map<String, Set<String>> tempCategoriesMap = {};
 
-    // Kumpulkan semua kategori dari produk
-    for (var product in products) {
-      final String mainCategory = product.mainCategory;
+      // Kumpulkan semua kategori dari produk
+      for (var product in products) {
+        final String mainCategory = product.mainCategory;
 
-      if (!tempCategoriesMap.containsKey(mainCategory)) {
-        tempCategoriesMap[mainCategory] = <String>{};
+        if (!tempCategoriesMap.containsKey(mainCategory)) {
+          tempCategoriesMap[mainCategory] = <String>{};
+        }
+
+        // Ekstrak kategori dari produk - now as individual items
+        List<String> categories = _extractCategories(product);
+
+        // Tambahkan semua kategori ke map
+        tempCategoriesMap[mainCategory]!.addAll(categories);
       }
 
-      // Ekstrak kategori dari produk
-      List<String> categories = _extractCategories(product);
+      // Konversi Set menjadi List<Category>
+      _categoriesMap = {};
+      tempCategoriesMap.forEach((mainCategory, categories) {
+        _categoriesMap[mainCategory] = categories
+            .map((name) => Category(
+          name: name,
+        ))
+            .toList();
+      });
 
-      // Tambahkan semua kategori ke map
-      for (var cat in categories) {
-        tempCategoriesMap[mainCategory]!.add(cat);
-      }
+      debugPrint("Generated categories: $_categoriesMap");
+    } catch (e) {
+      debugPrint("Error in _generateCategoriesMap: $e");
+      // Fallback to default categories if there's an error
+      _categoriesMap = {
+        'Minuman': [Category(name: 'Coffee'), Category(name: 'Tea')],
+        'Makanan': [Category(name: 'Snack'), Category(name: 'Meal')]
+      };
     }
-
-    // Konversi Set menjadi List<Category>
-    _categoriesMap = {};
-    tempCategoriesMap.forEach((mainCategory, categories) {
-      _categoriesMap[mainCategory] = categories
-          .map((name) => Category(
-        name: name,// Gunakan icons yang sesuai
-      ))
-          .toList();
-    });
   }
-
-  // Ekstrak kategori dari produk
-  List<String> _extractCategories(Product product) {
-    if (product.category is List) {
-      return List<String>.from(product.category as Iterable);
-    } else {
-      return [product.category.toString()];
-    }
-
-
-  }
-
-  // Helper untuk mendapatkan icons kategori
-  // IconData _getCategoryIcon(String categoryName) {
-  //   // Anda bisa mengubah ini sesuai kebutuhan
-  //   switch (categoryName.toLowerCase()) {
-  //     case 'coffee':
-  //     case 'coffee flavour':
-  //       return Icons.coffee;
-  //     case 'recommended':
-  //       return Icons.thumb_up;
-  //     case 'chocolate':
-  //       return Icons.bakery_dining;
-  //     case 'mie':
-  //       return Icons.ramen_dining;
-  //     default:
-  //       return Icons.category;
-  //   }
-  // }
 
   // Set pilihan awal berdasarkan data yang tersedia
   void _setInitialSelections() {
@@ -185,7 +182,7 @@ class _MenuScreenState extends State<MenuScreen> {
         return false;
       }
 
-      // Ekstrak kategori produk
+      // Ekstrak kategori produk as separate items
       List<String> productCategories = _extractCategories(product);
 
       // Cek apakah selectedSubMenu ada dalam kategori produk

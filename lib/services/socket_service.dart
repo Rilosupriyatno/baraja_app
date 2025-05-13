@@ -87,9 +87,9 @@ class SocketService {
   }
 
   void _tryReconnect() {
-    if (!_isConnected && _socket != null) {
+    if (!_isConnected) {
       print('Attempting to reconnect...');
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         _socket.connect();
       });
     }
@@ -97,7 +97,7 @@ class SocketService {
 
   // Method to manually emit join_order_room event
   void joinOrderRoom(String orderId) {
-    if (_socket != null && _socket.connected) {
+    if (_socket.connected) {
       print('Manually joining room for order: $orderId');
       _socket.emitWithAck('join_order_room', orderId, ack: (data) {
         print('Manual room join acknowledgement: $data');
@@ -109,9 +109,7 @@ class SocketService {
 
   void dispose() {
     print('Disposing socket connection');
-    if (_socket != null) {
-      _socket.disconnect();
-      _socket.dispose();
+    _socket.disconnect();
+    _socket.dispose();
     }
-  }
 }

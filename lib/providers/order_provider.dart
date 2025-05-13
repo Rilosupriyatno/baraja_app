@@ -12,13 +12,11 @@ class OrderProvider with ChangeNotifier {
   List<Order> get allOrders => List.from(_orders);
 
   // Get specific order by ID
-  Order? getOrderById(String id) {
-    try {
-      return _orders.firstWhere((order) => order.id == id);
-    } catch (e) {
-      return null;
-    }
+
+  Order? getOrderById(String orderId) {
+    return _orders.firstWhere((order) => order.id == orderId);
   }
+
 
   // Add a new order
   Future<void> addOrder(Order order) async {
