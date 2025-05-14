@@ -108,39 +108,40 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-          onRefresh: _loadData,
-          child: ListView(
-            children: [
-              const PromoCarousel(),
-              const SizedBox(height: 16),
-              const ActionButtons(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 18.0),
-                child: Column(
-                  children: [
-                    ProductSlider(
-                      products: _discountedProducts.isNotEmpty ? _discountedProducts : _products,
-                      formatPrice: formatCurrency,
-                      title: 'Untuk Kamu',
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: ListView(
+                children: [
+                  const PromoCarousel(),
+                  const SizedBox(height: 16),
+                  const ActionButtons(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0, vertical: 18.0),
+                    child: Column(
+                      children: [
+                        ProductSlider(
+                          products: _discountedProducts.isNotEmpty
+                              ? _discountedProducts
+                              : _products,
+                          formatPrice: formatCurrency,
+                          title: 'Untuk Kamu',
+                        ),
+                        const SizedBox(height: 16),
+                        ProductSlider(
+                          products: _products,
+                          title: 'Rekomendasi',
+                          isBundle: true,
+                          formatPrice: formatCurrency,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    ProductSlider(
-                      products: _products,
-                      title: 'Rekomendasi',
-                      isBundle: true,
-                      formatPrice: formatCurrency,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
       floatingActionButton: const CheckoutButton(),
     );
   }
