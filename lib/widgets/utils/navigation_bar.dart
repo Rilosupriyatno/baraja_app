@@ -39,12 +39,12 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       },
       child: PersistentTabView(
         controller: _controller,  // Gunakan controller
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         handleAndroidBackButtonPress: false, // Nonaktifkan default back handler
         resizeToAvoidBottomInset: true,
         stateManagement: true,
         avoidBottomPadding: true,
-        navBarOverlap: const NavBarOverlap.none(),
+        navBarOverlap: const NavBarOverlap.full(),
         tabs: [
           PersistentTabConfig(
             screen: const HomeScreen(),
@@ -85,11 +85,16 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
           ),
         ],
-        navBarBuilder: (navBarConfig) => Style16BottomNavBar(
+        navBarBuilder: (navBarConfig) => Style13BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
             color: Colors.white,
-            // border: Border(top: BorderSide(color: AppTheme.barajaPrimary.primaryColor, width: 1)),
+            // border: Border(
+            //     top: BorderSide(
+            //         color: AppTheme.barajaPrimary.primaryColor,
+            //         width: 1
+            //     ),
+            // ),
           ),
         ),
       ),

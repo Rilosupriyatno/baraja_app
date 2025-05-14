@@ -84,7 +84,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final cartProvider = Provider.of<CartProvider>(context);
     final List<CartItem> cartItems = cartProvider.items;
 // print(selectedBankCode);
-    // Calculate the current discount amount
+    // Calculate the c urrent discount amount
     final int subtotal = cartProvider.totalPrice;
     final int discount = calculateDiscount(subtotal);
 

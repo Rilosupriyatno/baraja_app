@@ -33,7 +33,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.green,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
         child: Column(
