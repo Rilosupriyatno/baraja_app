@@ -2,10 +2,8 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import '../models/cart_item.dart';
 import '../models/order.dart';
-import '../providers/order_provider.dart';
+import '../services/order_service.dart';
 import '../utils/currency_formatter.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
@@ -17,11 +15,36 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final OrderService _orderService = OrderService();
+  List<Order> _orders = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchOrderHistory();
+  }
+
+  Future<void> _fetchOrderHistory() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final orders = await _orderService.getUserOrderHistory();
+      setState(() {
+        _orders = orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Gagal memuat riwayat pesanan: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -33,7 +56,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green,
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
         child: Column(
@@ -56,72 +79,80 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Tab 1: Process (Ongoing orders)
-          _buildOrdersList(isCompleted: false),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+          ? Center(child: Text(_errorMessage))
+          : RefreshIndicator(
+        onRefresh: _fetchOrderHistory,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            // Tab 1: Process (Ongoing orders)
+            _buildOrdersList(isCompleted: false),
 
-          // Tab 2: Done (Completed orders)
-          _buildOrdersList(isCompleted: true),
-        ],
+            // Tab 2: Done (Completed orders)
+            _buildOrdersList(isCompleted: true),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildOrdersList({required bool isCompleted}) {
-    return Consumer<OrderProvider>(
-      builder: (context, orderProvider, child) {
-        // Filter orders based on tab
-        final List<Order> orders = orderProvider.allOrders.where((order) {
-          if (isCompleted) {
-            return order.status == OrderStatus.completed;
-          } else {
-            return order.status != OrderStatus.completed &&
-                order.status != OrderStatus.cancelled;
-          }
-        }).toList();
+    // Filter orders based on tab
+    final List<Order> filteredOrders = _orders.where((order) {
+      if (isCompleted) {
+        return order.status == OrderStatus.completed;
+      } else {
+        return order.status != OrderStatus.completed &&
+            order.status != OrderStatus.cancelled;
+      }
+    }).toList();
 
-        // Sort by date, newest first
-        orders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
+    // Sort by date, newest first
+    filteredOrders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
 
-        if (orders.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.receipt_long,
-                  size: 48,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isCompleted
-                      ? 'Belum ada pesanan selesai'
-                      : 'Belum ada pesanan dalam proses',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
+    if (filteredOrders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long,
+              size: 48,
+              color: Colors.grey[400],
             ),
-          );
-        }
+            const SizedBox(height: 16),
+            Text(
+              isCompleted
+                  ? 'Belum ada pesanan selesai'
+                  : 'Belum ada pesanan dalam proses',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: orders.length,
-          itemBuilder: (context, index) {
-            return _buildOrderItem(context, orders[index]);
-          },
-        );
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredOrders.length,
+      itemBuilder: (context, index) {
+        return _buildOrderItem(context, filteredOrders[index]);
       },
     );
   }
 
   Widget _buildOrderItem(BuildContext context, Order order) {
+    // Pastikan ada item sebelum mengakses first
+    if (order.items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     // Get first item as the representative
     final firstItem = order.items.first;
 
@@ -153,6 +184,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                 image: DecorationImage(
                   image: NetworkImage(firstItem.imageUrl),
                   fit: BoxFit.cover,
+                  onError: (exception, stackTrace) {
+                    // Fallback jika gambar gagal dimuat
+                  },
                 ),
               ),
             ),
@@ -172,14 +206,43 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                   ),
                   const SizedBox(height: 4),
 
-                  // Item customizations
+                  // Order time and order ID
                   Text(
-                    _buildCustomizationText(firstItem),
+                    '${_formatDate(order.orderTime)} • ID: ${order.id.substring(0, 8)}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[600],
                     ),
                   ),
+                  const SizedBox(height: 4),
+
+                  // Status pesanan
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(order.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      order.statusText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _getStatusColor(order.status),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Item customizations
+                  if (firstItem.addons != '-' || firstItem.toppings != '-')
+                    Text(
+                      _buildCustomizationText(firstItem),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
 
                   // If there are more items, show count
                   if (order.items.length > 1)
@@ -248,12 +311,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
               ),
             ),
 
-            // Price
+            // Price and total
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  formatCurrency(firstItem.price),
+                  formatCurrency(order.total),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -261,7 +324,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'x${firstItem.quantity}',
+                  '${order.items.length} items',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -275,18 +338,34 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     );
   }
 
-  String _buildCustomizationText(CartItem item) {
+  String _buildCustomizationText(dynamic item) {
     List<String> customizations = [];
 
-    if (item.addons != '-') {
-      customizations.add(item.addons as String);
+    if (item.addons != null && item.addons.isNotEmpty) {
+      List<String> addonNames = [];
+      for (var addon in item.addons) {
+        if (addon['name'] != null && addon['name'].isNotEmpty) {
+          addonNames.add(addon['name']);
+        }
+      }
+      if (addonNames.isNotEmpty) {
+        customizations.add(addonNames.join(', '));
+      }
     }
 
-    if (item.toppings != '-') {
-      customizations.add(item.toppings as String);
+    if (item.toppings != null && item.toppings.isNotEmpty) {
+      List<String> toppingNames = [];
+      for (var topping in item.toppings) {
+        if (topping['name'] != null && topping['name'].isNotEmpty) {
+          toppingNames.add(topping['name']);
+        }
+      }
+      if (toppingNames.isNotEmpty) {
+        customizations.add(toppingNames.join(', '));
+      }
     }
 
-    return customizations.join(', ');
+    return customizations.isEmpty ? '-' : customizations.join(', ');
   }
 
   Widget buildRatingWidget() {
@@ -312,5 +391,26 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
         ),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Color _getStatusColor(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return Colors.orange;
+      case OrderStatus.processing:
+        return Colors.blue;
+      case OrderStatus.onTheWay:
+        return Colors.purple;
+      case OrderStatus.ready:
+        return Colors.green;
+      case OrderStatus.completed:
+        return Colors.green.shade800;
+      case OrderStatus.cancelled:
+        return Colors.red;
+      }
   }
 }
