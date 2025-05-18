@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/reservation_screen.dart';
+import 'package:baraja_app/screens/scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -54,6 +55,14 @@ class AppRouter {
           path: '/menu',
           builder: (context, state) => const MenuScreen(),
         ),
+        GoRoute(
+          path: '/qrscanner',
+          builder: (context, state) => const QRScanner(),
+        ),
+
+
+
+        // Product detail route
         GoRoute(
           path: '/product/:id',
           builder: (context, state) {

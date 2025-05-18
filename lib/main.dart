@@ -1,3 +1,4 @@
+
 import 'package:baraja_app/providers/cart_provider.dart';
 import 'package:baraja_app/providers/order_provider.dart';
 import 'package:baraja_app/routes/app_router.dart';
@@ -44,6 +45,21 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
+
+  // Widget build(BuildContext context) {
+  //   return AdaptiveTheme(
+  //     light: ThemeData.light(useMaterial3: true),
+  //     dark: ThemeData.dark(useMaterial3: true),
+  //     initial: AdaptiveThemeMode.dark,
+  //     builder: (light, dark) => MaterialApp.router(
+  //       debugShowCheckedModeBanner: false,
+  //       title: 'Baraja App',
+  //       theme: light,
+  //       darkTheme: dark,
+  //       routerConfig: AppRouter.getRouter(),
+  //     ),
+  //   );
+  // }
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,

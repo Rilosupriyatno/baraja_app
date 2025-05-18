@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/order_history_screen.dart';
+import 'package:baraja_app/screens/scanner.dart';
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
@@ -62,7 +63,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),PersistentTabConfig(
-            screen: const OrderHistoryScreen(),
+            screen: const QRScanner(),
             item: ItemConfig(
               icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
               title: "Scan",
