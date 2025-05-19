@@ -109,11 +109,18 @@ class ProductData {
   }
 
   // Sample promo images
+  // static List<PromoItem> getPromoItems() {
+  //   return [
+  //     PromoItem(title: 'Diskon 30% Semua Kopi', color: Colors.red[700]),
+  //     PromoItem(title: 'Gratis Ongkir', color: Colors.blue[700]),
+  //     PromoItem(title: 'Beli 1 Gratis 1', color: Colors.green[700]),
+  //   ];
+  // }
   static List<PromoItem> getPromoItems() {
     return [
-      PromoItem(title: 'Diskon 30% Semua Kopi', color: Colors.red[700]),
-      PromoItem(title: 'Gratis Ongkir', color: Colors.blue[700]),
-      PromoItem(title: 'Beli 1 Gratis 1', color: Colors.green[700]),
+      PromoItem(imagePath: 'assets/banner/coffee.jpeg'),
+      PromoItem(imagePath: 'assets/banner/teh.jpeg'),
+      PromoItem(imagePath: 'assets/banner/coffee.jpeg'),
     ];
   }
 

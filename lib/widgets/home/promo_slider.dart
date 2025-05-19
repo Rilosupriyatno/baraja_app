@@ -83,33 +83,57 @@ class _PromoSliderState extends State<PromoSlider> {
                 });
               },
               itemBuilder: (context, index) {
-                return Container(
-                  color: widget.promoItems[index].color,
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.coffee,
-                        color: Colors.white,
-                        size: 36,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        widget.promoItems[index].title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                return ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(15),
+                    bottomRight: Radius.circular(15),
+                  ),
+                  child: Image.asset(
+                    widget.promoItems[index].imagePath,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200,
                   ),
                 );
               },
             ),
+
+            // child: PageView.builder(
+            //   controller: _pageController,
+            //   itemCount: widget.promoItems.length,
+            //   onPageChanged: (index) {
+            //     setState(() {
+            //       currentPromoIndex = index;
+            //     });
+            //   },
+            //   itemBuilder: (context, index) {
+            //     return Container(
+            //       color: widget.promoItems[index].color,
+            //       alignment: Alignment.center,
+            //       child: Row(
+            //         mainAxisAlignment: MainAxisAlignment.center,
+            //         children: [
+            //           const Icon(
+            //             Icons.coffee,
+            //             color: Colors.white,
+            //             size: 36,
+            //           ),
+            //           const SizedBox(width: 10),
+            //           Text(
+            //             widget.promoItems[index].title,
+            //             style: const TextStyle(
+            //               color: Colors.white,
+            //               fontSize: 22,
+            //               fontWeight: FontWeight.bold,
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     );
+            //   },
+            ),
           ),
-        ),
+
       ],
     );
   }
