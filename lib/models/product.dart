@@ -106,11 +106,13 @@ class AddonOption {
 
 
 class PromoItem {
-  final String title;
-  final Color? color;
+  // final String title;
+  // final Color? color;
+  final String imagePath;
 
-  PromoItem({
-    required this.title,
-    this.color,
+  PromoItem( {
+    required this.imagePath,
+    // required this.title,
+    // this.color,
   });
 }

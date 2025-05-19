@@ -46,58 +46,17 @@ class _PromoCarouselState extends State<PromoCarousel> {
           carouselController: _promoController,
           itemCount: promos.length,
           itemBuilder: (context, index, realIndex) {
-            return Container(
-              // margin: const EdgeInsets.all(2.0),
-              decoration: BoxDecoration(
-                color: promos[index].color,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (index == 0) ... [
-                          const Text(
-                            'Special Offer',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Buy 1 Get 1',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Valid until 31 Jan 2025',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ] else ... [
-                          Text(
-                            promos[index].title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ]
-                      ],
-                    ),
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                promos[index].imagePath, // Ganti dengan Image.asset jika lokal
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 150, // Ukuran sama seperti sebelumnya
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey,
+                  child: const Center(
+                    child: Icon(Icons.broken_image, color: Colors.white),
                   ),
                 ),
               ),
@@ -115,6 +74,80 @@ class _PromoCarouselState extends State<PromoCarousel> {
             },
           ),
         ),
+
+        // CarouselSlider.builder(
+        //   carouselController: _promoController,
+        //   itemCount: promos.length,
+        //   itemBuilder: (context, index, realIndex) {
+        //     return Container(
+        //       // margin: const EdgeInsets.all(2.0),
+        //       decoration: BoxDecoration(
+        //         color: promos[index].color,
+        //         borderRadius: BorderRadius.circular(12),
+        //       ),
+        //       child: Center(
+        //         child: Padding(
+        //           padding: const EdgeInsets.all(16.0),
+        //           child: SingleChildScrollView(
+        //             physics: const NeverScrollableScrollPhysics(),
+        //             child: Column(
+        //               mainAxisSize: MainAxisSize.min,
+        //               mainAxisAlignment: MainAxisAlignment.center,
+        //               children: [
+        //                 if (index == 0) ... [
+        //                   const Text(
+        //                     'Special Offer',
+        //                     style: TextStyle(
+        //                       color: Colors.white,
+        //                       fontSize: 16,
+        //                     ),
+        //                   ),
+        //                   const SizedBox(height: 8),
+        //                   const Text(
+        //                     'Buy 1 Get 1',
+        //                     style: TextStyle(
+        //                       color: Colors.white,
+        //                       fontSize: 22,
+        //                       fontWeight: FontWeight.bold,
+        //                     ),
+        //                   ),
+        //                   const SizedBox(height: 4),
+        //                   const Text(
+        //                     'Valid until 31 Jan 2025',
+        //                     style: TextStyle(
+        //                       color: Colors.white,
+        //                       fontSize: 12,
+        //                     ),
+        //                   ),
+        //                 ] else ... [
+        //                   Text(
+        //                     promos[index].title,
+        //                     style: const TextStyle(
+        //                       color: Colors.white,
+        //                       fontSize: 20,
+        //                       fontWeight: FontWeight.bold,
+        //                     ),
+        //                   ),
+        //                 ]
+        //               ],
+        //             ),
+        //           ),
+        //         ),
+        //       ),
+        //     );
+        //   },
+        //   options: CarouselOptions(
+        //     height: 150,
+        //     viewportFraction: 0.95,
+        //     enlargeCenterPage: true,
+        //     enableInfiniteScroll: true,
+        //     onPageChanged: (index, reason) {
+        //       setState(() {
+        //         _currentPromoIndex = index;
+        //       });
+        //     },
+        //   ),
+        // ),
         const SizedBox(height: 8),
         AnimatedSmoothIndicator(
           activeIndex: _currentPromoIndex,

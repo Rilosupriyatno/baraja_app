@@ -1,8 +1,11 @@
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
 import '../widgets/reservation/floor_selector.dart';
-import '../widgets/reservation/guest_counter.dart';
-import '../widgets/reservation/notes_input.dart';
+import '../widgets/reservation/person_counter.dart';
 import '../widgets/reservation/time_selector.dart';
 
 
@@ -14,109 +17,123 @@ class ReservationScreen extends StatefulWidget {
 }
 
 class _ReservationScreenState extends State<ReservationScreen> {
-  // Selected values
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  int _guestCount = 2;
-  int? _selectedFloor;
-  final TextEditingController _notesController = TextEditingController();
+  DateTime selectedDate = DateTime.now();
+  TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
+  int selectedFloor = 2;
+  int personCount = 1;
+  final int maxPersons = 30;
 
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
-  void _updateSelectedDate(DateTime date) {
-    setState(() {
-      _selectedDate = date;
-    });
-  }
-
-  void _updateSelectedTime(TimeOfDay time) {
-    setState(() {
-      _selectedTime = time;
-    });
-  }
-
-  void _updateSelectedFloor(int floor) {
-    setState(() {
-      _selectedFloor = floor;
-    });
-  }
-
-  void _updateGuestCount(int count) {
-    setState(() {
-      _guestCount = count;
-    });
-  }
-
-  void _confirmReservation() {
-    // In a real app, this would send the reservation to a backend
-    final String reservationDetails = '''
-    Date: ${_selectedDate?.toString().split(' ')[0]}
-    Floor: $_selectedFloor
-    Time: ${_selectedTime?.format(context)}
-    Guests: $_guestCount
-    Notes: ${_notesController.text}
-    ''';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Reservation confirmed!\n$reservationDetails')),
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
     );
+    if (picked != null && picked != selectedTime) {
+      setState(() {
+        selectedTime = picked;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: const Text('Reserve Table'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite_border),
-            onPressed: () {},
+      backgroundColor: Colors.white,
+      appBar: const ClassicAppBar(title: 'Reservasi'),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date selection
+                DateSelector(
+                  selectedDate: selectedDate,
+                  onDateChanged: (date) {
+                    setState(() {
+                      selectedDate = date;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Time selection
+                TimeSelector(
+                  selectedTime: selectedTime,
+                  onTimeChanged: (time) {
+                    setState(() {
+                      selectedTime = time;
+                    });
+                  },
+                  selectTime: () => _selectTime(context),
+                ),
+                const SizedBox(height: 16),
+
+                // Floor selection
+                FloorSelector(
+                  selectedFloor: selectedFloor,
+                  onFloorChanged: (floor) {
+                    setState(() {
+                      selectedFloor = floor;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Person count
+                PersonCounter(
+                  personCount: personCount,
+                  maxPersons: maxPersons,
+                  onPersonCountChanged: (count) {
+                    setState(() {
+                      personCount = count;
+                    });
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Reservation button
+                _buildReservationButton(),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date selector
-              DateSelector(onDateSelected: _updateSelectedDate),
-              const SizedBox(height: 24),
+    );
+  }
 
-              // Floor selector
-              FloorSelector(onFloorSelected: _updateSelectedFloor),
-              const SizedBox(height: 24),
+  Widget _buildReservationButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          // Handle reservation
+          final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
+          final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
-              // Time selector
-              TimeSelector(onTimeSelected: _updateSelectedTime),
-              const SizedBox(height: 24),
-
-              // Guest counter
-              GuestCounter(
-                guestCount: _guestCount,
-                onGuestCountChanged: _updateGuestCount,
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Reservasi untuk $personCount orang di lantai $selectedFloor pada $formattedDate pukul $formattedTime',
               ),
-              const SizedBox(height: 24),
-
-              // Notes input
-              NotesInput(controller: _notesController),
-              const SizedBox(height: 32),
-
-              // Confirm button
-              ElevatedButton(
-                onPressed: _confirmReservation,
-                child: const Text('Confirm Reservation'),
-              ),
-            ],
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.barajaPrimary.primaryColor,  // Brown color similar to image
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: const Text(
+          'Reservasi Sekarang',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
       ),

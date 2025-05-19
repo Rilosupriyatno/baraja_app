@@ -66,7 +66,6 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             screen: const QRScanner(),
             item: ItemConfig(
               icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
-              title: "Scan",
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),PersistentTabConfig(
@@ -89,11 +88,18 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         navBarBuilder: (navBarConfig) => Style13BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
+            boxShadow:[
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 10,
+                offset: Offset(0, -2), // Shadow ke atas
+              )
+            ] ,
             color: Colors.white,
             // border: Border(
             //     top: BorderSide(
-            //         color: AppTheme.barajaPrimary.primaryColor,
-            //         width: 1
+            //         color: Colors.grey,
+            //         width: 0.5
             //     ),
             // ),
           ),

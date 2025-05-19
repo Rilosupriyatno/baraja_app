@@ -1,72 +1,91 @@
 import 'package:flutter/material.dart';
 
-class FloorSelector extends StatefulWidget {
-  final Function(int) onFloorSelected;
+import '../../theme/app_theme.dart';
 
-  const FloorSelector({super.key, required this.onFloorSelected});
+class FloorSelector extends StatelessWidget {
+  final int selectedFloor;
+  final Function(int) onFloorChanged;
 
-  @override
-  State<FloorSelector> createState() => _FloorSelectorState();
-}
-
-class _FloorSelectorState extends State<FloorSelector> {
-  int? _selectedFloor;
-
-  void _selectFloor(int floor) {
-    setState(() {
-      _selectedFloor = floor;
-    });
-    widget.onFloorSelected(floor);
-  }
+  const FloorSelector({
+    super.key,
+    required this.selectedFloor,
+    required this.onFloorChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Select Floor',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [1, 2, 3].map((floor) {
-            final isSelected = _selectedFloor == floor;
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Pilih Lantai',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
 
-            return GestureDetector(
-              onTap: () => _selectFloor(floor),
-              child: Container(
-                width: MediaQuery.of(context).size.width / 3.5,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0A1A33) : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFF0A1A33) : Colors.grey[300]!,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Floor $floor',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFloorOption(2),
+              const SizedBox(width: 16),
+              _buildFloorOption(3),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloorOption(int floor) {
+    final isSelected = selectedFloor == floor;
+
+    return InkWell(
+      onTap: () {
+        onFloorChanged(floor);
+      },
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected ? AppTheme.barajaPrimary.primaryColor : Colors.grey.shade300,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ],
+        child: Column(
+          children: [
+            Icon(
+              Icons.stairs,
+              color: isSelected ? AppTheme.barajaPrimary.primaryColor : Colors.grey,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Lantai $floor',
+              style: TextStyle(
+                color: isSelected ? AppTheme.barajaPrimary.primaryColor : Colors.grey,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

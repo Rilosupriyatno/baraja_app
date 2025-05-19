@@ -6,6 +6,8 @@ import 'package:baraja_app/services/auth_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'firebase_options.dart';
@@ -17,6 +19,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await initializeDateFormatting('id_ID', null);
+  Intl.defaultLocale = 'id_ID';
 
   final String? baseUrl = dotenv.env['BASE_URL'];
   // Dart client
