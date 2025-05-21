@@ -35,6 +35,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
 
     try {
       final orders = await _orderService.getUserOrderHistory();
+      // ✅ Tampilkan order di terminal
+      for (var order in orders) {
+        print('Order ID: ${order.id}');
+        print('Status: ${order.status}');
+        print('Total: ${order.total}');
+        print('Order Time: ${order.orderTime}');
+        print('Items:');
+        for (var item in order.items) {
+          print(' - ${item.name}');
+        }
+        print('----------------------');
+      }
       setState(() {
         _orders = orders;
         _isLoading = false;
@@ -156,183 +168,189 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     // Get first item as the representative
     final firstItem = order.items.first;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product image
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(firstItem.imageUrl),
-                  fit: BoxFit.cover,
-                  onError: (exception, stackTrace) {
-                    // Fallback jika gambar gagal dimuat
-                  },
+    return InkWell(
+      onTap: () {
+        // Navigate to OrderDetailScreen
+        context.go('/orderDetail', extra: order.id);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product image
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  image: DecorationImage(
+                    image: NetworkImage(firstItem.imageUrl),
+                    fit: BoxFit.cover,
+                    onError: (exception, stackTrace) {
+                      // Fallback jika gambar gagal dimuat
+                    },
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-            // Product details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Product details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      firstItem.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Order time and order ID
+                    Text(
+                      '${_formatDate(order.orderTime)} • ID: ${order.id.substring(0, 8)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Status pesanan
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(order.status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        order.statusText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _getStatusColor(order.status),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Item customizations
+                    if (firstItem.addons != '-' || firstItem.toppings != '-')
+                      Text(
+                        _buildCustomizationText(firstItem),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+
+                    // If there are more items, show count
+                    if (order.items.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '+ ${order.items.length - 1} more items',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 8),
+
+                    // Action button
+                    order.status == OrderStatus.completed
+                        ? Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            // Implement reorder functionality
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.brown,
+                            side: const BorderSide(color: Colors.brown),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Order Again',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        buildRatingWidget(),
+                      ],
+                    )
+                        : OutlinedButton(
+                      onPressed: () {
+                        // Navigate to tracking using GoRouter
+                        context.go('/tracking', extra: order.id);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.brown,
+                        side: const BorderSide(color: Colors.brown),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Tracking Order',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Price and total
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    firstItem.name,
+                    formatCurrency(order.total),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 4),
-
-                  // Order time and order ID
                   Text(
-                    '${_formatDate(order.orderTime)} • ID: ${order.id.substring(0, 8)}',
+                    '${order.items.length} items',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Status pesanan
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(order.status).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      order.statusText,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: _getStatusColor(order.status),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Item customizations
-                  if (firstItem.addons != '-' || firstItem.toppings != '-')
-                    Text(
-                      _buildCustomizationText(firstItem),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-
-                  // If there are more items, show count
-                  if (order.items.length > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '+ ${order.items.length - 1} more items',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 8),
-
-                  // Action button
-                  order.status == OrderStatus.completed
-                      ? Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () {
-                          // Implement reorder functionality
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.brown,
-                          side: const BorderSide(color: Colors.brown),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Order Again',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      buildRatingWidget(),
-                    ],
-                  )
-                      : OutlinedButton(
-                    onPressed: () {
-                      // Navigate to tracking using GoRouter
-                      context.go('/tracking', extra: order.id);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.brown,
-                      side: const BorderSide(color: Colors.brown),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
-                      'Tracking Order',
-                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ],
               ),
-            ),
-
-            // Price and total
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  formatCurrency(order.total),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${order.items.length} items',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

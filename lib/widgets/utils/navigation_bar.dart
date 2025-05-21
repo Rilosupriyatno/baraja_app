@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/profile_screen.dart';
+import '../../screens/tracking_detail_order_screen.dart';
 
 class NavigationBarMenu extends StatelessWidget {
   const NavigationBarMenu({super.key});
@@ -56,7 +57,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
           ),
           PersistentTabConfig(
-            screen: const OrderHistoryScreen(),
+            screen: const TrackingDetailOrderScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.card_membership_outlined),
               title: "Voucher",

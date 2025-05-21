@@ -118,9 +118,9 @@ class ProductData {
   // }
   static List<PromoItem> getPromoItems() {
     return [
-      PromoItem(imagePath: 'assets/banner/coffee.jpeg'),
-      PromoItem(imagePath: 'assets/banner/teh.jpeg'),
-      PromoItem(imagePath: 'assets/banner/coffee.jpeg'),
+      PromoItem(imagePath: 'assets/banners/coffee.jpeg'),
+      PromoItem(imagePath: 'assets/banners/teh.jpeg'),
+      PromoItem(imagePath: 'assets/banners/coffee.jpeg'),
     ];
   }
 
