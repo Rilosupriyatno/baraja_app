@@ -123,7 +123,7 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          // Set _showFields to false before changing type to hide animation
+          // Set _showFields to false before changing type to hide animations
           setState(() {
             _showFields = false;
           });

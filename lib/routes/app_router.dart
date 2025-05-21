@@ -13,8 +13,6 @@ import '../screens/checkout_page.dart';
 import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/order_history_screen.dart';
-import '../screens/order_success_screen.dart';
-import '../screens/order_tracking_screen.dart';
 import '../screens/payment_confirmation_screen.dart';
 import '../screens/payment_method_screen.dart';
 import '../screens/product_detail_screen.dart';
@@ -185,30 +183,14 @@ class AppRouter {
           },
         ),
 
-        // Order success page
+        // Order tracking page
         // GoRoute(
-        //   path: '/orderSuccess',
+        //   path: '/orderDetail',
         //   builder: (context, state) {
-        //     final String orderId = state.extra as String;
-        //     return OrderSuccessScreen(orderId: orderId);
+        //     final orderId = state.extra as String; // Ambil ID-nya
+        //     return OrderDetailScreen(orderId: orderId);
         //   },
         // ),
-        GoRoute(
-          path: '/orderSuccess',
-          builder: (context, state) {
-            final orderId = state.uri.queryParameters['id'] ?? '';
-            return OrderSuccessScreen(orderId: orderId);
-          },
-        ),
-
-        // Order tracking page
-        GoRoute(
-          path: '/tracking',
-          builder: (context, state) {
-            final String orderId = state.extra as String;
-            return OrderTrackingScreen(orderId: orderId);
-          },
-        ),
 
         // Order history page
         GoRoute(

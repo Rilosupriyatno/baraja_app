@@ -97,7 +97,7 @@ class PaymentSuccessView extends StatelessWidget {
             onPressed: () {
               // Ganti 'yourOrderId' dengan variabel orderId sebenarnya
 
-              context.go('/orderSuccess?id=$order.id');
+              context.go('/orderDetail', extra: order);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,

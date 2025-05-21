@@ -90,9 +90,10 @@ flutter:
      - assets/
      - assets/icons/
      - assets/images/
-     - assets/banner/
-     - assets/banner/teh.jpeg
-     - assets/banner/coffee.jpeg
+     - assets/banners/
+     - assets/animations/
+     - assets/banners/teh.jpeg
+     - assets/banners/coffee.jpeg
      - assets/images/google_logo.svg
      - assets/icons/icon_green.png
   #   - images/a_dot_ham.jpeg

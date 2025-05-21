@@ -357,7 +357,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 });
 
                 // Hapus cart setelah berhasil checkout
-                // cartProvider.clearCart();
+                cartProvider.clearCart();
 
               } catch (e) {
                 // Tutup loading dialog
