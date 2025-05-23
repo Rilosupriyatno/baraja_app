@@ -3,20 +3,20 @@ flutter_native_splash:
   color: "#076A3B"
 
   # Mengaktifkan gambar splash screen dan mengarahkannya ke icons.png
-  image: "assets/images/768.png"
+  image: "assets/images/splashlogo_1.png"
 
   # Konfigurasi untuk mode gelap (menggunakan warna yang sama)
   color_dark: "#076A3B"
-  image_dark: "assets/images/768.png"
+  image_dark: "assets/images/splashlogo_1.png"
 
   # Konfigurasi untuk Android 12+
   android_12:
     # Gambar splash screen untuk Android 12+
-    image: "assets/images/768.png"
+    image: "assets/images/splashlogo_1.png"
     color: "#076A3B"
 #    icon_background_color: "#FFFFFF"
 
     # Konfigurasi mode gelap untuk Android 12+
-    image_dark: "assets/images/768.png"
+    image_dark: "assets/images/splashlogo_1.png"
     color_dark: "#076A3B"
 #    icon_background_color_dark: "#121212"

@@ -119,6 +119,117 @@ class OrderService {
     }
   }
 
+  Future<Order?> getOrderById(String orderId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken') ?? '';
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/order/getOrderById/$orderId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final orderData = data['orderDetails'];
+
+        // Parsing items
+        List<CartItem> cartItems = [];
+        if (orderData['items'] != null) {
+          for (var item in orderData['items']) {
+            final menuItem = item['menuItem'];
+            cartItems.add(CartItem(
+              id: menuItem['_id'] ?? '',
+              name: menuItem['name'] ?? 'Unknown Item',
+              imageUrl: menuItem['imageURL'] ?? 'https://via.placeholder.com/150',
+              price: menuItem['price'] ?? 0,
+              totalprice: item['subtotal'] ?? 0,
+              quantity: item['quantity'] ?? 1,
+              addons: (item['addons'] as List?)?.map((addon) => {
+                'name': addon['label'] ?? '',
+                'price': addon['price'] ?? 0,
+              }).toList() ?? [],
+              toppings: (item['toppings'] as List?)?.map((topping) => {
+                'name': topping['name'] ?? '',
+                'price': topping['price'] ?? 0,
+              }).toList() ?? [],
+            ));
+          }
+        }
+
+        // Determine OrderType
+        OrderType orderType;
+        switch (orderData['orderType']) {
+          case 'Delivery':
+            orderType = OrderType.delivery;
+            break;
+          case 'Pick-up':
+          case 'Pickup':
+            orderType = OrderType.pickup;
+            break;
+          default:
+            orderType = OrderType.dineIn;
+        }
+
+        // Determine OrderStatus
+        OrderStatus orderStatus;
+        switch (orderData['status']) {
+          case 'Pending':
+            orderStatus = OrderStatus.pending;
+            break;
+          case 'Processing':
+            orderStatus = OrderStatus.processing;
+            break;
+          case 'On The Way':
+            orderStatus = OrderStatus.onTheWay;
+            break;
+          case 'Ready':
+            orderStatus = OrderStatus.ready;
+            break;
+          case 'Completed':
+            orderStatus = OrderStatus.completed;
+            break;
+          case 'Cancelled':
+            orderStatus = OrderStatus.cancelled;
+            break;
+          default:
+            orderStatus = OrderStatus.pending;
+        }
+
+        return Order(
+          id: orderData['order_id'] ?? '',
+          items: cartItems,
+          orderType: orderType,
+          tableNumber: orderData['tableNumber'] ?? '',
+          deliveryAddress: '', // Not returned in response
+          pickupTime: null, // Not returned in response
+          paymentDetails: {
+            'method': orderData['paymentMethod'] ?? 'Unknown',
+            'status': orderData['paymentstatus'] ?? 'Unknown',
+          },
+          subtotal: orderData['amount'] ?? 0,
+          discount: 0, // No explicit discount data
+          total: orderData['amount'] ?? 0,
+          voucherCode: orderData['voucher']?['code'],
+          orderTime: orderData['createdAt'] != null
+              ? DateTime.parse(orderData['createdAt'])
+              : DateTime.now(),
+          status: orderStatus,
+        );
+      } else {
+        print('Failed to load order: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching order by ID: $e');
+      return null;
+    }
+  }
+
+
   // Fungsi untuk memetakan data JSON dari API ke model Order Flutter
   Order _mapToOrder(Map<String, dynamic> orderData) {
     // Mengonversi status dari string ke enum OrderStatus
