@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
 
 class TrackingDetailOrderScreen extends StatefulWidget {
-  const TrackingDetailOrderScreen({super.key});
+  final String orderId;
+
+  const TrackingDetailOrderScreen({
+    super.key,
+    required this.orderId,
+  });
 
   @override
   State<TrackingDetailOrderScreen> createState() => _TrackingDetailOrderScreenState();
@@ -16,37 +23,26 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  String orderStatus = 'Pesananmu sedang dibuat';
+  String orderStatus = 'Memuat pesanan...';
   Color statusColor = const Color(0xFFF59E0B);
   IconData statusIcon = Icons.coffee_maker;
 
-  // Order data
-  final Map<String, dynamic> orderData = {
-    'orderId': 'ORD-2024-001234',
-    'orderNumber': '#1234',
-    'orderDate': '22 Mei 2025, 14:30',
-    'items': [
-      {
-        'name': 'Americano',
-        'price': 12000,
-        'quantity': 1,
-        'size': 'Regular',
-        'temperature': 'Hot',
-        'addons': ['Extra Shot', 'Oat Milk'],
-        'toppings': ['Cinnamon Powder'],
-      }
-    ],
-    'subtotal': 12000,
-    'addonPrice': 8000,
-    'tax': 2000,
-    'total': 22000,
-    'paymentMethod': 'BCA',
-    'paymentStatus': 'Lunas',
-  };
+  // State management
+  Map<String, dynamic>? orderData;
+  bool isLoading = true;
+  String? errorMessage;
+
+  // API Configuration
+  static const String baseUrl = 'https://b59d-103-166-9-228.ngrok-free.app'; // Ganti dengan URL API Anda
 
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+    _fetchOrderData();
+  }
+
+  void _setupAnimations() {
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -61,10 +57,150 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     _pulseController.repeat(reverse: true);
   }
 
+  Future<void> _fetchOrderData() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+      // print("ini adalah order id anda = ${widget.orderId}");
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/order/${widget.orderId}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          // Tambahkan authorization header jika diperlukan
+          // 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+// print("ini adalah response dari api = ${response.body}");
+      if (response.statusCode == 200) {
+        print(response);
+        final jsonData = json.decode(response.body);
+        setState(() {
+          orderData = jsonData['orderData'];
+          isLoading = false;
+          _updateOrderStatus();
+        });
+      } else {
+        throw Exception('Failed to load order: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString().contains('TimeoutException')
+            ? 'Koneksi timeout. Silakan coba lagi.'
+            : 'Gagal memuat data pesanan. Silakan coba lagi.';
+      });
+    }
+  }
+
+  void _updateOrderStatus() {
+    if (orderData == null) return;
+
+    // Update status berdasarkan data dari API
+    final paymentStatus = orderData!['paymentStatus']?.toString().toLowerCase() ?? '';
+
+    if (paymentStatus == 'lunas') {
+      setState(() {
+        orderStatus = 'Pesananmu sedang dibuat';
+        statusColor = const Color(0xFFF59E0B);
+        statusIcon = Icons.coffee_maker;
+      });
+    } else if (paymentStatus == 'menunggu') {
+      setState(() {
+        orderStatus = 'Menunggu pembayaran';
+        statusColor = const Color(0xFFEF4444);
+        statusIcon = Icons.payment;
+      });
+    } else {
+      setState(() {
+        orderStatus = 'Status tidak diketahui';
+        statusColor = const Color(0xFF6B7280);
+        statusIcon = Icons.help_outline;
+      });
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchOrderData();
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
     super.dispose();
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Memuat data pesanan...',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Gagal Memuat Data',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage ?? 'Terjadi kesalahan yang tidak diketahui',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _refreshData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: statusColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -118,14 +254,16 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
             ),
             child: IconButton(
               icon: const Icon(Icons.refresh, color: Colors.black87, size: 20),
-              onPressed: () {
-                // Refresh tracking
-              },
+              onPressed: isLoading ? null : _refreshData,
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: isLoading
+          ? _buildLoadingState()
+          : errorMessage != null
+          ? _buildErrorState()
+          : SingleChildScrollView(
         child: Column(
           children: [
             // Coffee Animation Section
@@ -150,7 +288,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
             const SizedBox(height: 16),
 
             // Order Details - Full width
-            OrderDetailWidget(orderData: orderData),
+            if (orderData != null)
+              OrderDetailWidget(orderData: orderData!),
 
             // Bottom padding for navigation bar
             const SizedBox(height: 100),
