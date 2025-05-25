@@ -70,8 +70,8 @@ class CoffeeAnimationWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(15),
               child: Image.asset(
                 'assets/animations/waiting.gif',
-                width: 180,
-                height: 180,
+                width: 300,
+                height: 300,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
