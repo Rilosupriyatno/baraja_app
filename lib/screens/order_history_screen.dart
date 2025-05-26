@@ -193,18 +193,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Product image
-              Container(
+              SizedBox(
                 width: 70,
                 height: 70,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: NetworkImage(firstItem.imageUrl),
-                    fit: BoxFit.cover,
-                    onError: (exception, stackTrace) {
-                      // Fallback jika gambar gagal dimuat
-                    },
-                  ),
+                child: firstItem.imageUrl.isNotEmpty
+                    ? Image.network(
+                  firstItem.imageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/images/product_default_image.jpeg',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  },
+                )
+                    : Image.asset(
+                  'assets/images/product_default_image.jpeg',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
                 ),
               ),
               const SizedBox(width: 12),
@@ -277,53 +288,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
 
                     const SizedBox(height: 8),
 
-                    // Action button
-                    order.status == OrderStatus.completed
-                        ? Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () {
-                            // Implement reorder functionality
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.brown,
-                            side: const BorderSide(color: Colors.brown),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Order Again',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        buildRatingWidget(),
-                      ],
-                    )
-                        : OutlinedButton(
-                      onPressed: () {
-                        // Navigate to tracking using GoRouter
-                        context.go('/tracking', extra: order.id);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.brown,
-                        side: const BorderSide(color: Colors.brown),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        'Tracking Order',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
                   ],
                 ),
               ),

@@ -24,8 +24,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLoginStatus();
+    });
   }
+
   @override
   void dispose() {
     _emailController.dispose();

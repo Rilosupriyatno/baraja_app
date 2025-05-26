@@ -1,5 +1,7 @@
+import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:baraja_app/screens/reservation_screen.dart';
 import 'package:baraja_app/screens/scanner.dart';
+import 'package:baraja_app/screens/auth_redirect_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -9,7 +11,6 @@ import '../pages/account_settings_page.dart';
 import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
 import '../screens/cart_screen.dart';
-import '../screens/checkout_page.dart';
 import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/order_history_screen.dart';
@@ -30,7 +31,7 @@ class AppRouter {
         // Existing routes (home, cart, etc.)
         GoRoute(
           path: '/',
-          builder: (context, state) => const LoginScreen(),
+          builder: (context, state) => const AuthRedirectPage(),
         ),
 
         // auth routes

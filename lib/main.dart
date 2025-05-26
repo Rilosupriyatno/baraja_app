@@ -33,6 +33,11 @@ void main() async {
   socket.onDisconnect((_) => print('disconnect'));
   socket.on('fromServer', (_) => print(_));
 
+  // FlutterError.onError = (FlutterErrorDetails details) {
+  //   FlutterError.dumpErrorToConsole(details); // Default behavior
+  //   debugPrint("CAUGHT FLUTTER ERROR:\n${details.exceptionAsString()}");
+  //   debugPrint("STACK TRACE:\n${details.stack}");
+  // };
   runApp(
     MultiProvider(
       providers: [

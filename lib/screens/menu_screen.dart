@@ -3,7 +3,7 @@ import '../models/category.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../widgets/detail_product/checkout_button.dart';
-import '../widgets/menu/menu_selector.dart';
+// import '../widgets/menu/menu_selector.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/utils/classic_app_bar.dart';
@@ -208,17 +208,17 @@ class _MenuScreenState extends State<MenuScreen> {
             : Column(
           children: [
             // Menu selector (Makanan/Minuman)
-            MenuSelector(
-              selectedMenu: selectedMenu,
-              onMenuSelected: (menu) {
-                setState(() {
-                  selectedMenu = menu;
-                  if (_categoriesMap[menu]!.isNotEmpty) {
-                    selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
-                  }
-                });
-              },
-            ),
+            // MenuSelector(
+            //   selectedMenu: selectedMenu,
+            //   onMenuSelected: (menu) {
+            //     setState(() {
+            //       selectedMenu = menu;
+            //       if (_categoriesMap[menu]!.isNotEmpty) {
+            //         selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
+            //       }
+            //     });
+            //   },
+            // ),
 
             // Sub-menu slider
             SubMenuSlider(

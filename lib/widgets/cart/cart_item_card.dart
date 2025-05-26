@@ -45,14 +45,32 @@ class CartItemCard extends StatelessWidget {
                   height: 80,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                    return SizedBox(
                       width: 80,
                       height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image_not_supported),
+                      child: Image.asset(
+                        'assets/images/product_default_image.jpeg',
+                        fit: BoxFit.cover,
+                      ),
                     );
                   },
-                ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                              (loadingProgress.expectedTotalBytes ?? 1)
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
+                )
+                ,
               ),
               const SizedBox(width: 12),
 

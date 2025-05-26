@@ -16,36 +16,6 @@ class CartItemWidget extends StatelessWidget {
     // required this.onRemove,
   });
 
-  Widget _buildImage(String url) {
-    // Check if url is empty or null first
-    if (url.isEmpty) {
-      return Container(
-        color: Colors.grey[300],
-        child: const Icon(Icons.image_not_supported),
-      );
-    }
-
-    // Then check if it's a valid URL
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      return Container(
-        color: Colors.grey[300],
-        child: const Icon(Icons.image_not_supported),
-      );
-    }
-
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.image_not_supported),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -78,7 +48,27 @@ class CartItemWidget extends StatelessWidget {
                   color: Colors.grey.shade200,
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: _buildImage(item.imageUrl),
+                child: item.imageUrl.isNotEmpty
+                    ? Image.network(
+                  item.imageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/images/product_default_image.jpeg',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  },
+                )
+                    : Image.asset(
+                  'assets/images/product_default_image.jpeg',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
 
               const SizedBox(width: 12),
@@ -127,17 +117,20 @@ class CartItemWidget extends StatelessWidget {
                       //     child: const Icon(Icons.remove, size: 16),
                       //   ),
                       // ),
-
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        // decoration: BoxDecoration(
-                        //   border: Border.all(color: Colors.grey.shade300),
-                        //   borderRadius: BorderRadius.circular(4),
-                        // ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Text(
-                          "x ${item.quantity}",
-                          style: const TextStyle(fontSize: 14),
+                          "x${item.quantity}",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54,
+                          ),
                         ),
                       ),
 
