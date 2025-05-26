@@ -76,6 +76,8 @@ class ProductService {
               discountPercentage = productJson['discountPercentage'].toString();
             }
 
+            // print(discountPercentage);
+
             // Parse prices safely
             double originalPrice = 0.0;
             if (productJson['price'] != null) {

@@ -197,4 +197,3 @@ class AuthService with ChangeNotifier {
     notifyListeners();
   }
 }
-

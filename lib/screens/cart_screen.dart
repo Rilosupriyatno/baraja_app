@@ -158,7 +158,7 @@ class CartScreenState extends State<CartScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: cartItems.isEmpty ? null : () {
-                    context.push('/checkout');
+                    context.go('/checkout');
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),

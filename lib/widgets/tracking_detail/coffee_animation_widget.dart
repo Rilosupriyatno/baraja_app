@@ -69,14 +69,14 @@ class CoffeeAnimationWidget extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
               child: Image.asset(
-                'assets/animations/waiting.gif',
-                width: 300,
-                height: 300,
+                'assets/animations/waiting2.gif',
+                width: 400,
+                height: 500,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     width: 180,
-                    height: 180,
+                    height: 280,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [

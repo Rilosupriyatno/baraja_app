@@ -226,7 +226,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const Text('Sudah punya akun?'),
                       TextButton(
                         onPressed: () {
-                          context.push('/login');
+                          context.go('/login');
                         },
                         child: const Text(
                           'Masuk',

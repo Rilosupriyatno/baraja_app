@@ -1,9 +1,9 @@
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
+import '../services/order_service.dart'; // Import OrderService
 
 class TrackingDetailOrderScreen extends StatefulWidget {
   final String orderId;
@@ -32,8 +32,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   bool isLoading = true;
   String? errorMessage;
 
-  // API Configuration
-  static const String baseUrl = 'https://b59d-103-166-9-228.ngrok-free.app'; // Ganti dengan URL API Anda
+  // OrderService instance
+  final OrderService _orderService = OrderService();
 
   @override
   void initState() {
@@ -58,40 +58,30 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   Future<void> _fetchOrderData() async {
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-      // print("ini adalah order id anda = ${widget.orderId}");
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/order/${widget.orderId}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-          // Tambahkan authorization header jika diperlukan
-          // 'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
-// print("ini adalah response dari api = ${response.body}");
-      if (response.statusCode == 200) {
-        print(response);
-        final jsonData = json.decode(response.body);
+    try {
+      final result = await _orderService.getOrderForTracking(widget.orderId);
+
+      if (result['success']) {
         setState(() {
-          orderData = jsonData['orderData'];
+          orderData = result['data'];
           isLoading = false;
           _updateOrderStatus();
         });
       } else {
-        throw Exception('Failed to load order: ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+          errorMessage = result['error'];
+        });
       }
     } catch (e) {
       setState(() {
         isLoading = false;
-        errorMessage = e.toString().contains('TimeoutException')
-            ? 'Koneksi timeout. Silakan coba lagi.'
-            : 'Gagal memuat data pesanan. Silakan coba lagi.';
+        errorMessage = 'Terjadi kesalahan yang tidak terduga.';
       });
     }
   }
@@ -99,28 +89,13 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   void _updateOrderStatus() {
     if (orderData == null) return;
 
-    // Update status berdasarkan data dari API
-    final paymentStatus = orderData!['paymentStatus']?.toString().toLowerCase() ?? '';
+    final statusInfo = _orderService.getOrderStatusInfo(orderData!);
 
-    if (paymentStatus == 'lunas') {
-      setState(() {
-        orderStatus = 'Pesananmu sedang dibuat';
-        statusColor = const Color(0xFFF59E0B);
-        statusIcon = Icons.coffee_maker;
-      });
-    } else if (paymentStatus == 'menunggu') {
-      setState(() {
-        orderStatus = 'Menunggu pembayaran';
-        statusColor = const Color(0xFFEF4444);
-        statusIcon = Icons.payment;
-      });
-    } else {
-      setState(() {
-        orderStatus = 'Status tidak diketahui';
-        statusColor = const Color(0xFF6B7280);
-        statusIcon = Icons.help_outline;
-      });
-    }
+    setState(() {
+      orderStatus = statusInfo['status'];
+      statusColor = statusInfo['color'];
+      statusIcon = statusInfo['icon'];
+    });
   }
 
   Future<void> _refreshData() async {
@@ -207,58 +182,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 18),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        title: const Text(
-          'Tracking Detail',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.black87, size: 20),
-              onPressed: isLoading ? null : _refreshData,
-            ),
-          ),
-        ],
-      ),
+      appBar: const ClassicAppBar(title: 'Detail Pesanan'),
       body: isLoading
           ? _buildLoadingState()
           : errorMessage != null

@@ -56,10 +56,26 @@ class MenuProductCard extends StatelessWidget {
                 child: Stack(
                   children: [
                     Center(
-                      child: Icon(
-                        Icons.coffee,
-                        color: Colors.white.withOpacity(0.7), // Menggunakan withOpacity alih-alih withValues
-                        size: 60,
+                      child: product.imageUrl.isNotEmpty
+                          ? Image.network(
+                        product.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/product_default_image.jpeg',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          );
+                        },
+                      )
+                          : Image.asset(
+                        'assets/images/product_default_image.jpeg',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
                     ),
                     if (bundleText != null)
@@ -101,14 +117,16 @@ class MenuProductCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      formatCurrency(product.originalPrice?.round() ?? 0), // Menggunakan formatCurrency
-                      style: TextStyle(
-                        decoration: TextDecoration.lineThrough,
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
+                    // Harga coret jika ada diskon
+                    // if (product.discountPrice != 0)
+                    //   Text(
+                    //     formatCurrency(product.originalPrice?.round() ?? 0),
+                    //     style: TextStyle(
+                    //       decoration: TextDecoration.lineThrough,
+                    //       color: Colors.grey[600],
+                    //       fontSize: 14,
+                    //     ),
+                    //   ),
                     Text(
                       formatCurrency(product.discountPrice?.round() ?? 0), // Menggunakan formatCurrency
                       style: const TextStyle(

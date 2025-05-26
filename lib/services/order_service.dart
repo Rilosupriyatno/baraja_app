@@ -118,6 +118,138 @@ class OrderService {
       return [];
     }
   }
+  // Static configuration untuk tracking
+  static const Duration requestTimeout = Duration(seconds: 10);
+
+  /// Mengambil data order berdasarkan orderId untuk tracking
+  ///
+  /// Returns: Map<String, dynamic> dengan structure:
+  /// - success: bool
+  /// - data: Map<String, dynamic>? (orderData)
+  /// - error: String? (error message)
+  Future<Map<String, dynamic>> getOrderForTracking(String orderId) async {
+    try {
+      // Get auth token dari SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken');
+
+      // Headers untuk request
+      final headers = {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/order/$orderId'),
+        headers: headers,
+      ).timeout(requestTimeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        return {
+          'success': true,
+          'data': jsonData['orderData'] ?? jsonData, // Fallback jika structure berbeda
+          'error': null,
+        };
+      } else {
+        return {
+          'success': false,
+          'data': null,
+          'error': 'Failed to load order: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      String errorMessage;
+
+      if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else {
+        errorMessage = 'Gagal memuat data pesanan. Silakan coba lagi.';
+      }
+
+      return {
+        'success': false,
+        'data': null,
+        'error': errorMessage,
+      };
+    }
+  }
+
+  /// Mengambil status order dalam format yang mudah digunakan untuk tracking UI
+  ///
+  /// Returns: Map<String, dynamic> dengan structure:
+  /// - status: String (order status text)
+  /// - color: Color (status color)
+  /// - icon: IconData (status icon)
+  Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
+    // Cek payment status terlebih dahulu
+    final paymentStatus = orderData['paymentStatus']?.toString().toLowerCase() ?? '';
+
+    if (paymentStatus == 'lunas') {
+      // Jika sudah lunas, cek order status
+      final orderStatus = orderData['status']?.toString().toLowerCase() ?? '';
+
+      switch (orderStatus) {
+        case 'pending':
+          return {
+            'status': 'Pesanan dikonfirmasi',
+            'color': const Color(0xFF3B82F6),
+            'icon': Icons.check_circle,
+          };
+        case 'processing':
+          return {
+            'status': 'Pesananmu sedang dibuat',
+            'color': const Color(0xFFF59E0B),
+            'icon': Icons.coffee_maker,
+          };
+        case 'ready':
+          return {
+            'status': 'Pesanan siap diambil',
+            'color': const Color(0xFF10B981),
+            'icon': Icons.done_all,
+          };
+        case 'on the way':
+          return {
+            'status': 'Pesanan dalam perjalanan',
+            'color': const Color(0xFF8B5CF6),
+            'icon': Icons.local_shipping,
+          };
+        case 'completed':
+          return {
+            'status': 'Pesanan selesai',
+            'color': const Color(0xFF059669),
+            'icon': Icons.celebration,
+          };
+        case 'cancelled':
+          return {
+            'status': 'Pesanan dibatalkan',
+            'color': const Color(0xFFEF4444),
+            'icon': Icons.cancel,
+          };
+        default:
+          return {
+            'status': 'Pesananmu sedang dibuat',
+            'color': const Color(0xFFF59E0B),
+            'icon': Icons.coffee_maker,
+          };
+      }
+    } else if (paymentStatus == 'menunggu' || paymentStatus == 'pending') {
+      return {
+        'status': 'Menunggu pembayaran',
+        'color': const Color(0xFFEF4444),
+        'icon': Icons.payment,
+      };
+    } else {
+      return {
+        'status': 'Status tidak diketahui',
+        'color': const Color(0xFF6B7280),
+        'icon': Icons.help_outline,
+      };
+    }
+  }
+
 
   // Fungsi untuk memetakan data JSON dari API ke model Order Flutter
   Order _mapToOrder(Map<String, dynamic> orderData) {

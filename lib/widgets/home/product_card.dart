@@ -71,10 +71,26 @@ class ProductCard extends StatelessWidget {
                       children: [
                         // Coffee cup image representation
                         Center(
-                          child: Icon(
-                            Icons.coffee,
-                            color: Colors.white.withOpacity(0.7),
-                            size: 60,
+                          child: product.imageUrl.isNotEmpty
+                              ? Image.network(
+                            product.imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/product_default_image.jpeg',
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                              );
+                            },
+                          )
+                              : Image.asset(
+                            'assets/images/product_default_image.jpeg',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
                           ),
                         ),
 
@@ -126,14 +142,14 @@ class ProductCard extends StatelessWidget {
                         ),
 
                         // Original price
-                        Text(
-                          formatCurrency(product.originalPrice?.round() ?? 0)
-                          , // Changed to use formatCurrency directly
-                          style: const TextStyle(
-                            fontSize: 12,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
+                        // Text(
+                        //   formatCurrency(product.originalPrice?.round() ?? 0)
+                        //   , // Changed to use formatCurrency directly
+                        //   style: const TextStyle(
+                        //     fontSize: 12,
+                        //     decoration: TextDecoration.lineThrough,
+                        //   ),
+                        // ),
 
                         // Discount price
                         Text(

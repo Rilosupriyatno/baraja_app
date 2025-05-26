@@ -13,6 +13,7 @@ analyzer:
     deprecated_member_use: ignore
     library_prefixes: ignore
     no_wildcard_variable_uses: ignore
+    unreachable_switch_default: ignore
     unrelated_type_equality_checks: ignore
     use_build_context_synchronously: ignore
 include: package:flutter_lints/flutter.yaml
