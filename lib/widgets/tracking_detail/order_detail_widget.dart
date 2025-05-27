@@ -448,27 +448,6 @@ class OrderDetailWidget extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                PaymentRowWidget(
-                  label: 'Subtotal',
-                  value: formatCurrency(orderData['subtotal']),
-                  icon: Icons.receipt_outlined,
-                  isTotal: false,
-                ),
-                const SizedBox(height: 12),
-                PaymentRowWidget(
-                  label: 'Add-ons & Toppings',
-                  value: formatCurrency(orderData['addonPrice']),
-                  icon: Icons.add_circle_outline,
-                  isTotal: false,
-                ),
-                // const SizedBox(height: 12),
-                // PaymentRowWidget(
-                //   label: 'Pajak',
-                //   value: 'Rp.${orderData['tax'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                //   icon: Icons.percent,
-                //   isTotal: false,
-                // ),
                 const SizedBox(height: 16),
                 Container(
                   height: 1,
