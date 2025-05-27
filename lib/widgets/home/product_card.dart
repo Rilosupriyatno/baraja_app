@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
-import 'package:go_router/go_router.dart';
+// Remove the go_router import since we're not using navigation anymore
+// import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
+import '../../utils/currency_formatter.dart';
+import '../../screens/product_detail_modal.dart'; // Import the new modal
 
 class ProductCard extends StatelessWidget {
   final Product product;
   final bool isActive;
   final String? bundleText;
 
-  // Removed the NumberFormat parameter as we're now using formatCurrency directly
   const ProductCard({
     super.key,
     required this.product,
@@ -22,13 +23,31 @@ class ProductCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 0.0),
       child: SizedBox(
-        width: 210, // Set width to 210 for square shape
-        height: 210, // Set height to 210 for square shape
+        width: 210,
+        height: 210,
         child: GestureDetector(
           onTap: () {
-            context.push('/product/${product.id}');
+            print('Product card tapped: ${product.name}'); // Debug print
+            try {
+              ProductDetailModal.show(context, product);
+            } catch (e) {
+              print('Error showing modal: $e');
+              // Fallback - show simple dialog for debugging
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(product.name),
+                  content: const Text('Modal error, but tap detected!'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            }
           },
-
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             clipBehavior: Clip.antiAlias,
@@ -41,7 +60,7 @@ class ProductCard extends StatelessWidget {
                   color: Colors.black.withOpacity(0.2),
                   blurRadius: 3,
                   spreadRadius: 1,
-                  offset: const Offset(2, 0), // Bayangan ke kanan
+                  offset: const Offset(2, 0),
                 ),
               ]
                   : [
@@ -49,7 +68,7 @@ class ProductCard extends StatelessWidget {
                   color: Colors.black.withOpacity(0.1),
                   blurRadius: 2,
                   spreadRadius: 1,
-                  offset: const Offset(2, 0), // Bayangan ke kanan
+                  offset: const Offset(2, 0),
                 ),
               ],
             ),
@@ -100,7 +119,8 @@ class ProductCard extends StatelessWidget {
                             top: 8,
                             right: 8,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
@@ -131,29 +151,24 @@ class ProductCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Product name
-                        Text(
-                          product.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            product.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
 
-                        // Original price
-                        // Text(
-                        //   formatCurrency(product.originalPrice?.round() ?? 0)
-                        //   , // Changed to use formatCurrency directly
-                        //   style: const TextStyle(
-                        //     fontSize: 12,
-                        //     decoration: TextDecoration.lineThrough,
-                        //   ),
-                        // ),
 
                         // Discount price
                         Text(
-                          formatCurrency(product.discountPrice?.round() ?? 0), // Changed to use formatCurrency directly
+                          formatCurrency(
+                              product.discountPrice?.round() ?? 0),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,

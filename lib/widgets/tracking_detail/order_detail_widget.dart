@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/currency_formatter.dart';
 import 'payment_row_widget.dart';
 
 class OrderDetailWidget extends StatelessWidget {
@@ -9,6 +11,7 @@ class OrderDetailWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = orderData['items'][0];
+    print(orderData['paymentStatus']);
 
     return Container(
       width: double.infinity,
@@ -50,10 +53,10 @@ class OrderDetailWidget extends StatelessWidget {
                       children: [
                         Text(
                           orderData['orderNumber'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF8B5CF6),
+                            color: AppTheme.barajaPrimary.primaryColor,
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -71,17 +74,17 @@ class OrderDetailWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                          color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
                         ),
                       ),
                       child: Text(
                         orderData['orderDate'],
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF8B5CF6),
+                          color: AppTheme.barajaPrimary.primaryColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -104,12 +107,12 @@ class OrderDetailWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.receipt_long,
-                        color: Color(0xFF8B5CF6),
+                        color: AppTheme.barajaPrimary.primaryColor,
                         size: 20,
                       ),
                     ),
@@ -132,24 +135,37 @@ class OrderDetailWidget extends StatelessWidget {
                     color: const Color(0xFFF8F9FF),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
                     ),
                   ),
                   child: Column(
                     children: [
                       Row(
                         children: [
-                          Container(
+                          SizedBox(
                             width: 40,
                             height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.brown.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.coffee,
-                              color: Colors.brown.shade700,
-                              size: 20,
+                            child: (item['imageUrl'] != null && item['imageUrl'].isNotEmpty &&
+                                item['imageUrl'] != 'https://placehold.co/1920x1080/png')
+                                ? Image.network(
+                              item['imageUrl'],
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  'assets/images/product_default_image.jpeg',
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                );
+                              },
+                            )
+                                : Image.asset(
+                              'assets/images/product_default_image.jpeg',
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -180,7 +196,7 @@ class OrderDetailWidget extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'Rp.${item['price'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                            formatCurrency(item['price']),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -195,10 +211,10 @@ class OrderDetailWidget extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                              color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                                color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
                               ),
                             ),
                             child: Row(
@@ -207,17 +223,17 @@ class OrderDetailWidget extends StatelessWidget {
                                 Container(
                                   width: 6,
                                   height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF8B5CF6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.barajaPrimary.primaryColor,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'Size ${item['size']}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF8B5CF6),
+                                    color: AppTheme.barajaPrimary.primaryColor,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -435,24 +451,24 @@ class OrderDetailWidget extends StatelessWidget {
                 const SizedBox(height: 20),
                 PaymentRowWidget(
                   label: 'Subtotal',
-                  value: 'Rp.${orderData['subtotal'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  value: formatCurrency(orderData['subtotal']),
                   icon: Icons.receipt_outlined,
                   isTotal: false,
                 ),
                 const SizedBox(height: 12),
                 PaymentRowWidget(
                   label: 'Add-ons & Toppings',
-                  value: 'Rp.${orderData['addonPrice'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  value: formatCurrency(orderData['addonPrice']),
                   icon: Icons.add_circle_outline,
                   isTotal: false,
                 ),
-                const SizedBox(height: 12),
-                PaymentRowWidget(
-                  label: 'Pajak',
-                  value: 'Rp.${orderData['tax'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                  icon: Icons.percent,
-                  isTotal: false,
-                ),
+                // const SizedBox(height: 12),
+                // PaymentRowWidget(
+                //   label: 'Pajak',
+                //   value: 'Rp.${orderData['tax'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                //   icon: Icons.percent,
+                //   isTotal: false,
+                // ),
                 const SizedBox(height: 16),
                 Container(
                   height: 1,
@@ -462,7 +478,7 @@ class OrderDetailWidget extends StatelessWidget {
                 const SizedBox(height: 16),
                 PaymentRowWidget(
                   label: 'Total',
-                  value: 'Rp.${orderData['total'].toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                  value: formatCurrency(orderData['total']),
                   icon: Icons.receipt,
                   isTotal: true,
                 ),
