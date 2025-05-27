@@ -187,9 +187,9 @@ class OrderService {
     // Cek payment status terlebih dahulu
     final paymentStatus = orderData['paymentStatus']?.toString().toLowerCase() ?? '';
 
-    if (paymentStatus == 'lunas') {
+    if (paymentStatus == 'settlement') {
       // Jika sudah lunas, cek order status
-      final orderStatus = orderData['status']?.toString().toLowerCase() ?? '';
+      final orderStatus = orderData['orderStatus']?.toString().toLowerCase() ?? '';
 
       switch (orderStatus) {
         case 'pending':
