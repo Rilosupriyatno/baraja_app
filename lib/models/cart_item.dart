@@ -18,7 +18,7 @@ class CartItem {
     required this.quantity,
     required this.addons,
     required this.toppings,
-    int? totalprice, // Optional parameter - if provided, use it directly
+    int? totalprice, String? notes, // Optional parameter - if provided, use it directly
   }) : _totalprice = totalprice ?? calculateTotalPrice(price, addons, toppings);
 
   // Getter for total price

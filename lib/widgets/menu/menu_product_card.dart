@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
+import '../../screens/product_detail_modal.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
 
@@ -18,8 +19,30 @@ class MenuProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Tidak perlu lagi membuat NumberFormat currencyFormatter
     return GestureDetector(
+      // onTap: () {
+      //   context.push('/product/${product.id}');
+      // },
       onTap: () {
-        context.push('/product/${product.id}');
+        print('Product card tapped: ${product.name}'); // Debug print
+        try {
+          ProductDetailModal.show(context, product);
+        } catch (e) {
+          print('Error showing modal: $e');
+          // Fallback - show simple dialog for debugging
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(product.name),
+              content: const Text('Modal error, but tap detected!'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        }
       },
       child: Container(
         height: 250,
@@ -115,6 +138,7 @@ class MenuProductCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     // Harga coret jika ada diskon

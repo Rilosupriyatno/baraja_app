@@ -36,17 +36,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     try {
       final orders = await _orderService.getUserOrderHistory();
       // ✅ Tampilkan order di terminal
-      for (var order in orders) {
-        print('Order ID: ${order.id}');
-        print('Status: ${order.status}');
-        print('Total: ${order.total}');
-        print('Order Time: ${order.orderTime}');
-        print('Items:');
-        for (var item in order.items) {
-          print(' - ${item.name}');
-        }
-        print('----------------------');
-      }
+      // for (var order in orders) {
+      //   print('Order ID: ${order.id}');
+      //   print('Status: ${order.status}');
+      //   print('Total: ${order.total}');
+      //   print('Order Time: ${order.orderTime}');
+      //   print('Items:');
+      //   for (var item in order.items) {
+      //     print(' - ${item.name}');
+      //   }
+      //   print('----------------------');
+      // }
       setState(() {
         _orders = orders;
         _isLoading = false;
@@ -196,7 +196,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
               SizedBox(
                 width: 70,
                 height: 70,
-                child: firstItem.imageUrl.isNotEmpty
+                child: firstItem.imageUrl.isNotEmpty &&
+                    firstItem.imageUrl != 'https://placehold.co/1920x1080/png'
                     ? Image.network(
                   firstItem.imageUrl,
                   fit: BoxFit.cover,
