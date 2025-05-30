@@ -68,6 +68,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         addons: item.addons,
         toppings: item.toppings,
         imageUrl: item.imageUrl,
+        notes: item.notes, // Added notes support
       )).toList(),
       orderType: widget.orderType,
       tableNumber: widget.tableNumber,

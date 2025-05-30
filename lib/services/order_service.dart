@@ -8,7 +8,6 @@ import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
 
-
 class OrderService {
   // Change this to your actual API base URL
   final String? baseUrl = dotenv.env['BASE_URL'];
@@ -100,14 +99,15 @@ class OrderService {
         Uri.parse('$baseUrl/api/orders/history/$userId'),
         headers: {
           'Content-Type': 'application/json',
-          // Tambahkan header authorization jika diperlukan
-          'Authorization': 'Bearer ${prefs.getString('token') ?? ''}',
+          // Updated token key to match createOrder method
+          'Authorization': 'Bearer ${prefs.getString('authToken') ?? ''}',
         },
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        final List<dynamic> ordersData = responseData['orders'];
+        // Updated to match new API structure
+        final List<dynamic> ordersData = responseData['orderHistory'] ?? [];
 
         return ordersData.map((orderData) => _mapToOrder(orderData)).toList();
       } else {
@@ -118,6 +118,7 @@ class OrderService {
       return [];
     }
   }
+
   // Static configuration untuk tracking
   static const Duration requestTimeout = Duration(seconds: 10);
 
@@ -189,7 +190,7 @@ class OrderService {
 
     if (paymentStatus == 'settlement') {
       // Jika sudah lunas, cek order status
-      final orderStatus = orderData['orderStatus']?.toString().toLowerCase() ?? '';
+      final orderStatus = orderData['status']?.toString().toLowerCase() ?? '';
 
       switch (orderStatus) {
         case 'pending':
@@ -235,7 +236,7 @@ class OrderService {
             'icon': Icons.coffee_maker,
           };
       }
-    } else if (paymentStatus == 'menunggu' || paymentStatus == 'pending') {
+    } else if (paymentStatus == 'pending') {
       return {
         'status': 'Menunggu pembayaran',
         'color': const Color(0xFFEF4444),
@@ -250,38 +251,40 @@ class OrderService {
     }
   }
 
-
-  // Fungsi untuk memetakan data JSON dari API ke model Order Flutter
+  // Updated mapping function to match new API structure and include notes
   Order _mapToOrder(Map<String, dynamic> orderData) {
     // Mengonversi status dari string ke enum OrderStatus
     OrderStatus getOrderStatus(String statusString) {
-      switch (statusString) {
-        case 'Pending':
+      switch (statusString.toLowerCase()) {
+        case 'pending':
           return OrderStatus.pending;
-        case 'Processing':
+        case 'processing':
           return OrderStatus.processing;
-        case 'On The Way':
+        case 'on the way':
           return OrderStatus.onTheWay;
-        case 'Ready':
+        case 'ready':
           return OrderStatus.ready;
-        case 'Completed':
+        case 'completed':
           return OrderStatus.completed;
-        case 'Cancelled':
+        case 'cancelled':
           return OrderStatus.cancelled;
         default:
           return OrderStatus.pending;
       }
     }
 
-    // Mengonversi orderType dari string ke enum OrderType
-    OrderType getOrderType(String typeString) {
-      switch (typeString) {
-        case 'Delivery':
+    // Mengonversi orderType dari string ke enum OrderType (default to dineIn if not provided)
+    OrderType getOrderType(String? typeString) {
+      if (typeString == null) return OrderType.dineIn;
+
+      switch (typeString.toLowerCase()) {
+        case 'delivery':
           return OrderType.delivery;
-        case 'Pick-up':
-        case 'Pickup':
+        case 'pick-up':
+        case 'pickup':
           return OrderType.pickup;
-        case 'Dine-In':
+        case 'dine-in':
+        case 'dinein':
         default:
           return OrderType.dineIn;
       }
@@ -298,7 +301,7 @@ class OrderService {
         if (item['addons'] != null && item['addons'].isNotEmpty) {
           for (var addon in item['addons']) {
             addonsList.add({
-              'name': addon['label'] ?? '',
+              'name': addon['name'] ?? addon['label'] ?? '',
               'price': addon['price'] ?? 0,
             });
           }
@@ -317,12 +320,13 @@ class OrderService {
         cartItems.add(CartItem(
           id: menuItem['_id'] ?? '',
           name: menuItem['name'] ?? 'Unknown Item',
-          imageUrl: menuItem['imageURL'] ?? 'https://via.placeholder.com/150',
+          imageUrl: menuItem['imageURL'] ?? '',
           price: menuItem['price'] ?? 0,
           totalprice: item['subtotal'] ?? 0,
           quantity: item['quantity'] ?? 1,
-          addons: addonsList,  // Menggunakan List<Map<String, dynamic>>
-          toppings: toppingsList,  // Menggunakan List<Map<String, dynamic>>
+          addons: addonsList,
+          toppings: toppingsList,
+          notes: item['notes'], // Added notes field from API response
         ));
       }
     }
@@ -333,33 +337,29 @@ class OrderService {
       subtotal += item.totalprice;
     }
 
-    // Menghitung diskon jika ada voucher
+    // Menghitung diskon jika ada voucher (default 0 for new structure)
     int discount = 0;
-    if (orderData['voucher'] != null) {
-      // Implementasikan perhitungan diskon sesuai dengan format data voucher Anda
-      // Misalnya:
-      // discount = orderData['voucher']['discountAmount'] ?? 0;
-    }
+    // Add discount calculation logic here if needed
 
     // Total setelah diskon
     int total = subtotal - discount;
 
-    // Membuat objek Order
+    // Membuat objek Order dengan data baru
     return Order(
       id: orderData['_id'] ?? '',
       items: cartItems,
-      orderType: getOrderType(orderData['orderType'] ?? 'Dine-In'),
+      orderType: getOrderType(orderData['orderType']),
       tableNumber: orderData['tableNumber'] ?? '',
       deliveryAddress: orderData['deliveryAddress'] ?? '',
-      pickupTime: null, // Sesuaikan jika ada data pickupTime dari API
+      pickupTime: null, // Add if available in API
       paymentDetails: {
-        'method': 'Cash', // Sesuaikan dengan data payment dari API
-        'status': 'Paid'  // Sesuaikan dengan data payment dari API
+        'method': orderData['paymentMethod'] ?? 'Cash',
+        'status': orderData['paymentStatus'] ?? 'pending'
       },
       subtotal: subtotal,
       discount: discount,
       total: total,
-      voucherCode: orderData['voucher'] != null ? orderData['voucher']['code'] : null,
+      voucherCode: orderData['voucherCode'],
       orderTime: orderData['createdAt'] != null
           ? DateTime.parse(orderData['createdAt'])
           : DateTime.now(),

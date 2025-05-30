@@ -8,9 +8,40 @@ class OrderDetailWidget extends StatelessWidget {
 
   const OrderDetailWidget({super.key, required this.orderData});
 
+  // Method untuk mendapatkan status pembayaran
+  Map<String, dynamic> _getPaymentStatus(String status) {
+    switch (status) {
+      case 'settlement':
+        return {
+          'label': 'Lunas',
+          'icon': Icons.check_circle,
+          'color': Colors.green,
+        };
+      case 'pending':
+        return {
+          'label': 'Menunggu Pembayaran',
+          'icon': Icons.access_time,
+          'color': Colors.orange,
+        };
+      case 'expired':
+        return {
+          'label': 'Kadaluarsa',
+          'icon': Icons.cancel,
+          'color': Colors.red,
+        };
+      default:
+        return {
+          'label': 'Tidak Diketahui',
+          'icon': Icons.help,
+          'color': Colors.grey,
+        };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = orderData['items'][0];
+    final paymentStatus = _getPaymentStatus(orderData['paymentStatus']);
     print(orderData['paymentStatus']);
 
     return Container(
@@ -60,15 +91,15 @@ class OrderDetailWidget extends StatelessWidget {
                             letterSpacing: -0.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'ID: ${orderData['orderId']}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        // const SizedBox(height: 4),
+                        // Text(
+                        //   'ID: ${orderData['orderId']}',
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: Colors.grey.shade600,
+                        //     fontWeight: FontWeight.w500,
+                        //   ),
+                        // ),
                       ],
                     ),
                     Container(
@@ -469,12 +500,50 @@ class OrderDetailWidget extends StatelessWidget {
                   isTotal: false,
                 ),
                 const SizedBox(height: 12),
-                PaymentRowWidget(
-                  label: 'Status Pembayaran',
-                  value: orderData['paymentStatus'],
-                  icon: Icons.check_circle,
-                  isTotal: false,
-                  isSuccess: true,
+                // Custom Payment Status Widget
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: paymentStatus['color'].withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: paymentStatus['color'].withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        paymentStatus['icon'],
+                        size: 20,
+                        color: paymentStatus['color'],
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Status Pembayaran',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: paymentStatus['color'],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          paymentStatus['label'],
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

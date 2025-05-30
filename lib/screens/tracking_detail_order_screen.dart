@@ -57,6 +57,34 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     _pulseController.repeat(reverse: true);
   }
 
+  // Future<void> _fetchOrderData() async {
+  //   setState(() {
+  //     isLoading = true;
+  //     errorMessage = null;
+  //   });
+  //
+  //   try {
+  //     final result = await _orderService.getOrderForTracking(widget.orderId);
+  //
+  //     if (result['success']) {
+  //       setState(() {
+  //         orderData = result['data'];
+  //         isLoading = false;
+  //         _updateOrderStatus();
+  //       });
+  //     } else {
+  //       setState(() {
+  //         isLoading = false;
+  //         errorMessage = result['error'];
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       isLoading = false;
+  //       errorMessage = 'Terjadi kesalahan yang tidak terduga.';
+  //     });
+  //   }
+  // }
   Future<void> _fetchOrderData() async {
     setState(() {
       isLoading = true;
@@ -64,39 +92,93 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     });
 
     try {
+      print('🔍 Fetching order data for ID: ${widget.orderId}');
+
       final result = await _orderService.getOrderForTracking(widget.orderId);
 
+      // Debug: Print raw result
+      print('📦 Raw result: $result');
+      print('📦 Result success: ${result['success']}');
+      print('📦 Result data: ${result['data']}');
+      print('📦 Result error: ${result['error']}');
+
       if (result['success']) {
+        final data = result['data'];
+
+        // Debug: Print order data structure
+        print('📋 Order data keys: ${data?.keys}');
+        if (data != null) {
+          print('📋 Payment status: ${data['paymentDetails']?['status']}');
+          print('📋 Order status: ${data['status']}');
+          print('📋 Order items count: ${data['items']?.length}');
+        }
+
         setState(() {
-          orderData = result['data'];
+          orderData = data;
           isLoading = false;
           _updateOrderStatus();
         });
       } else {
+        print('❌ Failed to fetch order: ${result['error']}');
         setState(() {
           isLoading = false;
           errorMessage = result['error'];
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Exception in _fetchOrderData: $e');
+      print('❌ Stack trace: $stackTrace');
       setState(() {
         isLoading = false;
-        errorMessage = 'Terjadi kesalahan yang tidak terduga.';
+        errorMessage = 'Terjadi kesalahan: ${e.toString()}';
       });
     }
   }
 
   void _updateOrderStatus() {
-    if (orderData == null) return;
+    if (orderData == null) {
+      print('⚠️ orderData is null in _updateOrderStatus');
+      return;
+    }
 
-    final statusInfo = _orderService.getOrderStatusInfo(orderData!);
+    try {
+      print('🔄 Updating order status...');
+      print('🔄 Order data before status update: $orderData');
 
-    setState(() {
-      orderStatus = statusInfo['status'];
-      statusColor = statusInfo['color'];
-      statusIcon = statusInfo['icon'];
-    });
+      final statusInfo = _orderService.getOrderStatusInfo(orderData!);
+
+      print('📊 Status info result: $statusInfo');
+
+      setState(() {
+        orderStatus = statusInfo['status'];
+        statusColor = statusInfo['color'];
+        statusIcon = statusInfo['icon'];
+      });
+
+      print('✅ Status updated successfully: $orderStatus');
+    } catch (e, stackTrace) {
+      print('❌ Error in _updateOrderStatus: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      // Set default values if status update fails
+      setState(() {
+        orderStatus = 'Status tidak dapat dimuat';
+        statusColor = Colors.grey;
+        statusIcon = Icons.help_outline;
+      });
+    }
   }
+  // void _updateOrderStatus() {
+  //   if (orderData == null) return;
+  //
+  //   final statusInfo = _orderService.getOrderStatusInfo(orderData!);
+  //
+  //   setState(() {
+  //     orderStatus = statusInfo['status'];
+  //     statusColor = statusInfo['color'];
+  //     statusIcon = statusInfo['icon'];
+  //   });
+  // }
 
   Future<void> _refreshData() async {
     await _fetchOrderData();

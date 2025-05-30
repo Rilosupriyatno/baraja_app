@@ -54,6 +54,7 @@ class Order {
         'addons': item.addons,
         'toppings': item.toppings,
         'quantity': item.quantity,
+        'notes': item.notes, // Added notes to map
       }).toList(),
       'orderType': orderType.toString(),
       'tableNumber': tableNumber,
@@ -112,6 +113,7 @@ class Order {
         addons: itemMap['addons'],
         toppings: itemMap['toppings'],
         quantity: itemMap['quantity'],
+        notes: itemMap['notes'], // Added notes support
       )).toList(),
       orderType: orderType,
       tableNumber: map['tableNumber'] ?? '',

@@ -314,6 +314,51 @@ class CartItemWidget extends StatelessWidget {
             const SizedBox(height: 8),
           ],
 
+          // Notes Section
+          if (item.notes != null && item.notes!.isNotEmpty) ...[
+            const Row(
+              children: [
+                Icon(Icons.note_outlined, size: 16, color: Colors.amber),
+                SizedBox(width: 4),
+                Text(
+                  'Catatan:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.format_quote, size: 14, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.notes!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           // Total price at the bottom
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
