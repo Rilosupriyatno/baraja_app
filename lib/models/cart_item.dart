@@ -4,6 +4,7 @@ class CartItem {
   final String imageUrl;
   final int price;
   int quantity;
+  final String? notes; // Optional notes field
   final List<Map<String, dynamic>> addons;
   final dynamic toppings; // Can be String, List<String>, or List<Map>
 
@@ -18,7 +19,8 @@ class CartItem {
     required this.quantity,
     required this.addons,
     required this.toppings,
-    int? totalprice, String? notes, // Optional parameter - if provided, use it directly
+    required this.notes, // Required notes parameter
+    int? totalprice, // Optional parameter - if provided, use it directly
   }) : _totalprice = totalprice ?? calculateTotalPrice(price, addons, toppings);
 
   // Getter for total price

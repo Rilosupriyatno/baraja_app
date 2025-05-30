@@ -1,5 +1,6 @@
 import 'package:baraja_app/theme/app_theme.dart';
-import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
+import 'package:baraja_app/widgets/utils/title_app_bar.dart';
+// import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/order.dart';
@@ -35,23 +36,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
 
     try {
       final orders = await _orderService.getUserOrderHistory();
-      // ✅ Tampilkan order di terminal
-      // for (var order in orders) {
-      //   print('Order ID: ${order.id}');
-      //   print('Status: ${order.status}');
-      //   print('Total: ${order.total}');
-      //   print('Order Time: ${order.orderTime}');
-      //   print('Items:');
-      //   for (var item in order.items) {
-      //     print(' - ${item.name}');
-      //   }
-      //   print('----------------------');
-      // }
+
+      // // Debug: Print orders untuk memastikan data tersambung dengan benar
+      print('📦 Total orders loaded: ${orders.length}');
+      for (var order in orders) {
+        print('Order ID: ${order.id}');
+        print('Status: ${order.status}');
+        print('Payment Status: ${order.paymentDetails['status']}');
+        print('Total: ${order.total}');
+        print('Items count: ${order.items.length}');
+        print('----------------------');
+      }
+
       setState(() {
         _orders = orders;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading order history: $e');
       setState(() {
         _errorMessage = 'Gagal memuat riwayat pesanan: $e';
         _isLoading = false;
@@ -74,7 +76,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            const ClassicAppBar(title: 'History'),
+            const TitleAppBar(title: 'History'),
             Material(
               color: Colors.white,
               child: TabBar(
@@ -94,7 +96,32 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
-          ? Center(child: Text(_errorMessage))
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchOrderHistory,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      )
           : RefreshIndicator(
         onRefresh: _fetchOrderHistory,
         child: TabBarView(
@@ -126,32 +153,49 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     filteredOrders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
 
     if (filteredOrders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.receipt_long,
-              size: 48,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isCompleted
-                  ? 'Belum ada pesanan selesai'
-                  : 'Belum ada pesanan dalam proses',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
+      return ListView(
+        // Tambahkan padding bottom agar tidak tertutup bottom navigation
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 80, // 80 adalah tinggi bottom navigation bar
+        ),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.receipt_long,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isCompleted
+                        ? 'Belum ada pesanan selesai'
+                        : 'Belum ada pesanan dalam proses',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      // Tambahkan padding agar list tidak tertutup bottom navigation
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).padding.bottom + 6, // 80 adalah tinggi bottom navigation bar
+      ),
       itemCount: filteredOrders.length,
       itemBuilder: (context, index) {
         return _buildOrderItem(context, filteredOrders[index]);
@@ -193,30 +237,37 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Product image
-              SizedBox(
+              Container(
                 width: 70,
                 height: 70,
-                child: firstItem.imageUrl.isNotEmpty &&
-                    firstItem.imageUrl != 'https://placehold.co/1920x1080/png'
-                    ? Image.network(
-                  firstItem.imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                      'assets/images/product_default_image.jpeg',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    );
-                  },
-                )
-                    : Image.asset(
-                  'assets/images/product_default_image.jpeg',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[100],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: firstItem.imageUrl.isNotEmpty &&
+                      firstItem.imageUrl != 'https://placehold.co/1920x1080/png'
+                      ? Image.network(
+                    firstItem.imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/product_default_image.jpeg',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      );
+                    },
+                  )
+                      : Image.asset(
+                    'assets/images/product_default_image.jpeg',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -232,12 +283,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
 
                     // Order time and order ID
                     Text(
-                      '${_formatDate(order.orderTime)} • ID: ${order.id.substring(0, 8)}',
+                      '${_formatDate(order.orderTime)} • ID: ${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey[600],
@@ -246,31 +299,57 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     const SizedBox(height: 4),
 
                     // Status pesanan
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(order.status).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        order.statusText,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: _getStatusColor(order.status),
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        // Status utama pesanan
+                        // Container(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        //   decoration: BoxDecoration(
+                        //     color: _getOrderStatusColor(order.status).withOpacity(0.1),
+                        //     borderRadius: BorderRadius.circular(12),
+                        //   ),
+                        //   child: Text(
+                        //     _getOrderStatusText(order.status),
+                        //     style: TextStyle(
+                        //       fontSize: 11,
+                        //       color: _getOrderStatusColor(order.status),
+                        //       fontWeight: FontWeight.bold,
+                        //     ),
+                        //   ),
+                        // ),
+
+                        const SizedBox(width: 8),
+
+                        // Payment status
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getPaymentStatusColor(order.paymentDetails['status']).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _getPaymentStatusText(order.paymentDetails['status']),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _getPaymentStatusColor(order.paymentDetails['status']),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 4),
 
                     // Item customizations
-                    if (firstItem.addons != '-' || firstItem.toppings != '-')
+                    if (_hasCustomizations(firstItem))
                       Text(
                         _buildCustomizationText(firstItem),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
 
                     // If there are more items, show count
@@ -286,9 +365,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                           ),
                         ),
                       ),
-
-                    const SizedBox(height: 8),
-
                   ],
                 ),
               ),
@@ -321,6 +397,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     );
   }
 
+  bool _hasCustomizations(dynamic item) {
+    return (item.addons != null && item.addons.isNotEmpty) ||
+        (item.toppings != null && item.toppings.isNotEmpty);
+  }
+
   String _buildCustomizationText(dynamic item) {
     List<String> customizations = [];
 
@@ -351,49 +432,83 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     return customizations.isEmpty ? '-' : customizations.join(', ');
   }
 
-  Widget buildRatingWidget() {
-    return Row(
-      children: [
-        const Icon(Icons.star, color: Colors.amber, size: 16),
-        const SizedBox(width: 4),
-        Text(
-          '5',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Review',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
-
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
+  // String _getOrderStatusText(OrderStatus status) {
+  //   switch (status) {
+  //     case OrderStatus.pending:
+  //       return 'Menunggu Konfirmasi';
+  //     // case OrderStatus.confirmed:
+  //     //   return 'Dikonfirmasi';
+  //     // case OrderStatus.preparing:
+  //     //   return 'Sedang Disiapkan';
+  //     // case OrderStatus.readyForPickup:
+  //     //   return 'Siap Diambil';
+  //     case OrderStatus.completed:
+  //       return 'Selesai';
+  //     case OrderStatus.cancelled:
+  //       return 'Dibatalkan';
+  //     default:
+  //       return 'Unknown';
+  //   }
+  // }
+  //
+  // Color _getOrderStatusColor(OrderStatus status) {
+  //   switch (status) {
+  //     case OrderStatus.pending:
+  //       return Colors.orange;
+  //     // case OrderStatus.confirmed:
+  //     //   return Colors.blue;
+  //     // case OrderStatus.preparing:
+  //     //   return Colors.purple;
+  //     // case OrderStatus.readyForPickup:
+  //     //   return Colors.green;
+  //     case OrderStatus.completed:
+  //       return Colors.green.shade700;
+  //     case OrderStatus.cancelled:
+  //       return Colors.red;
+  //     default:
+  //       return Colors.grey;
+  //   }
+  // }
 
-  Color _getStatusColor(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return Colors.orange;
-      case OrderStatus.processing:
-        return Colors.blue;
-      case OrderStatus.onTheWay:
-        return Colors.purple;
-      case OrderStatus.ready:
+  String _getPaymentStatusText(String? paymentStatus) {
+    switch (paymentStatus?.toLowerCase()) {
+      case 'settlement':
+        return 'Lunas';
+      case 'pending':
+        return 'Menunggu Pembayaran';
+      case 'capture':
+        return 'Lunas';
+      case 'deny':
+        return 'Ditolak';
+      case 'cancel':
+        return 'Dibatalkan';
+      case 'expire':
+        return 'Kadaluarsa';
+      case 'failure':
+        return 'Gagal';
+      default:
+        return paymentStatus ?? 'Unknown';
+    }
+  }
+
+  Color _getPaymentStatusColor(String? paymentStatus) {
+    switch (paymentStatus?.toLowerCase()) {
+      case 'settlement':
+      case 'capture':
         return Colors.green;
-      case OrderStatus.completed:
-        return Colors.green.shade800;
-      case OrderStatus.cancelled:
+      case 'pending':
+        return Colors.orange;
+      case 'deny':
+      case 'cancel':
+      case 'failure':
         return Colors.red;
-      }
+      case 'expire':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
 }

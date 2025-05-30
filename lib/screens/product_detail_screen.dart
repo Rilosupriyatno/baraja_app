@@ -21,9 +21,9 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
   int quantity = 1;
   List<Topping> selectedToppings = [];
   Map<String, AddonOption?> selectedAddonOptions = {};
+  final TextEditingController notesController = TextEditingController(); // Added notes controller
   final Color primaryColor = const Color(0xFF076A3B);
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -49,12 +49,18 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    notesController.dispose(); // Added dispose for notes controller
+    super.dispose();
+  }
+
   // Menghitung total harga berdasarkan produk, jumlah, topping dan add-on yang dipilih
   double calculateTotal() {
     double basePrice =
         widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
     double toppingsTotal =
-        selectedToppings.fold(0, (sum, topping) => sum + topping.price);
+    selectedToppings.fold(0, (sum, topping) => sum + topping.price);
 
     // Calculate addon options price
     double addonOptionsTotal = 0;
@@ -113,25 +119,25 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                     color: product.imageColor ?? Colors.grey.shade300,
                     child: product.imageUrl.isNotEmpty
                         ? Image.network(
-                            product.imageUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                'assets/images/product_default_image.jpeg',
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              );
-                            },
-                          )
+                      product.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/product_default_image.jpeg',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        );
+                      },
+                    )
                         : Image.asset(
-                            'assets/images/product_default_image.jpeg',
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
+                      'assets/images/product_default_image.jpeg',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
 
                   // Informasi produk
@@ -163,8 +169,8 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: [
                             Text(
                               formatCurrency((product.discountPrice ??
-                                      product.originalPrice ??
-                                      0)
+                                  product.originalPrice ??
+                                  0)
                                   .toInt()),
                               style: TextStyle(
                                 fontSize: 18,
@@ -172,17 +178,6 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                                 color: primaryColor,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            // if (product.discountPrice != null &&
-                            //     product.originalPrice != null)
-                            //   Text(
-                            //     formatCurrency(product.originalPrice!.toInt()),
-                            //     style: const TextStyle(
-                            //       fontSize: 14,
-                            //       decoration: TextDecoration.lineThrough,
-                            //       color: Colors.grey,
-                            //     ),
-                            //   ),
                             const SizedBox(width: 8),
                             if (product.discountPercentage != null)
                               Container(
@@ -227,19 +222,19 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                           const SizedBox(height: 8),
                           ...product.toppings!
                               .map((topping) => CheckboxListTile(
-                                    title: Text(topping.name),
-                                    subtitle: Text(
-                                      formatCurrency(topping.price.toInt()),
-                                      style: TextStyle(color: primaryColor),
-                                    ),
-                                    value: selectedToppings.contains(topping),
-                                    activeColor: primaryColor,
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    onChanged: (_) => toggleTopping(topping),
-                                  )),
+                            title: Text(topping.name),
+                            subtitle: Text(
+                              formatCurrency(topping.price.toInt()),
+                              style: TextStyle(color: primaryColor),
+                            ),
+                            value: selectedToppings.contains(topping),
+                            activeColor: primaryColor,
+                            controlAffinity:
+                            ListTileControlAffinity.leading,
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (_) => toggleTopping(topping),
+                          )),
                         ],
 
                         // Bagian Add-ons (Single Choice per Addon)
@@ -278,18 +273,70 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                                       ),
                                       value: option,
                                       groupValue:
-                                          selectedAddonOptions[addon.id],
+                                      selectedAddonOptions[addon.id],
                                       activeColor: primaryColor,
                                       dense: true,
                                       contentPadding: EdgeInsets.zero,
                                       onChanged: (value) =>
                                           selectAddonOption(addon.id, value),
                                     )),
-                                // const Divider(), // Add a divider between different addon groups
                               ],
                             );
                           }),
                         ],
+
+                        // Notes section - Added notes functionality
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.note_alt_outlined,
+                                      color: primaryColor,
+                                      size: 20
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Catatan (Opsional)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: notesController,
+                                decoration: InputDecoration(
+                                  hintText: 'Tambahkan catatan khusus untuk pesanan ini...',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: primaryColor),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                maxLines: 3,
+                                textInputAction: TextInputAction.done,
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -349,16 +396,16 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   onPressed: () {
                     final cartProvider =
-                        Provider.of<CartProvider>(context, listen: false);
+                    Provider.of<CartProvider>(context, listen: false);
                     final double totalPrice = calculateTotal();
 
 // Gather selected topping names and prices
                     List<Map<String, dynamic>> toppingsList = selectedToppings
                         .map((topping) => {
-                              "name": topping.name,
-                              "price": topping
-                                  .price, // pastikan `topping` ada field `price`
-                            })
+                      "name": topping.name,
+                      "price": topping
+                          .price, // pastikan `topping` ada field `price`
+                    })
                         .toList();
 
 // Gather selected addon options names and prices
@@ -375,19 +422,20 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         });
                       }
                     });
-                    // print('Addon List: $addonList');
 
-// Membuat CartItem
+// Membuat CartItem with notes
                     CartItem newItem = CartItem(
                       id: widget.product.id,
                       name: widget.product.name,
                       imageUrl: widget.product.imageUrl,
                       price: widget.product.originalPrice!.toInt(),
                       totalprice: totalPrice.toInt(),
-                      addons: addonList, // <-- sekarang addons berupa list
-                      toppings:
-                          toppingsList, // <-- sekarang toppings berupa list
+                      addons: addonList,
+                      toppings: toppingsList,
                       quantity: quantity,
+                      notes: notesController.text.trim().isNotEmpty
+                          ? notesController.text.trim()
+                          : null, // Added notes support
                     );
 
                     cartProvider.addToCart(newItem);
@@ -398,6 +446,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                         content: Text(
                             '${widget.product.name} ditambahkan ke keranjang'),
                         duration: const Duration(seconds: 2),
+                        backgroundColor: primaryColor,
                       ),
                     );
                   },

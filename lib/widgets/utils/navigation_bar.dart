@@ -24,6 +24,23 @@ class MainNavigationBar extends StatefulWidget {
 
 class _MainNavigationBarState extends State<MainNavigationBar> {
   final PersistentTabController _controller = PersistentTabController(initialIndex: 0);
+  final GlobalKey<QRScannerState> _qrScannerKey = GlobalKey<QRScannerState>();
+  int _previousIndex = 0;
+
+  void _onTabChanged(int index) {
+    // Handle QR Scanner visibility
+    if (_previousIndex == 2 && index != 2) {
+      // Pindah dari tab scanner ke tab lain - pause camera
+      _qrScannerKey.currentState?.setVisibility(false);
+    } else if (index == 2 && _previousIndex != 2) {
+      // Pindah ke tab scanner dari tab lain - resume camera
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _qrScannerKey.currentState?.setVisibility(true);
+      });
+    }
+
+    _previousIndex = index;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +56,14 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         }
       },
       child: PersistentTabView(
-        controller: _controller,  // Gunakan controller
+        controller: _controller,
         backgroundColor: Colors.white,
-        handleAndroidBackButtonPress: false, // Nonaktifkan default back handler
+        handleAndroidBackButtonPress: false,
         resizeToAvoidBottomInset: true,
         stateManagement: true,
         avoidBottomPadding: true,
         navBarOverlap: const NavBarOverlap.full(),
+        onTabChanged: _onTabChanged, // Tambahkan callback ini
         tabs: [
           PersistentTabConfig(
             screen: const HomeScreen(),
@@ -62,13 +80,15 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
               title: "Voucher",
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
-          ),PersistentTabConfig(
-            screen: const QRScanner(),
+          ),
+          PersistentTabConfig(
+            screen: QRScanner(key: _qrScannerKey), // Tambahkan key
             item: ItemConfig(
               icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
-          ),PersistentTabConfig(
+          ),
+          PersistentTabConfig(
             screen: const OrderHistoryScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.history_edu_outlined),
@@ -88,20 +108,14 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         navBarBuilder: (navBarConfig) => Style13BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
-            boxShadow:[
+            boxShadow: [
               BoxShadow(
                 color: Colors.black12,
                 blurRadius: 10,
-                offset: Offset(0, -2), // Shadow ke atas
+                offset: Offset(0, -2),
               )
-            ] ,
+            ],
             color: Colors.white,
-            // border: Border(
-            //     top: BorderSide(
-            //         color: Colors.grey,
-            //         width: 0.5
-            //     ),
-            // ),
           ),
         ),
       ),
