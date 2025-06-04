@@ -19,7 +19,7 @@ class OrderDetailWidget extends StatelessWidget {
         };
       case 'pending':
         return {
-          'label': 'Menunggu Pembayaran',
+          'label': 'Bayar Dulu',
           'icon': Icons.access_time,
           'color': Colors.orange,
         };

@@ -90,7 +90,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Pembaaran'),
+      appBar: const ClassicAppBar(title: 'Pembayaran'),
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
@@ -311,6 +311,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   'quantity': item.quantity,
                   'addons': item.addons,
                   'toppings': item.toppings,
+                  'notes': item.notes,
                 }).toList();
 
 

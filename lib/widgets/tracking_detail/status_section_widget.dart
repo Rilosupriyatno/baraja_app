@@ -73,14 +73,14 @@ class StatusSectionWidget extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Estimasi 5-8 menit',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      // Text(
+                      //   'Estimasi 5-8 menit',
+                      //   style: TextStyle(
+                      //     fontSize: 13,
+                      //     color: Colors.grey.shade600,
+                      //     fontWeight: FontWeight.w500,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),
