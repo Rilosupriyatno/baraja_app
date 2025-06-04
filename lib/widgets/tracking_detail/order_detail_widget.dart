@@ -83,7 +83,7 @@ class OrderDetailWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          orderData['orderNumber'],
+                          orderData['orderNumber'] ?? '',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -91,15 +91,6 @@ class OrderDetailWidget extends StatelessWidget {
                             letterSpacing: -0.5,
                           ),
                         ),
-                        // const SizedBox(height: 4),
-                        // Text(
-                        //   'ID: ${orderData['orderId']}',
-                        //   style: TextStyle(
-                        //     fontSize: 12,
-                        //     color: Colors.grey.shade600,
-                        //     fontWeight: FontWeight.w500,
-                        //   ),
-                        // ),
                       ],
                     ),
                     Container(
@@ -112,7 +103,7 @@ class OrderDetailWidget extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        orderData['orderDate'],
+                        orderData['orderDate'] ?? '',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.barajaPrimary.primaryColor,
@@ -176,7 +167,8 @@ class OrderDetailWidget extends StatelessWidget {
                           SizedBox(
                             width: 40,
                             height: 40,
-                            child: (item['imageUrl'] != null && item['imageUrl'].isNotEmpty &&
+                            child: (item['imageUrl'] != null &&
+                                item['imageUrl'].toString().isNotEmpty &&
                                 item['imageUrl'] != 'https://placehold.co/1920x1080/png')
                                 ? Image.network(
                               item['imageUrl'],
@@ -202,7 +194,7 @@ class OrderDetailWidget extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              item['name'],
+                              item['name'] ?? '',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -217,7 +209,7 @@ class OrderDetailWidget extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'x${item['quantity']}',
+                              'x${item['quantity'] ?? 0}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -227,7 +219,7 @@ class OrderDetailWidget extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            formatCurrency(item['price']),
+                            formatCurrency(item['price'] ?? 0),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -237,192 +229,146 @@ class OrderDetailWidget extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.barajaPrimary.primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Size ${item['size']}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.barajaPrimary.primaryColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF10B981).withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  item['temperature'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF10B981),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
 
                       // Addons Section
-                      if (item['addons'] != null && item['addons'].isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.orange.shade200,
+                      if (item['addons'] != null &&
+                          item['addons'] is List &&
+                          (item['addons'] as List).isNotEmpty) ...[
+                        const Row(
+                          children: [
+                            Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
+                            SizedBox(width: 4),
+                            Text(
+                              'Tambahan:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.withOpacity(0.2)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                            children: (item['addons'] as List).map((addon) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(
-                                    Icons.add_circle_outline,
-                                    size: 16,
-                                    color: Colors.orange.shade700,
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.circle, size: 6, color: Colors.blue),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            '${addon["name"] ?? ""}: ${addon["label"] ?? ""}',
+                                            style: const TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(width: 6),
                                   Text(
-                                    'Add-ons',
-                                    style: TextStyle(
+                                    formatCurrency(addon["price"] ?? 0),
+                                    style: const TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.blue,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: item['addons'].map<Widget>((addon) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    addon,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.orange.shade800,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                )).toList(),
-                              ),
-                            ],
+                            )).cast<Widget>().toList(),
                           ),
                         ),
+                        const SizedBox(height: 8),
                       ],
 
-                      // Toppings Section
-                      if (item['toppings'] != null && item['toppings'].isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                      // Topping Section
+                      if (item['toppings'] != null &&
+                          ((item['toppings'] is String && (item['toppings'] as String).isNotEmpty) ||
+                              (item['toppings'] is List && (item['toppings'] as List).isNotEmpty))) ...[
+                        const Row(
+                          children: [
+                            Icon(Icons.cake, size: 16, color: Colors.deepOrange),
+                            SizedBox(width: 4),
+                            Text(
+                              'Topping:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.deepOrange.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
+                          ),
+                          child: _buildToppingsWidget(item['toppings']),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
+                      // Notes Section
+                      if (item['notes'] != null &&
+                          item['notes'].toString().isNotEmpty) ...[
+                        const Row(
+                          children: [
+                            Icon(Icons.note_outlined, size: 16, color: Colors.amber),
+                            SizedBox(width: 4),
+                            Text(
+                              'Catatan:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(left: 8),
                           decoration: BoxDecoration(
-                            color: Colors.pink.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.pink.shade200,
-                            ),
+                            color: Colors.amber.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.withOpacity(0.3)),
                           ),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.cake_outlined,
-                                    size: 16,
-                                    color: Colors.pink.shade700,
+                              const Icon(Icons.format_quote, size: 14, color: Colors.amber),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item['notes'].toString(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.black87,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Toppings',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.pink.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: item['toppings'].map<Widget>((topping) => Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.pink.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    topping,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.pink.shade800,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                )).toList(),
+                                ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 8),
                       ],
                     ],
                   ),
@@ -488,14 +434,14 @@ class OrderDetailWidget extends StatelessWidget {
                 const SizedBox(height: 16),
                 PaymentRowWidget(
                   label: 'Total',
-                  value: formatCurrency(orderData['total']),
+                  value: formatCurrency(orderData['total'] ?? 0),
                   icon: Icons.receipt,
                   isTotal: true,
                 ),
                 const SizedBox(height: 16),
                 PaymentRowWidget(
                   label: 'Metode Pembayaran',
-                  value: orderData['paymentMethod'],
+                  value: orderData['paymentMethod'] ?? '',
                   icon: Icons.credit_card,
                   isTotal: false,
                 ),
@@ -551,5 +497,68 @@ class OrderDetailWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Helper method to build toppings widget based on type
+  Widget _buildToppingsWidget(dynamic toppings) {
+    if (toppings is List && toppings.isNotEmpty && toppings.first is Map<String, dynamic>) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: toppings.map<Widget>((topping) {
+          if (topping is Map) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${topping["name"] ?? ""}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (topping.containsKey("price") && topping["price"] != null)
+                    Text(
+                      formatCurrency(topping["price"] as num),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          } else {
+            return const SizedBox.shrink();
+          }
+        }).toList(),
+      );
+    } else {
+      return Row(
+        children: [
+          const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              toppings is String
+                  ? toppings
+                  : toppings is List
+                  ? toppings.join(', ')
+                  : '',
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }
