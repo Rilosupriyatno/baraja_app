@@ -8,41 +8,15 @@ class CoffeeAnimationWidget extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: 220,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFFFFF),
-            Color(0xFFF8F9FF),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF8B5CF6).withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8B5CF6).withOpacity(0.08),
-            spreadRadius: 0,
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            spreadRadius: 0,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.white, // Background putih saja
       ),
       child: Stack(
         children: [
-          // Decorative circles
+          // Decorative circles - bulat sempurna
           Positioned(
-            top: -30,
-            right: -30,
+            top: -50,
+            right: -50,
             child: Container(
               width: 100,
               height: 100,
@@ -53,8 +27,8 @@ class CoffeeAnimationWidget extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: -20,
-            left: -20,
+            bottom: -1,
+            // left: -30,
             child: Container(
               width: 60,
               height: 60,

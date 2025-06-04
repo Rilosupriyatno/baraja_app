@@ -190,40 +190,45 @@ class OrderService {
 
     if (paymentStatus == 'settlement') {
       // Jika sudah lunas, cek order status
-      final orderStatus = orderData['status']?.toString().toLowerCase() ?? '';
+      final orderStatus = orderData['orderStatus']?.toString() ?? '';
 
       switch (orderStatus) {
-        case 'pending':
-          return {
-            'status': 'Pesanan dikonfirmasi',
-            'color': const Color(0xFF3B82F6),
-            'icon': Icons.check_circle,
+        case 'Pending':
+          // return {
+          //   'status': 'Pesanan dikonfirmasi',
+          //   'color': const Color(0xFF3B82F6),
+          //   'icon': Icons.check_circle,
+          // };
+        return {
+            'status': 'Menunggu konfirmasi',
+            'color': const Color(0xFFF68F3B),
+            'icon': Icons.alarm_outlined,
           };
-        case 'processing':
+        case 'OnProcess':
           return {
             'status': 'Pesananmu sedang dibuat',
             'color': const Color(0xFFF59E0B),
             'icon': Icons.coffee_maker,
           };
-        case 'ready':
+        case 'Completed':
           return {
-            'status': 'Pesanan siap diambil',
+            'status': 'Pesanan sudah siap',
             'color': const Color(0xFF10B981),
             'icon': Icons.done_all,
           };
-        case 'on the way':
-          return {
-            'status': 'Pesanan dalam perjalanan',
-            'color': const Color(0xFF8B5CF6),
-            'icon': Icons.local_shipping,
-          };
-        case 'completed':
-          return {
-            'status': 'Pesanan selesai',
-            'color': const Color(0xFF059669),
-            'icon': Icons.celebration,
-          };
-        case 'cancelled':
+        // case 'on the way':
+        //   return {
+        //     'status': 'Pesanan dalam perjalanan',
+        //     'color': const Color(0xFF8B5CF6),
+        //     'icon': Icons.local_shipping,
+        //   };
+        // case 'completed':
+        //   return {
+        //     'status': 'Pesanan selesai',
+        //     'color': const Color(0xFF059669),
+        //     'icon': Icons.celebration,
+        //   };
+        case 'Canceled':
           return {
             'status': 'Pesanan dibatalkan',
             'color': const Color(0xFFEF4444),

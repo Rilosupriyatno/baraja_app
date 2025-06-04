@@ -24,7 +24,7 @@ class PaymentRowWidget extends StatelessWidget {
         color: isTotal ? const Color(0xFFF8F9FF) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isTotal ? const Color(0xFF8B5CF6).withOpacity(0.2) : Colors.grey.shade200,
+          color: isTotal ? const Color(0xFF10B981).withOpacity(0.2) : Colors.grey.shade200,
         ),
       ),
       child: Row(
@@ -33,14 +33,14 @@ class PaymentRowWidget extends StatelessWidget {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: isSuccess ? const Color(0xFF10B981).withOpacity(0.1) :
-              isTotal ? const Color(0xFF8B5CF6).withOpacity(0.1) : Colors.grey.shade200,
+              isTotal ? const Color(0xFF10B981).withOpacity(0.1) : Colors.grey.shade200,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               size: 16,
               color: isSuccess ? const Color(0xFF10B981) :
-              isTotal ? const Color(0xFF8B5CF6) : Colors.grey.shade600,
+              isTotal ? const Color(0xFF10B981) : Colors.grey.shade600,
             ),
           ),
           const SizedBox(width: 12),
@@ -60,7 +60,7 @@ class PaymentRowWidget extends StatelessWidget {
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
               color: isSuccess ? const Color(0xFF10B981) :
-              isTotal ? const Color(0xFF8B5CF6) : Colors.black87,
+              isTotal ? const Color(0xFF10B981) : Colors.black87,
             ),
           ),
         ],
