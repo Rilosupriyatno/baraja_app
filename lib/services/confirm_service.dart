@@ -24,25 +24,98 @@ class ConfirmService {
         };
       }
 
+      _printRequestData(paymentData);
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/charge'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(paymentData),
       );
-      print(paymentData);
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        print("Success: $responseData");
+        _printSuccessResponse(responseData);
         return responseData;
       } else {
-        print("Failed to send order. Status code: ${response.statusCode}");
-        print("Response body: ${response.body}");
+        _printErrorResponse(response);
         throw Exception("Gagal memproses pembayaran: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error sending order: $e");
+      _printException(e);
       throw Exception("Terjadi kesalahan: $e");
     }
+  }
+
+  // Helper method untuk print request data
+  void _printRequestData(Map<String, dynamic> paymentData) {
+    print('\n${'=' * 50}');
+    print('📤 SENDING PAYMENT REQUEST');
+    print('=' * 50);
+    print('🔹 Payment Type: ${paymentData['payment_type']}');
+    print('🔹 Order ID: ${paymentData['transaction_details']['order_id']}');
+    print('🔹 Amount: ${paymentData['transaction_details']['gross_amount']}');
+
+    if (paymentData.containsKey('bank_transfer')) {
+      print('🔹 Bank: ${paymentData['bank_transfer']['bank']}');
+    }
+
+    print('\n📋 Full Request Data:');
+    print(const JsonEncoder.withIndent('  ').convert(paymentData));
+    print('${'=' * 50}\n');
+  }
+
+  // Helper method untuk print success response
+  void _printSuccessResponse(Map<String, dynamic> responseData) {
+    print('\n${'=' * 50}');
+    print('✅ PAYMENT REQUEST SUCCESS');
+    print('=' * 50);
+
+    // Print informasi penting dari response
+    if (responseData.containsKey('transaction_status')) {
+      print('🔹 Status: ${responseData['transaction_status']}');
+    }
+    if (responseData.containsKey('transaction_id')) {
+      print('🔹 Transaction ID: ${responseData['transaction_id']}');
+    }
+    if (responseData.containsKey('order_id')) {
+      print('🔹 Order ID: ${responseData['order_id']}');
+    }
+    if (responseData.containsKey('gross_amount')) {
+      print('🔹 Amount: ${responseData['gross_amount']}');
+    }
+
+    print('\n📋 Full Response Data:');
+    print(const JsonEncoder.withIndent('  ').convert(responseData));
+    print('${'=' * 50}\n');
+  }
+
+  // Helper method untuk print error response
+  void _printErrorResponse(http.Response response) {
+    print('\n${'=' * 50}');
+    print('❌ PAYMENT REQUEST FAILED');
+    print('=' * 50);
+    print('🔹 Status Code: ${response.statusCode}');
+    print('🔹 Reason: ${response.reasonPhrase}');
+
+    try {
+      final errorData = jsonDecode(response.body);
+      print('\n📋 Error Details:');
+      print(const JsonEncoder.withIndent('  ').convert(errorData));
+    } catch (e) {
+      print('\n📋 Raw Response Body:');
+      print(response.body);
+    }
+
+    print('${'=' * 50}\n');
+  }
+
+  // Helper method untuk print exception
+  void _printException(dynamic error) {
+    print('\n${'=' * 50}');
+    print('💥 EXCEPTION OCCURRED');
+    print('=' * 50);
+    print('🔹 Error Type: ${error.runtimeType}');
+    print('🔹 Error Message: $error');
+    print('${'=' * 50}\n');
   }
 }

@@ -1,5 +1,9 @@
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/order.dart';
+import '../providers/order_provider.dart';
+import '../services/socket_service.dart';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
@@ -27,6 +31,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _isListeningForPayment = false;
+  Map<String, dynamic>? _paymentResponse;
 
   String orderStatus = 'Memuat pesanan...';
   Color statusColor = const Color(0xFFF59E0B);
@@ -39,12 +45,75 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
   // OrderService instance
   final OrderService _orderService = OrderService();
+  final SocketService _socketService = SocketService();
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
     _fetchOrderData();
+    // First setup socket connection
+    _setupSocketConnection();
+  }
+
+  void _setupSocketConnection() {
+    if (!_isListeningForPayment) {
+      _isListeningForPayment = true;
+
+      // Connect to socket and listen for payment updates
+      _socketService.connectToSocket(
+        orderId: widget.orderId,
+        onPaymentUpdate: _handlePaymentUpdate,
+      );
+
+      // Add a delay before manually joining the room again
+      Future.delayed(const Duration(seconds: 3), () {
+        _socketService.joinOrderRoom(widget.orderId);
+      });
+    }
+  }
+
+  void _handlePaymentUpdate(Map<String, dynamic> data) {
+    print('Payment update received in screen: $data');
+
+    if (data['order_id'] == widget.orderId) {
+      print('Payment update matches our order ID');
+
+      if (mounted) {
+        setState(() {
+          // Update payment response
+          _paymentResponse = {
+            ...?_paymentResponse,
+            'transaction_status': data['transaction_status'],
+          };
+
+          // Update order data payment status directly
+          if (orderData != null) {
+            orderData!['paymentStatus'] = data['transaction_status'];
+            // Also update paymentDetails if it exists
+            if (orderData!['paymentDetails'] != null) {
+              orderData!['paymentDetails']['status'] = data['transaction_status'];
+            }
+
+            // Update order status based on payment status
+            _updateOrderStatus();
+          }
+        });
+      }
+
+      print('Payment status updated to: ${data['transaction_status']}');
+
+      // Update order status in provider based on transaction status
+      if (data['transaction_status'] == 'settlement' ||
+          data['transaction_status'] == 'capture') {
+        if (mounted) {
+          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+          orderProvider.updateOrderStatus(widget.orderId, OrderStatus.pending);
+        }
+      }
+    } else {
+      print('Received payment update for different order: ${data['order_id']}');
+    }
   }
 
   void _setupAnimations() {
@@ -185,6 +254,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     _pulseController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
+    _socketService.dispose();
     super.dispose();
   }
 
@@ -369,12 +439,6 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                   ),
                 ),
               ),
-
-              // Subtle divider
-              // Container(
-              //   height: 8,
-              //   color: Colors.grey[50],
-              // ),
 
               // Order Details - Full width
               if (orderData != null)
