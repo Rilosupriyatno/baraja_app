@@ -1,8 +1,10 @@
+import 'package:baraja_app/screens/payment_detail_screen.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/order.dart';
 import '../providers/order_provider.dart';
+import '../services/paymentStorageService.dart';
 import '../services/socket_service.dart';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
@@ -33,6 +35,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   late Animation<Offset> _slideAnimation;
   bool _isListeningForPayment = false;
   Map<String, dynamic>? _paymentResponse;
+  bool _hasPaymentDetails = false;
 
   String orderStatus = 'Memuat pesanan...';
   Color statusColor = const Color(0xFFF59E0B);
@@ -51,9 +54,17 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   void initState() {
     super.initState();
     _setupAnimations();
+    _checkPaymentDetails();
     _fetchOrderData();
     // First setup socket connection
     _setupSocketConnection();
+  }
+
+  Future<void> _checkPaymentDetails() async {
+    final hasDetails = await PaymentStorageService.hasPaymentDetails(widget.orderId);
+    setState(() {
+      _hasPaymentDetails = hasDetails;
+    });
   }
 
   void _setupSocketConnection() {
@@ -246,7 +257,73 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   Future<void> _refreshData() async {
     _fadeController.reset();
     _slideController.reset();
+    await _checkPaymentDetails();
     await _fetchOrderData();
+  }
+
+  void _navigateToPaymentDetails() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentDetailsScreen(orderId: widget.orderId),
+      ),
+    );
+  }
+
+  bool _shouldShowPaymentButton() {
+    if (!_hasPaymentDetails) return false;
+
+    final paymentStatus = orderData?['paymentStatus'] ??
+        orderData?['paymentDetails']?['status'];
+
+    // Show button for pending payments or when payment details exist
+    return paymentStatus == 'pending' ||
+        paymentStatus == 'settlement' ||
+        paymentStatus == 'capture' ||
+        _hasPaymentDetails;
+  }
+
+  Widget _buildPaymentButton() {
+    if (!_shouldShowPaymentButton()) return const SizedBox.shrink();
+
+    final paymentStatus = orderData?['paymentStatus'] ??
+        orderData?['paymentDetails']?['status'];
+
+    final isPending = paymentStatus == 'pending';
+    final buttonColor = isPending ? Colors.orange : Colors.blue;
+    final buttonText = isPending ? 'Bayar Sekarang' : 'Lihat Detail Pembayaran';
+    final buttonIcon = isPending ? Icons.payment : Icons.receipt_long;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: ElevatedButton(
+        onPressed: _navigateToPaymentDetails,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: buttonColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(buttonIcon, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              buttonText,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -410,48 +487,58 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
           ? _buildErrorState()
           : FadeTransition(
         opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              // Coffee Animation Section - Full width immersive
-              SlideTransition(
-                position: _slideAnimation,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.white,
-                  child: const CoffeeAnimationWidget(),
+        child: Column(
+          children: [
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Coffee Animation Section - Full width immersive
+                    SlideTransition(
+                      position: _slideAnimation,
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.white,
+                        child: const CoffeeAnimationWidget(),
+                      ),
+                    ),
+
+                    // Status Section - Full width with top spacing
+                    SlideTransition(
+                      position: _slideAnimation,
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.white,
+                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                        child: StatusSectionWidget(
+                          orderStatus: orderStatus,
+                          statusColor: statusColor,
+                          statusIcon: statusIcon,
+                          pulseAnimation: _pulseAnimation,
+                        ),
+                      ),
+                    ),
+
+                    // Order Details - Full width
+                    if (orderData != null)
+                      SlideTransition(
+                        position: _slideAnimation,
+                        child: Container(
+                          width: double.infinity,
+                          color: Colors.white,
+                          child: OrderDetailWidget(orderData: orderData!),
+                        ),
+                      ),
+                  ],
                 ),
               ),
+            ),
 
-              // Status Section - Full width with top spacing
-              SlideTransition(
-                position: _slideAnimation,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                  child: StatusSectionWidget(
-                    orderStatus: orderStatus,
-                    statusColor: statusColor,
-                    statusIcon: statusIcon,
-                    pulseAnimation: _pulseAnimation,
-                  ),
-                ),
-              ),
-
-              // Order Details - Full width
-              if (orderData != null)
-                SlideTransition(
-                  position: _slideAnimation,
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.white,
-                    child: OrderDetailWidget(orderData: orderData!),
-                  ),
-                ),
-            ],
-          ),
+            // Payment Button - Fixed at bottom
+            _buildPaymentButton(),
+          ],
         ),
       ),
     );
