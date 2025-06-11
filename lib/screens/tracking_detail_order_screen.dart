@@ -10,6 +10,7 @@ import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
 import '../services/order_service.dart';
+import 'menu_rating_screen.dart';
 
 class TrackingDetailOrderScreen extends StatefulWidget {
   final String orderId;
@@ -270,60 +271,129 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     );
   }
 
-  bool _shouldShowPaymentButton() {
+  void _navigateToRating() {
+    // TODO: Navigate to rating screen
+// Navigasi ke halaman rating
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuRatingPage(
+          orderData: orderData, // Data order yang sama dari OrderDetailWidget
+        ),
+      ),
+    );
+
+    // For now, show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur rating akan segera hadir!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  bool _shouldShowActionButton() {
     if (!_hasPaymentDetails) return false;
 
     final paymentStatus = orderData?['paymentStatus'] ??
         orderData?['paymentDetails']?['status'];
 
-    // Show button for pending payments or when payment details exist
+    // Show button for any payment-related status
     return paymentStatus == 'pending' ||
         paymentStatus == 'settlement' ||
         paymentStatus == 'capture' ||
         _hasPaymentDetails;
   }
 
-  Widget _buildPaymentButton() {
-    if (!_shouldShowPaymentButton()) return const SizedBox.shrink();
+  bool _isOrderCompleted() {
+    // final paymentStatus = orderData?['paymentStatus'] ??
+    //     orderData?['paymentDetails']?['status'];
+    final orderStatus = orderData?['orderStatus'];
+    print(orderStatus);
 
-    final paymentStatus = orderData?['paymentStatus'] ??
-        orderData?['paymentDetails']?['status'];
+    return orderStatus == 'Completed';
+  }
 
-    final isPending = paymentStatus == 'pending';
-    final buttonColor = isPending ? Colors.orange : Colors.blue;
-    final buttonText = isPending ? 'Bayar Sekarang' : 'Lihat Detail Pembayaran';
-    final buttonIcon = isPending ? Icons.payment : Icons.receipt_long;
+  Widget _buildActionButton() {
+    if (!_shouldShowActionButton()) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: ElevatedButton(
-        onPressed: _navigateToPaymentDetails,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: buttonColor,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final isOrderCompleted = _isOrderCompleted();
+
+    print(isOrderCompleted);
+
+    if (isOrderCompleted) {
+      // Show rating button
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: ElevatedButton(
+          onPressed: _navigateToRating,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.star_rate_rounded, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Kasih Rating Dong',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(buttonIcon, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              buttonText,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+      );
+    } else {
+      // Show payment button
+      final paymentStatus = orderData?['paymentStatus'] ??
+          orderData?['paymentDetails']?['status'];
+
+      final isPending = paymentStatus == 'pending';
+      final buttonColor = isPending ? Colors.orange : Colors.blue;
+      final buttonText = isPending ? 'Bayar Sekarang' : 'Lihat Detail Pembayaran';
+      final buttonIcon = isPending ? Icons.payment : Icons.receipt_long;
+
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: ElevatedButton(
+          onPressed: _navigateToPaymentDetails,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: buttonColor,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(buttonIcon, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                buttonText,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -536,8 +606,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
               ),
             ),
 
-            // Payment Button - Fixed at bottom
-            _buildPaymentButton(),
+            // Action Button - Fixed at bottom (Payment or Rating)
+            _buildActionButton(),
           ],
         ),
       ),
