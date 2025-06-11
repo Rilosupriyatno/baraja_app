@@ -212,7 +212,7 @@ class OrderService {
           };
         case 'Completed':
           return {
-            'status': 'Pesanan sudah siap',
+            'status': 'Selamat Menikmati',
             'color': const Color(0xFF10B981),
             'icon': Icons.done_all,
           };
