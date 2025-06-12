@@ -271,45 +271,65 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     );
   }
 
+  // Di tracking screen, saat navigasi ke rating:
   void _navigateToRating() {
-    // TODO: Navigate to rating screen
-// Navigasi ke halaman rating
+    final firstItem = orderData?['items']?[0];
+    print(firstItem);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MenuRatingPage(
-          orderData: orderData, // Data order yang sama dari OrderDetailWidget
+          orderData: orderData,
+          // Pass data eksplisit jika ada
+          menuItemId: firstItem?['menuItemId'] ?? firstItem?['id'],
+          orderId: orderData?['_id'] ?? orderData?['id'],
+          // outletId: orderData?['outletId'] ?? orderData?['outlet_id'],
         ),
-      ),
-    );
-
-    // For now, show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur rating akan segera hadir!'),
-        backgroundColor: Colors.green,
       ),
     );
   }
 
+// Ganti method _shouldShowActionButton() dengan ini:
   bool _shouldShowActionButton() {
-    if (!_hasPaymentDetails) return false;
+    print('🔍 _shouldShowActionButton called');
+    print('🔍 _hasPaymentDetails: $_hasPaymentDetails');
+    print('🔍 _isOrderCompleted(): ${_isOrderCompleted()}');
+
+    // Jika order sudah completed, selalu tampilkan tombol rating
+    if (_isOrderCompleted()) {
+      print('✅ Order completed, showing rating button');
+      return true;
+    }
+
+    // Untuk status lain, cek payment details
+    if (!_hasPaymentDetails) {
+      print('❌ No payment details, hiding button');
+      return false;
+    }
 
     final paymentStatus = orderData?['paymentStatus'] ??
         orderData?['paymentDetails']?['status'];
 
+    print('🔍 Payment status: $paymentStatus');
+
     // Show button for any payment-related status
-    return paymentStatus == 'pending' ||
+    bool shouldShow = paymentStatus == 'pending' ||
         paymentStatus == 'settlement' ||
         paymentStatus == 'capture' ||
         _hasPaymentDetails;
+
+    print('🔍 Should show button: $shouldShow');
+    return shouldShow;
   }
 
+// Perbaiki method _isOrderCompleted() untuk konsistensi:
   bool _isOrderCompleted() {
-    // final paymentStatus = orderData?['paymentStatus'] ??
-    //     orderData?['paymentDetails']?['status'];
-    final orderStatus = orderData?['orderStatus'];
-    print(orderStatus);
+    // Coba kedua kemungkinan nama field
+    final orderStatus = orderData?['orderStatus'] ?? orderData?['status'];
+
+    print('🔍 Checking order completion status: $orderStatus');
+    print('🔍 Order data keys: ${orderData?.keys}');
 
     return orderStatus == 'Completed';
   }
@@ -318,8 +338,6 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     if (!_shouldShowActionButton()) return const SizedBox.shrink();
 
     final isOrderCompleted = _isOrderCompleted();
-
-    print(isOrderCompleted);
 
     if (isOrderCompleted) {
       // Show rating button

@@ -593,11 +593,11 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         if (qrString != null) ...[
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Scan QR Code untuk melakukan pembayaran',
                       style: TextStyle(
                         fontSize: 13,

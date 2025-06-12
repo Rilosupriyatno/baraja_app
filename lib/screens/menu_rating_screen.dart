@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart';
+import '../../services/rating_service.dart'; // Import RatingService
 
 class MenuRatingPage extends StatefulWidget {
   final Map<String, dynamic>? orderData;
+  final String? menuItemId;
+  final String? orderId;
+  // final String? outletId;
 
-  const MenuRatingPage({super.key, required this.orderData});
+  const MenuRatingPage({
+    super.key,
+    required this.orderData,
+    this.menuItemId,
+    this.orderId,
+    // this.outletId,
+  });
 
   @override
   State<MenuRatingPage> createState() => _MenuRatingPageState();
@@ -15,6 +25,14 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
   int selectedRating = 0;
   final TextEditingController _reviewController = TextEditingController();
   bool isSubmitting = false;
+  bool isLoading = true;
+  Map<String, dynamic>? existingRating;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingRating();
+  }
 
   @override
   void dispose() {
@@ -22,7 +40,42 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
     super.dispose();
   }
 
-  void _submitRating() async {
+  // Cek apakah user sudah pernah rating untuk order ini
+  // Future<void> _checkExistingRating() async {
+  //   try {
+  //     final menuItemId = widget.menuItemId ?? widget.orderData?['items']?[0]?['menuItemId'];
+  //     final orderId = widget.orderId ?? widget.orderData?['orderId'];
+  //
+  //     if (menuItemId == null || orderId == null) {
+  //       setState(() {
+  //         isLoading = false;
+  //       });
+  //       return;
+  //     }
+  //
+  //     final rating = await RatingService.getExistingRating(
+  //       menuItemId: menuItemId,
+  //       orderId: orderId,
+  //     );
+  //
+  //     if (rating != null) {
+  //       setState(() {
+  //         existingRating = rating;
+  //         selectedRating = existingRating?['rating'] ?? 0;
+  //         _reviewController.text = existingRating?['review'] ?? '';
+  //       });
+  //     }
+  //   } catch (e) {
+  //     print('Error checking existing rating: $e');
+  //   } finally {
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //   }
+  // }
+
+// Ganti method _submitRating() dengan versi debug ini:
+  Future<void> _submitRating() async {
     if (selectedRating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -37,23 +90,177 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
       isSubmitting = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // DEBUG: Print semua data yang ada
+      print('🔍 DEBUG orderData structure:');
+      print('🔍 orderData keys: ${widget.orderData?.keys}');
+      print('🔍 orderData: ${widget.orderData}');
 
-    setState(() {
-      isSubmitting = false;
-    });
+      // Debug items array
+      print('🔍 items array: ${widget.orderData?['items']}');
+      if (widget.orderData?['items'] != null) {
+        print('🔍 items length: ${widget.orderData?['items'].length}');
+        if (widget.orderData?['items'].isNotEmpty) {
+          print('🔍 first item: ${widget.orderData?['items'][0]}');
+          print('🔍 first item keys: ${widget.orderData?['items'][0]?.keys}');
+        }
+      }
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Rating berhasil dikirim. Terima kasih!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      // Coba berbagai kemungkinan field name berdasarkan tracking screen
+      final menuItemId = widget.menuItemId ??
+          widget.orderData?['items']?[0]?['menuItemId'] ??
+          widget.orderData?['items']?[0]?['id'] ??
+          widget.orderData?['items']?[0]?['itemId'];
 
-    // Navigate back
-    Navigator.of(context).pop();
+      final orderId = widget.orderId ??
+          widget.orderData?['orderId'] ??
+          widget.orderData?['id'] ??
+          widget.orderData?['_id'];
+
+      // final outletId = widget.outletId ??
+      //     widget.orderData?['outletId'] ??
+      //     widget.orderData?['outlet_id'] ??
+      //     widget.orderData?['storeId'];
+
+      // DEBUG: Print extracted values
+      print('🔍 Extracted values:');
+      print('🔍 menuItemId: $menuItemId');
+      print('🔍 orderId: $orderId');
+      // print('🔍 outletId: $outletId');
+      print('🔍 widget.menuItemId: ${widget.menuItemId}');
+      print('🔍 widget.orderId: ${widget.orderId}');
+      // print('🔍 widget.outletId: ${widget.outletId}');
+
+      // Coba berbagai kemungkinan field name untuk menuItemId
+      String? finalMenuItemId = menuItemId;
+      if (finalMenuItemId == null && widget.orderData?['items'] != null && widget.orderData?['items'].isNotEmpty) {
+        final firstItem = widget.orderData?['items'][0];
+        // Coba berbagai kemungkinan nama field
+        finalMenuItemId = firstItem?['menuItemId'] ??
+            firstItem?['menu_item_id'] ??
+            firstItem?['itemId'] ??
+            firstItem?['item_id'] ??
+            firstItem?['id'];
+        print('🔍 Trying alternative menuItemId: $finalMenuItemId');
+      }
+
+      // Coba berbagai kemungkinan field name untuk orderId
+      String? finalOrderId = orderId;
+      if (finalOrderId == null) {
+        finalOrderId = widget.orderData?['orderId'] ??
+            widget.orderData?['order_id'] ??
+            widget.orderData?['id'] ??
+            widget.orderData?['orderNumber'];
+        print('🔍 Trying alternative orderId: $finalOrderId');
+      }
+
+      // Coba berbagai kemungkinan field name untuk outletId
+      // String? finalOutletId = outletId;
+      // if (finalOutletId == null) {
+      //   finalOutletId = widget.orderData?['outletId'] ??
+      //       widget.orderData?['outlet_id'] ??
+      //       widget.orderData?['storeId'] ??
+      //       widget.orderData?['store_id'];
+      //   print('🔍 Trying alternative outletId: $finalOutletId');
+      // }
+
+      print('🔍 Final values:');
+      print('🔍 finalMenuItemId: $finalMenuItemId');
+      print('🔍 finalOrderId: $finalOrderId');
+      // print('🔍 finalOutletId: $finalOutletId');
+
+      if (finalMenuItemId == null || finalOrderId == null) {
+        print('❌ Missing required data:');
+        print('❌ finalMenuItemId is null: ${finalMenuItemId == null}');
+        print('❌ finalOrderId is null: ${finalOrderId == null}');
+
+        // Show more specific error message
+        List<String> missingFields = [];
+        if (finalMenuItemId == null) missingFields.add('Menu Item ID');
+        if (finalOrderId == null) missingFields.add('Order ID');
+
+        throw Exception('Data tidak lengkap: ${missingFields.join(', ')} tidak ditemukan');
+      }
+
+      final result = await RatingService.submitRating(
+        menuItemId: finalMenuItemId,
+        orderId: finalOrderId,
+        // outletId: finalOutletId,
+        rating: selectedRating,
+        review: _reviewController.text.trim(),
+        existingRating: existingRating,
+      );
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(existingRating != null
+                ? 'Rating berhasil diperbarui. Terima kasih!'
+                : 'Rating berhasil dikirim. Terima kasih!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true); // Return true to indicate success
+      } else {
+        throw Exception(result['message'] ?? 'Gagal mengirim rating');
+      }
+    } catch (e) {
+      print('❌ Error in _submitRating: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isSubmitting = false;
+      });
+    }
+  }
+
+// Juga update method _checkExistingRating() untuk debug:
+  Future<void> _checkExistingRating() async {
+    try {
+      print('🔍 DEBUG _checkExistingRating:');
+      print('🔍 widget.menuItemId: ${widget.menuItemId}');
+      print('🔍 widget.orderId: ${widget.orderId}');
+      print('🔍 orderData items: ${widget.orderData?['items']}');
+
+      final menuItemId = widget.menuItemId ?? widget.orderData?['items']?[0]?['menuItemId'];
+      final orderId = widget.orderId ?? widget.orderData?['orderId'];
+
+      print('🔍 Extracted in _checkExistingRating:');
+      print('🔍 menuItemId: $menuItemId');
+      print('🔍 orderId: $orderId');
+
+      if (menuItemId == null || orderId == null) {
+        print('❌ Cannot check existing rating - missing data');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      final rating = await RatingService.getExistingRating(
+        menuItemId: menuItemId,
+        orderId: orderId,
+      );
+
+      if (rating != null) {
+        setState(() {
+          existingRating = rating;
+          selectedRating = existingRating?['rating'] ?? 0;
+          _reviewController.text = existingRating?['review'] ?? '';
+        });
+      }
+    } catch (e) {
+      print('Error checking existing rating: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Widget _buildStarRating() {
@@ -119,6 +326,20 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
       );
     }
 
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text('Beri Rating'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final orderData = widget.orderData!;
     final item = orderData['items']?[0] ?? {};
 
@@ -149,9 +370,9 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Beri Rating',
-          style: TextStyle(
+        title: Text(
+          existingRating != null ? 'Edit Rating' : 'Beri Rating',
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: Colors.black87,
@@ -164,6 +385,34 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              // Existing Rating Info (if any)
+              if (existingRating != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade600),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Anda sudah memberikan rating untuk pesanan ini. Anda dapat mengubahnya di bawah.',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Order Info Card
               Container(
                 width: double.infinity,
@@ -367,10 +616,12 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Bagaimana pengalaman Anda?',
-                            style: TextStyle(
+                            existingRating != null
+                                ? 'Perbarui rating Anda'
+                                : 'Bagaimana pengalaman Anda?',
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                               color: Colors.black87,
@@ -485,18 +736,18 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
                       strokeWidth: 2.5,
                     ),
                   )
-                      : const Row(
+                      : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.send_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        'Kirim Rating',
-                        style: TextStyle(
+                        existingRating != null ? 'Perbarui Rating' : 'Kirim Rating',
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
