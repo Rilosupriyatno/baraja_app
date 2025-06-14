@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
 import '../models/cart_item.dart';
-
+import '../models/reservation_data.dart';
 
 class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
+  bool _isReservation = false;
+  ReservationData? _reservationData;
 
   List<CartItem> get items => _items;
+  bool get isReservation => _isReservation;
+  ReservationData? get reservationData => _reservationData;
+
+  // Set reservation data
+  void setReservationData(bool isReservation, ReservationData? reservationData) {
+    _isReservation = isReservation;
+    _reservationData = reservationData;
+    notifyListeners();
+  }
+
+  // Clear reservation data
+  void clearReservationData() {
+    _isReservation = false;
+    _reservationData = null;
+    notifyListeners();
+  }
 
   void addToCart(CartItem item) {
     // Check if the item already exists in the cart with the same properties
@@ -90,6 +108,16 @@ class CartProvider with ChangeNotifier {
 
   void clearCart() {
     _items.clear();
+    // Note: We don't clear reservation data here automatically
+    // as you might want to keep it for the next order
+    notifyListeners();
+  }
+
+  // Clear everything including reservation data
+  void clearAll() {
+    _items.clear();
+    _isReservation = false;
+    _reservationData = null;
     notifyListeners();
   }
 

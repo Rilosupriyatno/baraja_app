@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../models/reservation_data.dart';
 import '../widgets/cart/cart_item_card.dart';
 import '../utils/currency_formatter.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final bool isReservation;
+  final ReservationData? reservationData;
+
+  const CartScreen({
+    super.key,
+    this.isReservation = false,
+    this.reservationData,
+  });
 
   @override
   CartScreenState createState() => CartScreenState();
@@ -19,12 +27,69 @@ class CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
+    // Set reservation data in cart provider when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.isReservation && widget.reservationData != null) {
+        Provider.of<CartProvider>(context, listen: false)
+            .setReservationData(widget.isReservation, widget.reservationData);
+      }
+    });
+  }
+
+  // Widget untuk menampilkan info reservasi
+  Widget _buildReservationInfo() {
+    if (!widget.isReservation || widget.reservationData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final data = widget.reservationData!;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Detail Reservasi',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${data.formattedDate} • ${data.formattedTime}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            '${data.personCount} orang • Lantai ${data.floor}',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final cartItems = cartProvider.items;
+
+    // Dynamic title based on reservation status
+    String title = widget.isReservation ? 'Keranjang Reservasi' : 'Keranjang';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -42,8 +107,15 @@ class CartScreenState extends State<CartScreen> {
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            title: const Text('Keranjang', style: TextStyle(color: Colors.black)),
+            title: Text(title, style: const TextStyle(color: Colors.black)),
           ),
+
+          // Reservation info at the top
+          if (widget.isReservation && widget.reservationData != null)
+            SliverToBoxAdapter(
+              child: _buildReservationInfo(),
+            ),
+
           if (_isLoading)
             const SliverFillRemaining(
               child: Center(
@@ -68,7 +140,9 @@ class CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tambahkan menu favorit Anda',
+                      widget.isReservation
+                          ? 'Tambahkan menu untuk reservasi Anda'
+                          : 'Tambahkan menu favorit Anda',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade600,
@@ -107,7 +181,12 @@ class CartScreenState extends State<CartScreen> {
               padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  context.push('/menu');
+                  // Navigate back to menu with reservation data if needed
+                  if (widget.isReservation && widget.reservationData != null) {
+                    context.pop(); // Just go back to the menu screen
+                  } else {
+                    context.push('/menu');
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
@@ -159,12 +238,24 @@ class CartScreenState extends State<CartScreen> {
                 ElevatedButton(
                   onPressed: cartItems.isEmpty ? null : () {
                     context.go('/checkout');
+                    // Pass reservation data to checkout if needed
+                    // if (widget.isReservation && widget.reservationData != null) {
+                    //   context.go('/checkout', extra: {
+                    //     'isReservation': true,
+                    //     'reservationData': widget.reservationData,
+                    //   });
+                    // } else {
+                    //   context.go('/checkout');
+                    // }
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                     backgroundColor: AppTheme.primaryColor,
                   ),
-                  child: const Text('Lanjutkan Pesanan', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  child: Text(
+                    widget.isReservation ? 'Konfirmasi Reservasi' : 'Lanjutkan Pesanan',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
               ],
             ),

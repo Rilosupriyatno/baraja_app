@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../models/reservation_data.dart';
 
 class CheckoutButton extends StatelessWidget {
-  const CheckoutButton({super.key});
+  final bool isReservation;
+  final ReservationData? reservationData;
+
+  const CheckoutButton({
+    super.key,
+    this.isReservation = false,
+    this.reservationData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +23,15 @@ class CheckoutButton extends StatelessWidget {
         }
         return FloatingActionButton.extended(
           onPressed: () {
-            context.push('/cart');
+            // Pass reservation data to cart screen
+            if (isReservation && reservationData != null) {
+              context.push('/cart', extra: {
+                'isReservation': true,
+                'reservationData': reservationData,
+              });
+            } else {
+              context.push('/cart');
+            }
           },
           backgroundColor: const Color(0xFF076A3B),
           label: Row(
@@ -56,9 +72,9 @@ class CheckoutButton extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 8), // Jarak antara ikon dan teks
-              const Text(
-                'Lanjut Bayar',
-                style: TextStyle(
+              Text(
+                isReservation ? 'Lanjut Reservasi' : 'Lanjut Bayar',
+                style: const TextStyle(
                   fontSize: 16,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
