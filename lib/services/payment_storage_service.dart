@@ -1,5 +1,3 @@
-// ignore: file_names
-// ignore: file_names
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
