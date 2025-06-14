@@ -116,10 +116,10 @@ class AppRouter {
         //     return ProductDetailScreen(product: product);
         //   },
         // ),
-        GoRoute(
-          path: '/cart',
-          builder: (context, state) => const CartScreen(),
-        ),
+        // GoRoute(
+        //   path: '/cart',
+        //   builder: (context, state) => const CartScreen(),
+        // ),
 
 
 
@@ -139,7 +139,27 @@ class AppRouter {
 
 
 
-        // Checkout page
+        // Checkout route
+        GoRoute(
+          path: '/cart',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return CartScreen(
+              isReservation: extra?['isReservation'] ?? false,
+              reservationData: extra?['reservationData'],
+            );
+          },
+        ),
+        // GoRoute(
+        //   path: '/checkout',
+        //   builder: (context, state) {
+        //     final extra = state.extra as Map<String, dynamic>?;
+        //     return CheckoutPage(
+        //       isReservation: extra?['isReservation'] ?? false,
+        //       reservationData: extra?['reservationData'],
+        //     );
+        //   },
+        // ),
         GoRoute(
           path: '/checkout',
           builder: (context, state) => const CheckoutPage(),

@@ -299,9 +299,10 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
-      floatingActionButton: const CheckoutButton(
-        // isReservation: widget.isReservation,
-        // reservationData: widget.reservationData,
+// Di bagian floatingActionButton di MenuScreen, ganti dengan:
+      floatingActionButton: CheckoutButton(
+        isReservation: widget.isReservation,
+        reservationData: widget.reservationData,
       ),
     );
   }
