@@ -7,7 +7,8 @@ import '../widgets/reservation/date_selector.dart';
 import '../widgets/reservation/floor_selector.dart';
 import '../widgets/reservation/person_counter.dart';
 import '../widgets/reservation/time_selector.dart';
-
+import '../models/reservation_data.dart';
+import 'menu_screen.dart';
 
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
@@ -33,6 +34,31 @@ class _ReservationScreenState extends State<ReservationScreen> {
         selectedTime = picked;
       });
     }
+  }
+
+  // Fungsi untuk navigasi ke menu dengan data reservasi
+  void _navigateToMenuWithReservation() {
+    final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
+    final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+
+    final reservationData = ReservationData(
+      date: selectedDate,
+      time: selectedTime,
+      floor: selectedFloor,
+      personCount: personCount,
+      formattedDate: formattedDate,
+      formattedTime: formattedTime,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuScreen(
+          isReservation: true,
+          reservationData: reservationData,
+        ),
+      ),
+    );
   }
 
   @override
@@ -108,28 +134,18 @@ class _ReservationScreenState extends State<ReservationScreen> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          // Handle reservation
-          final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
-          final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Reservasi untuk $personCount orang di lantai $selectedFloor pada $formattedDate pukul $formattedTime',
-              ),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          // Navigasi ke menu dengan data reservasi
+          _navigateToMenuWithReservation();
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.barajaPrimary.primaryColor,  // Brown color similar to image
+          backgroundColor: AppTheme.barajaPrimary.primaryColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
         child: const Text(
-          'Reservasi Sekarang',
+          'Lanjut Pilih Menu',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,

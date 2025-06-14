@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../models/reservation_data.dart';
 import '../services/product_service.dart';
 import '../widgets/detail_product/checkout_button.dart';
 // import '../widgets/menu/menu_selector.dart';
@@ -9,7 +10,14 @@ import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
 class MenuScreen extends StatefulWidget {
-  const MenuScreen({super.key});
+  final bool isReservation;
+  final ReservationData? reservationData;
+
+  const MenuScreen({
+    super.key,
+    this.isReservation = false,
+    this.reservationData,
+  });
 
   @override
   State<MenuScreen> createState() => _MenuScreenState();
@@ -190,6 +198,53 @@ class _MenuScreenState extends State<MenuScreen> {
     }).toList();
   }
 
+  // Widget untuk menampilkan info reservasi
+  Widget _buildReservationInfo() {
+    if (!widget.isReservation || widget.reservationData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final data = widget.reservationData!;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Reservasi Menu',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${data.formattedDate} • ${data.formattedTime}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            '${data.personCount} orang • Lantai ${data.floor}',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Ambil daftar sub-menu berdasarkan menu yang dipilih
@@ -197,18 +252,12 @@ class _MenuScreenState extends State<MenuScreen> {
     // Ambil produk yang sesuai dengan menu dan sub-menu yang dipilih
     final List<Product> filteredProducts = _getFilteredProducts();
 
-// Menampilkan jumlah produk
-    print('Filtered products count: ${filteredProducts.length}');
-
-// Menampilkan detail setiap produk
-    for (var product in filteredProducts) {
-      print('Product: ${product.name}, Categories: ${product.category}, Main Category: ${product.averageRating}');
-    }
-
+    // Dynamic title based on reservation status
+    String appBarTitle = widget.isReservation ? 'Menu Reservasi' : 'Menu';
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Menu'),
+      appBar: ClassicAppBar(title: appBarTitle),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -216,6 +265,9 @@ class _MenuScreenState extends State<MenuScreen> {
             ? Center(child: Text(_errorMessage))
             : Column(
           children: [
+            // Reservation info (only shown if isReservation is true)
+            _buildReservationInfo(),
+
             // Menu selector (Makanan/Minuman)
             // MenuSelector(
             //   selectedMenu: selectedMenu,
@@ -247,7 +299,10 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
-      floatingActionButton: const CheckoutButton(),
+      floatingActionButton: const CheckoutButton(
+        // isReservation: widget.isReservation,
+        // reservationData: widget.reservationData,
+      ),
     );
   }
 }
