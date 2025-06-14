@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/payment_detail_screen.dart';
+import 'package:baraja_app/services/rating_service.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,6 @@ import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
 import '../services/order_service.dart';
 import 'menu_rating_screen.dart';
-
 class TrackingDetailOrderScreen extends StatefulWidget {
   final String orderId;
 
@@ -47,9 +47,17 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   bool isLoading = true;
   String? errorMessage;
 
+  // Rating state
+  Map<String, dynamic>? existingRating;
+  bool isLoadingRating = false;
+
   // OrderService instance
   final OrderService _orderService = OrderService();
   final SocketService _socketService = SocketService();
+
+  // Add your API base URL here
+// Replace with your actual base URL
+
 
   @override
   void initState() {
@@ -66,6 +74,188 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     setState(() {
       _hasPaymentDetails = hasDetails;
     });
+  }
+
+  // Perbaikan untuk method _fetchOrderData
+  Future<void> _fetchOrderData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      print('🔍 Fetching order data for ID: ${widget.orderId}');
+
+      final result = await _orderService.getOrderForTracking(widget.orderId);
+
+      print('📦 Raw result: $result');
+
+      if (result['success']) {
+        final data = result['data'];
+
+        setState(() {
+          orderData = data;
+          isLoading = false;
+          _updateOrderStatus();
+        });
+
+        // PERBAIKAN: Panggil _checkExistingRating setelah setState selesai
+        // dengan menggunakan Future.microtask untuk memastikan UI sudah terupdate
+        Future.microtask(() async {
+          await _checkExistingRating();
+        });
+
+        // Start animations when data is loaded
+        _fadeController.forward();
+        _slideController.forward();
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMessage = result['error'];
+        });
+      }
+    } catch (e) {
+      print('❌ Exception in _fetchOrderData: $e');
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+      });
+    }
+  }
+
+// Perbaikan untuk method _checkExistingRating
+  Future<void> _checkExistingRating() async {
+    print('🔍 Starting _checkExistingRating');
+
+    if (orderData == null) {
+      print('❌ orderData is null');
+      return;
+    }
+
+    if (orderData!['items'] == null || orderData!['items'].isEmpty) {
+      print('❌ No items in order');
+      return;
+    }
+
+    setState(() {
+      isLoadingRating = true;
+    });
+
+    try {
+      final items = orderData!['items'] as List;
+      final firstItem = items[0] as Map<String, dynamic>;
+
+      // PERBAIKAN: Lebih robust dalam mengekstrak ID
+      String? menuItemId;
+      String? orderId;
+
+      // Coba berbagai kemungkinan nama field untuk menuItemId
+      menuItemId = firstItem['menuItemId']?.toString() ??
+          firstItem['id']?.toString() ??
+          firstItem['menu_item_id']?.toString();
+
+      // Coba berbagai kemungkinan nama field untuk orderId
+      orderId = orderData!['_id']?.toString() ??
+          orderData!['id']?.toString() ??
+          widget.orderId;
+
+      print('🔍 MenuItemId: $menuItemId');
+      print('🔍 OrderId: $orderId');
+      print('🔍 First item structure: ${firstItem.keys}');
+      print('🔍 Order data structure: ${orderData!.keys}');
+
+      if (menuItemId != null) {
+        print('🔍 Calling API with menuItemId: $menuItemId, orderId: $orderId');
+
+        final rating = await RatingService.getExistingRating(
+          menuItemId: menuItemId,
+          orderId: orderId,
+        );
+
+        print('🔍 Rating result: $rating');
+
+        if (mounted) {
+          setState(() {
+            existingRating = rating;
+            isLoadingRating = false;
+          });
+        }
+      } else {
+        print('❌ Missing required IDs - menuItemId: $menuItemId, orderId: $orderId');
+        if (mounted) {
+          setState(() {
+            isLoadingRating = false;
+          });
+        }
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error in _checkExistingRating: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      if (mounted) {
+        setState(() {
+          isLoadingRating = false;
+        });
+      }
+    }
+  }
+
+// Perbaikan untuk method _shouldShowActionButton dengan logging yang lebih baik
+  bool _shouldShowActionButton() {
+    print('🔍 === _shouldShowActionButton Debug ===');
+    print('🔍 isLoadingRating: $isLoadingRating');
+    print('🔍 existingRating: $existingRating');
+    print('🔍 _hasRating(): ${_hasRating()}');
+    print('🔍 _isOrderCompleted(): ${_isOrderCompleted()}');
+    print('🔍 _hasPaymentDetails: $_hasPaymentDetails');
+
+    if (orderData != null) {
+      print('🔍 orderData keys: ${orderData!.keys}');
+      print('🔍 orderStatus: ${orderData!['orderStatus']}');
+      print('🔍 status: ${orderData!['status']}');
+      print('🔍 paymentStatus: ${orderData!['paymentStatus']}');
+      print('🔍 paymentDetails: ${orderData!['paymentDetails']}');
+    }
+
+    // Don't show button while loading rating
+    if (isLoadingRating) {
+      print('✅ Hiding button: Still loading rating');
+      return false;
+    }
+
+    // If order is completed and user hasn't rated yet, show rating button
+    if (_isOrderCompleted() && !_hasRating()) {
+      print('✅ Showing rating button: Order completed, no rating');
+      return true;
+    }
+
+    // If user has already rated, don't show rating button
+    if (_hasRating()) {
+      print('✅ Hiding button: Already has rating');
+      return false;
+    }
+
+    // For other statuses, check payment details
+    if (!_hasPaymentDetails) {
+      print('✅ Hiding button: No payment details');
+      return false;
+    }
+
+    final paymentStatus = orderData?['paymentStatus'] ??
+        orderData?['paymentDetails']?['status'];
+
+    print('🔍 Final payment status: $paymentStatus');
+
+    // Show button for any payment-related status
+    bool shouldShow = paymentStatus == 'pending' ||
+        paymentStatus == 'settlement' ||
+        paymentStatus == 'capture' ||
+        _hasPaymentDetails;
+
+    print('✅ Final decision - shouldShow: $shouldShow');
+    print('🔍 =====================================');
+
+    return shouldShow;
   }
 
   void _setupSocketConnection() {
@@ -170,57 +360,60 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     ));
   }
 
-  Future<void> _fetchOrderData() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
-    try {
-      print('🔍 Fetching order data for ID: ${widget.orderId}');
-
-      final result = await _orderService.getOrderForTracking(widget.orderId);
-
-      print('📦 Raw result: $result');
-      print('📦 Result success: ${result['success']}');
-      print('📦 Result data: ${result['data']}');
-      print('📦 Result error: ${result['error']}');
-
-      if (result['success']) {
-        final data = result['data'];
-
-        print('📋 Order data keys: ${data?.keys}');
-        if (data != null) {
-          print('📋 Payment status: ${data['paymentDetails']?['status']}');
-          print('📋 Order status: ${data['status']}');
-          print('📋 Order items count: ${data['items']?.length}');
-        }
-
-        setState(() {
-          orderData = data;
-          isLoading = false;
-          _updateOrderStatus();
-        });
-
-        // Start animations when data is loaded
-        _fadeController.forward();
-        _slideController.forward();
-      } else {
-        print('❌ Failed to fetch order: ${result['error']}');
-        setState(() {
-          isLoading = false;
-          errorMessage = result['error'];
-        });
-      }
-    } catch (e, stackTrace) {
-      print('❌ Exception in _fetchOrderData: $e');
-      print('❌ Stack trace: $stackTrace');
-      setState(() {
-        isLoading = false;
-        errorMessage = 'Terjadi kesalahan: ${e.toString()}';
-      });
-    }
-  }
+  // Future<void> _fetchOrderData() async {
+  //   setState(() {
+  //     isLoading = true;
+  //     errorMessage = null;
+  //   });
+  //
+  //   try {
+  //     print('🔍 Fetching order data for ID: ${widget.orderId}');
+  //
+  //     final result = await _orderService.getOrderForTracking(widget.orderId);
+  //
+  //     print('📦 Raw result: $result');
+  //     print('📦 Result success: ${result['success']}');
+  //     print('📦 Result data: ${result['data']}');
+  //     print('📦 Result error: ${result['error']}');
+  //
+  //     if (result['success']) {
+  //       final data = result['data'];
+  //
+  //       print('📋 Order data keys: ${data?.keys}');
+  //       if (data != null) {
+  //         print('📋 Payment status: ${data['paymentDetails']?['status']}');
+  //         print('📋 Order status: ${data['status']}');
+  //         print('📋 Order items count: ${data['items']?.length}');
+  //       }
+  //
+  //       setState(() {
+  //         orderData = data;
+  //         isLoading = false;
+  //         _updateOrderStatus();
+  //       });
+  //
+  //       // Check for existing rating after order data is loaded
+  //       await _checkExistingRating();
+  //
+  //       // Start animations when data is loaded
+  //       _fadeController.forward();
+  //       _slideController.forward();
+  //     } else {
+  //       print('❌ Failed to fetch order: ${result['error']}');
+  //       setState(() {
+  //         isLoading = false;
+  //         errorMessage = result['error'];
+  //       });
+  //     }
+  //   } catch (e, stackTrace) {
+  //     print('❌ Exception in _fetchOrderData: $e');
+  //     print('❌ Stack trace: $stackTrace');
+  //     setState(() {
+  //       isLoading = false;
+  //       errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+  //     });
+  //   }
+  // }
 
   void _updateOrderStatus() {
     if (orderData == null) {
@@ -272,11 +465,11 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   // Di tracking screen, saat navigasi ke rating:
-  void _navigateToRating() {
+  void _navigateToRating() async {
     final firstItem = orderData?['items']?[0];
     print(firstItem);
 
-    Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MenuRatingPage(
@@ -288,44 +481,67 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
         ),
       ),
     );
+
+    // Refresh data setelah kembali dari rating screen
+    if (result == true) {
+      await _refreshData();
+    }
   }
 
-// Ganti method _shouldShowActionButton() dengan ini:
-  bool _shouldShowActionButton() {
-    print('🔍 _shouldShowActionButton called');
-    print('🔍 _hasPaymentDetails: $_hasPaymentDetails');
-    print('🔍 _isOrderCompleted(): ${_isOrderCompleted()}');
-
-    // Jika order sudah completed, selalu tampilkan tombol rating
-    if (_isOrderCompleted()) {
-      print('✅ Order completed, showing rating button');
-      return true;
-    }
-
-    // Untuk status lain, cek payment details
-    if (!_hasPaymentDetails) {
-      print('❌ No payment details, hiding button');
-      return false;
-    }
-
-    final paymentStatus = orderData?['paymentStatus'] ??
-        orderData?['paymentDetails']?['status'];
-
-    print('🔍 Payment status: $paymentStatus');
-
-    // Show button for any payment-related status
-    bool shouldShow = paymentStatus == 'pending' ||
-        paymentStatus == 'settlement' ||
-        paymentStatus == 'capture' ||
-        _hasPaymentDetails;
-
-    print('🔍 Should show button: $shouldShow');
-    return shouldShow;
+  // Check if user has already rated (from API)
+  bool _hasRating() {
+    return existingRating != null;
   }
 
-// Perbaiki method _isOrderCompleted() untuk konsistensi:
+  // Check if should show action button
+  // bool _shouldShowActionButton() {
+  //   print('🔍 _shouldShowActionButton called');
+  //   print('🔍 _hasPaymentDetails: $_hasPaymentDetails');
+  //   print('🔍 _isOrderCompleted(): ${_isOrderCompleted()}');
+  //   print('🔍 _hasRating(): ${_hasRating()}');
+  //   print('🔍 isLoadingRating: $isLoadingRating');
+  //
+  //   // Don't show button while loading rating
+  //   if (isLoadingRating) {
+  //     return false;
+  //   }
+  //
+  //   // If order is completed and user hasn't rated yet, show rating button
+  //   if (_isOrderCompleted() && !_hasRating()) {
+  //     print('✅ Order completed but no rating, showing rating button');
+  //     return true;
+  //   }
+  //
+  //   // If user has already rated, don't show rating button
+  //   if (_hasRating()) {
+  //     print('✅ Already has rating, hiding rating button');
+  //     return false;
+  //   }
+  //
+  //   // For other statuses, check payment details
+  //   if (!_hasPaymentDetails) {
+  //     print('❌ No payment details, hiding button');
+  //     return false;
+  //   }
+  //
+  //   final paymentStatus = orderData?['paymentStatus'] ??
+  //       orderData?['paymentDetails']?['status'];
+  //
+  //   print('🔍 Payment status: $paymentStatus');
+  //
+  //   // Show button for any payment-related status
+  //   bool shouldShow = paymentStatus == 'pending' ||
+  //       paymentStatus == 'settlement' ||
+  //       paymentStatus == 'capture' ||
+  //       _hasPaymentDetails;
+  //
+  //   print('🔍 Should show button: $shouldShow');
+  //   return shouldShow;
+  // }
+
+  // Check if order is completed
   bool _isOrderCompleted() {
-    // Coba kedua kemungkinan nama field
+    // Try both possible field names
     final orderStatus = orderData?['orderStatus'] ?? orderData?['status'];
 
     print('🔍 Checking order completion status: $orderStatus');
@@ -334,12 +550,152 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     return orderStatus == 'Completed';
   }
 
+  // Widget to display existing rating
+  Widget _buildRatingDisplay() {
+    if (!_hasRating() || existingRating == null) return const SizedBox.shrink();
+
+    final rating = (existingRating!['rating'] ?? 0).toDouble();
+    final comment = existingRating!['comment'] ?? '';
+    final ratingDate = existingRating!['createdAt'] ?? existingRating!['date'];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header rating
+          Row(
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                color: Colors.green,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Rating Anda',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Rating stars
+          Row(
+            children: List.generate(5, (index) {
+              return Icon(
+                index < rating ? Icons.star_rounded : Icons.star_border_rounded,
+                color: Colors.amber,
+                size: 28,
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+
+          // Rating score
+          Text(
+            '${rating.toStringAsFixed(1)} dari 5',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
+          ),
+
+          // Rating date if available
+          if (ratingDate != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Diberikan pada: ${_formatDate(ratingDate)}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+
+          // Comment if available
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Komentar:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              comment,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+          ],
+
+          // Thank you message
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.green,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Terima kasih atas rating dan feedback Anda!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.green[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to format date
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
   Widget _buildActionButton() {
     if (!_shouldShowActionButton()) return const SizedBox.shrink();
 
     final isOrderCompleted = _isOrderCompleted();
 
-    if (isOrderCompleted) {
+    if (isOrderCompleted && !_hasRating()) {
       // Show rating button
       return Container(
         width: double.infinity,
@@ -617,6 +973,41 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                           width: double.infinity,
                           color: Colors.white,
                           child: OrderDetailWidget(orderData: orderData!),
+                        ),
+                      ),
+
+                    // Rating Display - Show rating if exists
+                    if (_hasRating())
+                      SlideTransition(
+                        position: _slideAnimation,
+                        child: _buildRatingDisplay(),
+                      ),
+
+                    // Loading indicator for rating check
+                    if (isLoadingRating)
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Mengecek rating...',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],

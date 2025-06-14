@@ -18,6 +18,51 @@ class ProductCard extends StatelessWidget {
     this.bundleText,
   });
 
+  // Widget untuk menampilkan rating dengan bintang yang presisi
+  Widget _buildRatingWidget(double rating) {
+    List<Widget> stars = [];
+
+    for (int i = 1; i <= 5; i++) {
+      if (i <= rating.floor()) {
+        // Bintang penuh
+        stars.add(const Icon(
+          Icons.star,
+          color: Colors.amber,
+          size: 16,
+        ));
+      } else if (i == rating.floor() + 1 && rating % 1 != 0) {
+        // Bintang setengah
+        stars.add(const Icon(
+          Icons.star_half,
+          color: Colors.amber,
+          size: 16,
+        ));
+      } else {
+        // Bintang kosong
+        stars.add(Icon(
+          Icons.star_border,
+          color: Colors.grey[400],
+          size: 16,
+        ));
+      }
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...stars,
+        const SizedBox(width: 4),
+        Text(
+          rating.toStringAsFixed(1),
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -185,6 +230,15 @@ class ProductCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Widget rating yang sudah diperbaiki
+                        if (product.averageRating > 0)
+                          _buildRatingWidget(product.averageRating),
+                      ],
+                    )
                       ],
                     ),
                   ),

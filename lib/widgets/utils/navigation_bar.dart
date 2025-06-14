@@ -81,13 +81,13 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          PersistentTabConfig(
-            screen: QRScanner(key: _qrScannerKey), // Tambahkan key
-            item: ItemConfig(
-              icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
+          // PersistentTabConfig(
+          //   screen: QRScanner(key: _qrScannerKey), // Tambahkan key
+          //   item: ItemConfig(
+          //     icon: const Icon(Icons.qr_code_2, size: 35, color: Colors.white),
+          //     activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+          //   ),
+          // ),
           PersistentTabConfig(
             screen: const OrderHistoryScreen(),
             item: ItemConfig(
@@ -105,7 +105,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
           ),
         ],
-        navBarBuilder: (navBarConfig) => Style13BottomNavBar(
+        navBarBuilder: (navBarConfig) => Style1BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
             boxShadow: [
