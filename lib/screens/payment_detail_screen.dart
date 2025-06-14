@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/paymentStorageService.dart';
+import '../services/payment_storage_service.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import 'package:intl/intl.dart';
 
