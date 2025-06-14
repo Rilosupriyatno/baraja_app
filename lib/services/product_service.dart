@@ -140,6 +140,7 @@ class ProductService {
                 mainCategory = productJson['mainCategory'][0].toString();
               }
             }
+            // print(productJson['averageRating']);
 
             return Product(
               id: productJson['_id'] ?? productJson['id'] ?? '',
@@ -153,6 +154,12 @@ class ProductService {
               discountPercentage: discountPercentage,
               toppings: toppings ?? [],
               addons: addons ?? [],
+              averageRating: productJson['averageRating'] is num
+                  ? (productJson['averageRating'] as num).toDouble()
+                  : 0.0,
+              reviewCount: productJson['reviewsCount'] is int
+                  ? productJson['reviewsCount']
+                  : (productJson['reviewsCount'] ?? 0),
               imageColor: generateImageColor(mainCategory),
             );
           }).toList();

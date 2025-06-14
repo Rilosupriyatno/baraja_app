@@ -18,20 +18,37 @@ class RatingService {
     required String orderId,
   }) async {
     try {
+      print('🌐 API Call - URL: $baseUrl/api/my-rating/$menuItemId/$orderId');
+
       final response = await http.get(
-        Uri.parse('$baseUrl/ratings/customer/$menuItemId/$orderId'),
+        Uri.parse('$baseUrl/api/rating/my-rating/$menuItemId/$orderId'),
         headers: _headers,
       );
 
+      print('🌐 API Response Status: ${response.statusCode}');
+      print('🌐 API Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
+        print('🌐 Parsed API Response: $data');
+
+        if (data['success'] == true) {
+          print('✅ Rating found: ${data['data']}');
           return data['data'];
+        } else {
+          print('❌ API returned success: false');
+          return null;
         }
+      } else if (response.statusCode == 404) {
+        print('ℹ️ No rating found (404)');
+        return null;
+      } else {
+        print('❌ API Error: ${response.statusCode}');
+        return null;
       }
-      return null;
-    } catch (e) {
-      print('Error getting existing rating: $e');
+    } catch (e, stackTrace) {
+      print('❌ Exception in _getExistingRating: $e');
+      print('❌ Stack trace: $stackTrace');
       return null;
     }
   }
@@ -46,22 +63,12 @@ class RatingService {
     // List<String>? imageUrls, // Ubah nama parameter
   }) async {
     try {
-      // Format images sesuai ekspektasi backend
-      // List<Map<String, dynamic>> formattedImages = [];
-      // if (imageUrls != null) {
-      //   formattedImages = imageUrls.map((url) => {
-      //     'url': url,
-      //     'caption': '' // atau null jika tidak ada caption
-      //   }).toList();
-      // }
 
       final body = {
         'menuItemId': menuItemId,
         'orderId': orderId,
         'rating': rating,
         'review': review ?? '',
-        // 'tags': tags ?? [],
-        // 'images': formattedImages, // Gunakan format yang benar
       };
 
       final response = await http.post(
@@ -93,15 +100,11 @@ class RatingService {
     required String ratingId,
     required int rating,
     String? review,
-    // List<String>? tags,
-    // List<String>? imageUrls,
   }) async {
     try {
       final body = {
         'rating': rating,
         'review': review ?? '',
-        // 'tags': tags ?? [],
-        // 'imageUrls': imageUrls ?? [],
       };
 
       final response = await http.put(
@@ -135,8 +138,6 @@ class RatingService {
     String? outletId,
     required int rating,
     String? review,
-    // List<String>? tags,
-    // List<String>? imageUrls,
     Map<String, dynamic>? existingRating,
   }) async {
     if (existingRating != null) {
@@ -145,19 +146,14 @@ class RatingService {
         ratingId: existingRating['_id'],
         rating: rating,
         review: review,
-        // tags: tags,
-        // imageUrls: imageUrls,
       );
     } else {
       // Create new rating
       return await createRating(
         menuItemId: menuItemId,
         orderId: orderId,
-        // outletId: outletId,
         rating: rating,
         review: review,
-        // tags: tags,
-        // imageUrls: imageUrls,
       );
     }
   }

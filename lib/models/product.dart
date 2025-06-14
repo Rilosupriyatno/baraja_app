@@ -13,6 +13,8 @@ class Product {
   final List<Topping>? toppings;
   final List<Addon>? addons;
   final Color? imageColor;
+  final double averageRating;
+  final int reviewCount;
 
   Product({
     required this.id,
@@ -27,6 +29,8 @@ class Product {
     this.toppings,
     this.addons,
     this.imageColor,
+    required this.averageRating,
+    required this.reviewCount,
   });
   // You can add methods to help with category processing
   List<String> getCategories() {

@@ -197,6 +197,15 @@ class _MenuScreenState extends State<MenuScreen> {
     // Ambil produk yang sesuai dengan menu dan sub-menu yang dipilih
     final List<Product> filteredProducts = _getFilteredProducts();
 
+// Menampilkan jumlah produk
+    print('Filtered products count: ${filteredProducts.length}');
+
+// Menampilkan detail setiap produk
+    for (var product in filteredProducts) {
+      print('Product: ${product.name}, Categories: ${product.category}, Main Category: ${product.averageRating}');
+    }
+
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const ClassicAppBar(title: 'Menu'),
