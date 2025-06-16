@@ -4,7 +4,6 @@ import '../models/product.dart';
 import '../models/reservation_data.dart';
 import '../services/product_service.dart';
 import '../widgets/detail_product/checkout_button.dart';
-// import '../widgets/menu/menu_selector.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/utils/classic_app_bar.dart';
@@ -12,11 +11,15 @@ import '../widgets/utils/classic_app_bar.dart';
 class MenuScreen extends StatefulWidget {
   final bool isReservation;
   final ReservationData? reservationData;
+  final bool isDineIn;
+  final String? tableNumber;
 
   const MenuScreen({
     super.key,
     this.isReservation = false,
     this.reservationData,
+    this.isDineIn = false,
+    this.tableNumber,
   });
 
   @override
@@ -245,6 +248,77 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  // Widget untuk menampilkan info dine-in
+  Widget _buildDineInInfo() {
+    if (!widget.isDineIn || widget.tableNumber == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.table_restaurant, color: Colors.green.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dine In',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+                Text(
+                  'Meja ${widget.tableNumber!.toUpperCase()}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Active',
+              style: TextStyle(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Get dynamic app bar title
+  String _getAppBarTitle() {
+    if (widget.isReservation) {
+      return 'Menu Reservasi';
+    } else if (widget.isDineIn) {
+      return 'Menu Dine In';
+    } else {
+      return 'Menu';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Ambil daftar sub-menu berdasarkan menu yang dipilih
@@ -252,12 +326,9 @@ class _MenuScreenState extends State<MenuScreen> {
     // Ambil produk yang sesuai dengan menu dan sub-menu yang dipilih
     final List<Product> filteredProducts = _getFilteredProducts();
 
-    // Dynamic title based on reservation status
-    String appBarTitle = widget.isReservation ? 'Menu Reservasi' : 'Menu';
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: ClassicAppBar(title: appBarTitle),
+      appBar: ClassicAppBar(title: _getAppBarTitle()),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -268,7 +339,10 @@ class _MenuScreenState extends State<MenuScreen> {
             // Reservation info (only shown if isReservation is true)
             _buildReservationInfo(),
 
-            // Menu selector (Makanan/Minuman)
+            // Dine-in info (only shown if isDineIn is true)
+            _buildDineInInfo(),
+
+            // Menu selector (Makanan/Minuman) - Commented out for now
             // MenuSelector(
             //   selectedMenu: selectedMenu,
             //   onMenuSelected: (menu) {
@@ -299,10 +373,11 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
-// Di bagian floatingActionButton di MenuScreen, ganti dengan:
       floatingActionButton: CheckoutButton(
         isReservation: widget.isReservation,
         reservationData: widget.reservationData,
+        isDineIn: widget.isDineIn,
+        tableNumber: widget.tableNumber,
       ),
     );
   }

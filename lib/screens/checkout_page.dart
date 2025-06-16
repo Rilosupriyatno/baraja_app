@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/order_type.dart';
+import '../models/reservation_data.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
 import '../widgets/payment/cart_item_widget.dart';
@@ -14,7 +15,18 @@ import '../widgets/payment/payment_method_widget.dart';
 import '../widgets/payment/voucher_widget.dart';
 
 class CheckoutPage extends StatefulWidget {
-  const CheckoutPage({super.key});
+  final bool isReservation;
+  final ReservationData? reservationData;
+  final bool isDineIn;
+  final String? tableNumber;
+
+  const CheckoutPage({
+    super.key,
+    this.isReservation = false,
+    this.reservationData,
+    this.isDineIn = false,
+    this.tableNumber,
+  });
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -22,10 +34,10 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   // Pilihan tipe pesanan
-  OrderType selectedOrderType = OrderType.dineIn;
+  late OrderType selectedOrderType;
 
   // Data meja untuk Dine-in
-  String tableNumber = "";
+  late String tableNumber;
 
   // Data untuk Delivery
   String deliveryAddress = "";
@@ -43,6 +55,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedVoucherCode;
   String voucherDescription = "";
   int discountAmount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Set initial order type and table number based on parameters
+    if (widget.isReservation) {
+      selectedOrderType = OrderType.dineIn;
+      tableNumber = "Reservasi"; // Placeholder for reservation
+    } else if (widget.isDineIn && widget.tableNumber != null) {
+      selectedOrderType = OrderType.dineIn;
+      tableNumber = widget.tableNumber!;
+    } else {
+      selectedOrderType = OrderType.delivery;
+      tableNumber = "";
+    }
+  }
 
   // Calculate the discount amount based on the selected voucher
   int calculateDiscount(int subtotal) {
@@ -78,13 +107,121 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return selectedPaymentMethodName!;
   }
 
+  // Widget untuk menampilkan info reservasi
+  Widget _buildReservationInfo() {
+    if (!widget.isReservation || widget.reservationData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final data = widget.reservationData!;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Detail Reservasi',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${data.formattedDate} • ${data.formattedTime}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            '${data.personCount} orang • Lantai ${data.floor}',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk menampilkan info dine-in
+  Widget _buildDineInInfo() {
+    if (!widget.isDineIn || widget.tableNumber == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_restaurant, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Dine In',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Meja No. ${widget.tableNumber}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            'Pesanan akan disajikan langsung ke meja Anda',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Method untuk menentukan apakah order type selector harus ditampilkan
+  bool _shouldShowOrderTypeSelector() {
+    return !widget.isReservation && !widget.isDineIn;
+  }
+
+  // Method untuk mendapatkan title section berdasarkan mode
+  String _getOrderTypeTitle() {
+    if (widget.isReservation) {
+      return "Konfirmasi Reservasi";
+    } else if (widget.isDineIn) {
+      return "Konfirmasi Pesanan Dine In";
+    } else {
+      return "Mau makan dimana?";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Gunakan CartProvider untuk mendapatkan data keranjang
     final cartProvider = Provider.of<CartProvider>(context);
     final List<CartItem> cartItems = cartProvider.items;
-// print(selectedBankCode);
-    // Calculate the c urrent discount amount
+
+    // Calculate the current discount amount
     final int subtotal = cartProvider.totalPrice;
     final int discount = calculateDiscount(subtotal);
 
@@ -102,6 +239,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Reservation info at the top
+                    _buildReservationInfo(),
+
+                    // Dine-in info at the top
+                    _buildDineInInfo(),
+
                     // Daftar Item Keranjang
                     if (cartItems.isEmpty)
                       const Padding(
@@ -121,72 +264,94 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         CartItem item = entry.value;
                         return CartItemWidget(
                           item: item,
-                          // onIncrease: () {
-                          //   cartProvider.increaseQuantity(index);
-                          // },
-                          // onDecrease: () {
-                          //   cartProvider.decreaseQuantity(index);
-                          // },
-                          // onRemove: () {
-                          //   cartProvider.removeFromCart(index);
-                          // },
                         );
                       }),
 
                     const SizedBox(height: 24),
 
-                    // Pemilihan Tipe Pesanan
-                    const Text(
-                      "Mau pesan dimana?",
-                      style: TextStyle(
+                    // Pemilihan Tipe Pesanan - Conditional Display
+                    Text(
+                      _getOrderTypeTitle(),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
 
-                    Text(
-                      "*Kami buka 24 Jam",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                    if (_shouldShowOrderTypeSelector()) ...[
+                      Text(
+                        "*Kami buka 24 Jam",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Custom Order Type Selector
-                    OrderTypeSelector(
-                      selectedType: selectedOrderType,
-                      onChanged: (type) {
-                        setState(() {
-                          selectedOrderType = type;
-                        });
-                      },
-                      tableNumber: tableNumber,
-                      onTableNumberChanged: (value) {
-                        setState(() {
-                          tableNumber = value;
-                        });
-                      },
-                      deliveryAddress: deliveryAddress,
-                      onDeliveryAddressChanged: (value) {
-                        setState(() {
-                          deliveryAddress = value;
-                        });
-                      },
-                      pickupTime: pickupTime,
-                      onPickupTimeChanged: (time) {
-                        setState(() {
-                          pickupTime = time;
-                        });
-                      },
-                    ),
+                      const SizedBox(height: 12),
+                      // Custom Order Type Selector - Only show if not reservation or dine-in
+                      OrderTypeSelector(
+                        selectedType: selectedOrderType,
+                        onChanged: (type) {
+                          setState(() {
+                            selectedOrderType = type;
+                          });
+                        },
+                        tableNumber: tableNumber,
+                        onTableNumberChanged: (value) {
+                          setState(() {
+                            tableNumber = value;
+                          });
+                        },
+                        deliveryAddress: deliveryAddress,
+                        onDeliveryAddressChanged: (value) {
+                          setState(() {
+                            deliveryAddress = value;
+                          });
+                        },
+                        pickupTime: pickupTime,
+                        onPickupTimeChanged: (time) {
+                          setState(() {
+                            pickupTime = time;
+                          });
+                        },
+                      ),
+                    ] else ...[
+                      // Show fixed order type info for reservation/dine-in
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green.shade600,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.isReservation
+                                  ? 'Pesanan untuk reservasi Anda'
+                                  : 'Pesanan untuk meja ${widget.tableNumber}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
                     // Metode Pembayaran
                     PaymentMethodWidget(
-                      selectedMethod: displayedPaymentMethod, // Menggunakan getter yang telah dibuat
+                      selectedMethod: displayedPaymentMethod,
                       onTap: () async {
                         // Navigasi ke layar pemilihan metode pembayaran
                         final result = await context.push<Map<String, dynamic>>('/paymentMethod');
@@ -211,7 +376,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             } else {
                               selectedBankCode = null;
                             }
-
 
                             // Debug print untuk verifikasi
                             print('Payment Method Selected: $selectedPaymentMethodName - $selectedBankName - $selectedBankCode - $selectedPaymentMethod');
@@ -245,7 +409,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
 
                     const SizedBox(height: 24),
-
                   ],
                 ),
               ),
@@ -262,16 +425,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
               bool isValid = true;
               String errorMessage = '';
 
-              if (selectedOrderType == OrderType.dineIn && tableNumber.isEmpty) {
-                isValid = false;
-                errorMessage = 'Silakan masukkan nomor meja';
-              } else if (selectedOrderType == OrderType.delivery && deliveryAddress.isEmpty) {
-                isValid = false;
-                errorMessage = 'Silakan masukkan alamat pengantaran';
-              } else if (selectedOrderType == OrderType.pickup && pickupTime == null) {
-                isValid = false;
-                errorMessage = 'Silakan pilih waktu pengambilan';
-              } else if (selectedPaymentMethod == null) {
+              // Skip validation for reservation and dine-in as they're pre-configured
+              if (!widget.isReservation && !widget.isDineIn) {
+                if (selectedOrderType == OrderType.delivery && deliveryAddress.isEmpty) {
+                  isValid = false;
+                  errorMessage = 'Silakan masukkan alamat pengantaran';
+                } else if (selectedOrderType == OrderType.pickup && pickupTime == null) {
+                  isValid = false;
+                  errorMessage = 'Silakan pilih waktu pengambilan';
+                }
+              }
+
+              if (selectedPaymentMethod == null) {
                 isValid = false;
                 errorMessage = 'Silakan pilih metode pembayaran';
               }
@@ -303,7 +468,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
               try {
                 // Buat instance OrderService
-                final orderService =  serviceorder.OrderService();
+                final orderService = serviceorder.OrderService();
                 final List<Map<String, dynamic>> items = cartItems.map((item) => {
                   'productId': item.id,
                   'productName': item.name,
@@ -314,10 +479,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   'notes': item.notes,
                 }).toList();
 
-
                 // Buat map untuk paymentDetails
                 final Map<String, String?> paymentDetails = {
-                  'method':  selectedPaymentMethodName,
+                  'method': selectedPaymentMethodName,
                   'methodName': selectedPaymentMethod,
                   'bankName': selectedBankName,
                   'bankCode': selectedBankCode,
@@ -330,11 +494,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   userName: userName,
                   orderType: selectedOrderType,
                   tableNumber: tableNumber,
+                  deliveryAddress: deliveryAddress, // Add this line
                   pickupTime: pickupTime,
-                  paymentDetails:paymentDetails,
+                  paymentDetails: paymentDetails,
                   subtotal: subtotal,
                   discount: discount,
                   voucherCode: selectedVoucherCode,
+                  // Add the new parameters
+                  isReservation: widget.isReservation,
+                  reservationData: widget.reservationData,
+                  isDineIn: widget.isDineIn,
                 );
 
                 // Tutup loading dialog
@@ -354,7 +523,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   'discount': discount,
                   'total': subtotal - discount,
                   'voucherCode': selectedVoucherCode,
-                  'orderId': orderResult['order']?['_id'] ?? '', // Tambahkan orderId dari response
+                  'orderId': orderResult['order']?['_id'] ?? '',
+                  'isReservation': widget.isReservation,
+                  'reservationData': widget.reservationData,
+                  'isDineIn': widget.isDineIn,
                 });
 
                 // Hapus cart setelah berhasil checkout
