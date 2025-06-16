@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
+import '../models/reservation_data.dart';
 
 class OrderService {
   // Change this to your actual API base URL
@@ -29,20 +30,37 @@ class OrderService {
     required int discount,
     String? voucherCode,
     required Map<String, String?> paymentDetails,
+    // Added new parameters for reservation and dine-in
+    bool isReservation = false,
+    ReservationData? reservationData,
+    bool isDineIn = false,
   }) async {
     try {
+      // Format pickupTime to string if available
+      String? formattedPickupTime;
+      if (pickupTime != null) {
+        formattedPickupTime = '${pickupTime.hour.toString().padLeft(2, '0')}:${pickupTime.minute.toString().padLeft(2, '0')}';
+      }
+
+      // Determine the actual order type string based on flags
+      String actualOrderType;
+      if (isReservation) {
+        actualOrderType = 'reservation'; // Special type for reservations
+      } else if (isDineIn) {
+        actualOrderType = 'dineIn';
+      } else {
+        actualOrderType = orderType.toString().split('.').last;
+      }
+
       // Prepare order data
       final orderData = {
         'userId': userId,
         'userName': userName,
         'items': items,
-        'orderType': orderType
-            .toString()
-            .split('.')
-            .last,
+        'orderType': actualOrderType,
         'tableNumber': tableNumber,
         'deliveryAddress': deliveryAddress,
-        'pickupTime': pickupTime,
+        'pickupTime': formattedPickupTime,
         'paymentDetails': paymentDetails,
         'pricing': {
           'subtotal': subtotal,
@@ -52,9 +70,25 @@ class OrderService {
         'voucherCode': voucherCode,
         'orderDate': DateTime.now().toIso8601String(),
         'status': 'pending',
+        'outlet': '67cbc9560f025d897d69f889',
+        // Add specific flags for better backend processing
+        'isReservation': isReservation,
+        'isDineIn': isDineIn,
+        // Add reservation data if available
+        if (isReservation && reservationData != null) 'reservationData': {
+          'personCount': reservationData.personCount,
+          'date': reservationData.date,
+          'time': reservationData.time,
+          'floor': reservationData.floor,
+          'formattedDate': reservationData.formattedDate,
+          'formattedTime': reservationData.formattedTime,
+          // Add notes and id if they exist in your ReservationData model
+          // if (reservationData.notes != null) 'notes': reservationData.notes,
+          // if (reservationData.id != null) 'reservationId': reservationData.id,
+        },
       };
 
-      print(orderData);
+      print('Order Data: $orderData');
 
       // Get auth token
       final prefs = await SharedPreferences.getInstance();
@@ -193,13 +227,8 @@ class OrderService {
       final orderStatus = orderData['orderStatus']?.toString() ?? '';
 
       switch (orderStatus) {
-        case 'Pending':
-          // return {
-          //   'status': 'Pesanan dikonfirmasi',
-          //   'color': const Color(0xFF3B82F6),
-          //   'icon': Icons.check_circle,
-          // };
-        return {
+        case 'Waiting':
+          return {
             'status': 'Menunggu konfirmasi',
             'color': const Color(0xFFF68F3B),
             'icon': Icons.alarm_outlined,
@@ -216,18 +245,6 @@ class OrderService {
             'color': const Color(0xFF10B981),
             'icon': Icons.done_all,
           };
-        // case 'on the way':
-        //   return {
-        //     'status': 'Pesanan dalam perjalanan',
-        //     'color': const Color(0xFF8B5CF6),
-        //     'icon': Icons.local_shipping,
-        //   };
-        // case 'completed':
-        //   return {
-        //     'status': 'Pesanan selesai',
-        //     'color': const Color(0xFF059669),
-        //     'icon': Icons.celebration,
-        //   };
         case 'Canceled':
           return {
             'status': 'Pesanan dibatalkan',

@@ -7,11 +7,15 @@ import '../../models/reservation_data.dart';
 class CheckoutButton extends StatelessWidget {
   final bool isReservation;
   final ReservationData? reservationData;
+  final bool isDineIn;
+  final String? tableNumber;
 
   const CheckoutButton({
     super.key,
     this.isReservation = false,
     this.reservationData,
+    this.isDineIn = false,
+    this.tableNumber,
   });
 
   @override
@@ -23,12 +27,24 @@ class CheckoutButton extends StatelessWidget {
         }
         return FloatingActionButton.extended(
           onPressed: () {
-            // Pass reservation data to cart screen
+            // Prepare extra data for navigation
+            Map<String, dynamic> extraData = {};
+
             if (isReservation && reservationData != null) {
-              context.push('/cart', extra: {
+              extraData = {
                 'isReservation': true,
                 'reservationData': reservationData,
-              });
+              };
+            } else if (isDineIn && tableNumber != null) {
+              extraData = {
+                'isDineIn': true,
+                'tableNumber': tableNumber,
+              };
+            }
+
+            // Navigate to cart with appropriate data
+            if (extraData.isNotEmpty) {
+              context.push('/cart', extra: extraData);
             } else {
               context.push('/cart');
             }
@@ -73,7 +89,7 @@ class CheckoutButton extends StatelessWidget {
               ),
               const SizedBox(width: 8), // Jarak antara ikon dan teks
               Text(
-                isReservation ? 'Lanjut Reservasi' : 'Lanjut Bayar',
+                _getButtonText(),
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.white,
@@ -85,5 +101,16 @@ class CheckoutButton extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Method untuk menentukan teks tombol berdasarkan context
+  String _getButtonText() {
+    if (isReservation) {
+      return 'Lanjut Reservasi';
+    } else if (isDineIn) {
+      return 'Pesan Sekarang';
+    } else {
+      return 'Lanjut Bayar';
+    }
   }
 }

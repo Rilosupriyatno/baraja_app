@@ -2,15 +2,17 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
+// Import Menu Screen
+import 'menu_screen.dart'; // Sesuaikan dengan path yang benar
 
 class QRScanner extends StatefulWidget {
   const QRScanner({super.key});
 
   @override
-  QRScannerState createState() => QRScannerState(); // Ubah ke public
+  QRScannerState createState() => QRScannerState();
 }
 
-class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, AutomaticKeepAliveClientMixin { // Ubah nama class ke public
+class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
@@ -18,9 +20,10 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   bool isFrontCamera = false;
   bool isPaused = false;
   bool _isVisible = true;
+  bool _isProcessingResult = false; // Flag untuk mencegah multiple navigation
 
   @override
-  bool get wantKeepAlive => true; // Keep alive karena menggunakan persistent nav bar
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -35,7 +38,6 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     super.dispose();
   }
 
-  // Lifecycle methods untuk handle tab navigation dan app lifecycle
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (controller == null) return;
@@ -53,7 +55,6 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     }
   }
 
-  // Method untuk handle visibility dari parent widget
   void setVisibility(bool visible) {
     if (!mounted) return;
 
@@ -73,7 +74,6 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     }
   }
 
-  // Method untuk pause kamera saat tab berubah
   void pauseCamera() {
     controller?.pauseCamera();
     setState(() {
@@ -81,7 +81,6 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     });
   }
 
-  // Method untuk resume kamera saat kembali ke tab ini
   void resumeCamera() {
     controller?.resumeCamera();
     setState(() {
@@ -96,6 +95,62 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
       controller!.pauseCamera();
     }
     controller!.resumeCamera();
+  }
+
+  // Fungsi untuk memproses hasil QR dan navigasi ke Menu
+  void _processQRResult(String qrData) {
+    if (_isProcessingResult) return; // Mencegah multiple processing
+
+    setState(() {
+      _isProcessingResult = true;
+    });
+
+    // Parse QR data - asumsi format QR adalah table number (contoh: "A01", "B02", dll)
+    String tableNumber = qrData.toUpperCase().trim();
+
+    // Validasi format table number (opsional)
+    if (_isValidTableNumber(tableNumber)) {
+      // Pause camera sebelum navigasi
+      controller?.pauseCamera();
+
+      // Navigasi ke Menu Screen dengan parameter
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => MenuScreen(
+            isReservation: false, // Tidak dari reservasi
+            isDineIn: true,       // Dine in karena scan QR di meja
+            tableNumber: tableNumber,
+          ),
+        ),
+      );
+    } else {
+      // Reset processing flag jika QR tidak valid
+      setState(() {
+        _isProcessingResult = false;
+      });
+
+      // Tampilkan error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('QR Code tidak valid: $qrData'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Clear result untuk scan ulang
+      setState(() {
+        result = null;
+      });
+    }
+  }
+
+  // Validasi format table number (customize sesuai kebutuhan)
+  bool _isValidTableNumber(String tableNumber) {
+    // Contoh validasi: format A01, B02, C03, dll (1 huruf + 2-3 digit)
+    RegExp tablePattern = RegExp(r'^[A-Z]\d{2,3}$');
+    return tablePattern.hasMatch(tableNumber);
   }
 
   @override
@@ -116,6 +171,25 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
 
           // Scan line animation (optional)
           if (!isPaused) _buildScanLine(),
+
+          // Processing overlay
+          if (_isProcessingResult)
+            Container(
+              color: Colors.black.withOpacity(0.7),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Memproses QR Code...',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -129,7 +203,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Scan QR Code',
+              'Scan QR Meja',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -189,7 +263,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Scanned Result:',
+                        'QR Code Terdeteksi:',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 12,
@@ -209,14 +283,8 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Copy to clipboard or handle result
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Result copied!'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
+                              onPressed: _isProcessingResult ? null : () {
+                                _processQRResult(result!.code ?? '');
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
@@ -226,12 +294,12 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Text('Use Result'),
+                              child: const Text('Buka Menu'),
                             ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: _isProcessingResult ? null : () {
                               setState(() {
                                 result = null;
                               });
@@ -244,14 +312,14 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text('Clear'),
+                            child: const Text('Scan Ulang'),
                           ),
                         ],
                       ),
                     ],
                   )
                       : const Text(
-                    'Point your camera at a QR code',
+                    'Arahkan kamera ke QR Code meja Anda',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -303,7 +371,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            onPressed: onPressed,
+            onPressed: _isProcessingResult ? null : onPressed,
             icon: Icon(icon, color: Colors.white, size: 24),
             padding: const EdgeInsets.all(12),
           ),
@@ -322,8 +390,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
 
   Widget _buildScanLine() {
     return Positioned(
-      // Menaikkan posisi kotak scanner dengan mengatur top dan menggunakan Align
-      top: MediaQuery.of(context).size.height * 0.2, // Kotak akan berada 20% dari atas layar
+      top: MediaQuery.of(context).size.height * 0.2,
       left: 0,
       right: 0,
       child: Align(
@@ -408,13 +475,12 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
       key: qrKey,
       onQRViewCreated: _onQRViewCreated,
       overlay: QrScannerOverlayShape(
-        borderColor: Colors.transparent, // Hide default border
+        borderColor: Colors.transparent,
         borderRadius: 12,
         borderLength: 0,
         borderWidth: 0,
         cutOutSize: scanArea,
-        // Menaikkan posisi cutout area
-        cutOutBottomOffset: MediaQuery.of(context).size.height * 0.1, // Menaikkan area scan
+        cutOutBottomOffset: MediaQuery.of(context).size.height * 0.1,
       ),
       onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
     );
@@ -426,14 +492,20 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     });
 
     controller.scannedDataStream.listen((scanData) {
-      if (mounted) {
+      if (mounted && !_isProcessingResult) {
         setState(() {
           result = scanData;
+        });
+
+        // Auto-process QR result setelah 1 detik
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted && result != null && !_isProcessingResult) {
+            _processQRResult(result!.code ?? '');
+          }
         });
       }
     });
 
-    // Get initial flash status
     controller.getFlashStatus().then((status) {
       if (mounted) {
         setState(() {
@@ -448,7 +520,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     if (!p) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Camera permission denied'),
+          content: const Text('Izin kamera ditolak'),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
         ),
@@ -457,6 +529,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _toggleFlash() async {
+    if (_isProcessingResult) return;
     await controller?.toggleFlash();
     final status = await controller?.getFlashStatus();
     if (mounted) {
@@ -467,6 +540,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _flipCamera() async {
+    if (_isProcessingResult) return;
     await controller?.flipCamera();
     setState(() {
       isFrontCamera = !isFrontCamera;
@@ -474,6 +548,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _togglePause() async {
+    if (_isProcessingResult) return;
     if (isPaused) {
       await controller?.resumeCamera();
     } else {

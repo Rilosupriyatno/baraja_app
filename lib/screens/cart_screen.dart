@@ -10,11 +10,15 @@ import '../utils/currency_formatter.dart';
 class CartScreen extends StatefulWidget {
   final bool isReservation;
   final ReservationData? reservationData;
+  final bool isDineIn;
+  final String? tableNumber;
 
   const CartScreen({
     super.key,
     this.isReservation = false,
     this.reservationData,
+    this.isDineIn = false,
+    this.tableNumber,
   });
 
   @override
@@ -83,13 +87,88 @@ class CartScreenState extends State<CartScreen> {
     );
   }
 
+  // Widget untuk menampilkan info dine-in
+  Widget _buildDineInInfo() {
+    if (!widget.isDineIn || widget.tableNumber == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_restaurant, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Dine In',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Meja No. ${widget.tableNumber}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            'Pesanan akan disajikan langsung ke meja Anda',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Method untuk mendapatkan title yang sesuai
+  String _getTitle() {
+    if (widget.isReservation) {
+      return 'Keranjang Reservasi';
+    } else if (widget.isDineIn) {
+      return 'Keranjang Dine In';
+    } else {
+      return 'Keranjang';
+    }
+  }
+
+  // Method untuk mendapatkan empty state message
+  String _getEmptyStateMessage() {
+    if (widget.isReservation) {
+      return 'Tambahkan menu untuk reservasi Anda';
+    } else if (widget.isDineIn) {
+      return 'Tambahkan menu untuk dine in Anda';
+    } else {
+      return 'Tambahkan menu favorit Anda';
+    }
+  }
+
+  // Method untuk mendapatkan checkout button text
+  String _getCheckoutButtonText() {
+    if (widget.isReservation) {
+      return 'Konfirmasi Reservasi';
+    } else if (widget.isDineIn) {
+      return 'Pesan Sekarang';
+    } else {
+      return 'Lanjutkan Pesanan';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final cartItems = cartProvider.items;
-
-    // Dynamic title based on reservation status
-    String title = widget.isReservation ? 'Keranjang Reservasi' : 'Keranjang';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -107,13 +186,19 @@ class CartScreenState extends State<CartScreen> {
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            title: Text(title, style: const TextStyle(color: Colors.black)),
+            title: Text(_getTitle(), style: const TextStyle(color: Colors.black)),
           ),
 
           // Reservation info at the top
           if (widget.isReservation && widget.reservationData != null)
             SliverToBoxAdapter(
               child: _buildReservationInfo(),
+            ),
+
+          // Dine-in info at the top
+          if (widget.isDineIn && widget.tableNumber != null)
+            SliverToBoxAdapter(
+              child: _buildDineInInfo(),
             ),
 
           if (_isLoading)
@@ -140,9 +225,7 @@ class CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.isReservation
-                          ? 'Tambahkan menu untuk reservasi Anda'
-                          : 'Tambahkan menu favorit Anda',
+                      _getEmptyStateMessage(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade600,
@@ -181,7 +264,7 @@ class CartScreenState extends State<CartScreen> {
               padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Navigate back to menu with reservation data if needed
+                  // Navigate back to menu with appropriate context
                   if (widget.isReservation && widget.reservationData != null) {
                     context.pop(); // Just go back to the menu screen
                   } else {
@@ -237,23 +320,33 @@ class CartScreenState extends State<CartScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: cartItems.isEmpty ? null : () {
-                    context.go('/checkout');
-                    // Pass reservation data to checkout if needed
-                    // if (widget.isReservation && widget.reservationData != null) {
-                    //   context.go('/checkout', extra: {
-                    //     'isReservation': true,
-                    //     'reservationData': widget.reservationData,
-                    //   });
-                    // } else {
-                    //   context.go('/checkout');
-                    // }
+                    // Pass all relevant data to checkout
+                    Map<String, dynamic> extraData = {};
+
+                    if (widget.isReservation && widget.reservationData != null) {
+                      extraData = {
+                        'isReservation': true,
+                        'reservationData': widget.reservationData,
+                      };
+                    } else if (widget.isDineIn && widget.tableNumber != null) {
+                      extraData = {
+                        'isDineIn': true,
+                        'tableNumber': widget.tableNumber,
+                      };
+                    }
+
+                    if (extraData.isNotEmpty) {
+                      context.go('/checkout', extra: extraData);
+                    } else {
+                      context.go('/checkout');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                     backgroundColor: AppTheme.primaryColor,
                   ),
                   child: Text(
-                    widget.isReservation ? 'Konfirmasi Reservasi' : 'Lanjutkan Pesanan',
+                    _getCheckoutButtonText(),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
