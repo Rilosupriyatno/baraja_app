@@ -162,22 +162,22 @@ class AppRouter {
         //     );
         //   },
         // ),
-        // GoRoute(
-        //   path: '/checkout',
-        //   builder: (context, state) => const CheckoutPage(),
-        // ),
         GoRoute(
           path: '/checkout',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>?;
-            return CheckoutPage(
-              isReservation: extra?['isReservation'] ?? false,
-              reservationData: extra?['reservationData'],
-              isDineIn: extra?['isDineIn'] ?? false,
-              tableNumber: extra?['tableNumber'],
-            );
-          },
+          builder: (context, state) => const CheckoutPage(),
         ),
+        // GoRoute(
+        //   path: '/checkout',
+        //   builder: (context, state) {
+        //     final extra = state.extra as Map<String, dynamic>?;
+        //     return CheckoutPage(
+        //       isReservation: extra?['isReservation'] ?? false,
+        //       reservationData: extra?['reservationData'],
+        //       isDineIn: extra?['isDineIn'] ?? false,
+        //       tableNumber: extra?['tableNumber'],
+        //     );
+        //   },
+        // ),
 
         // Payment method selection page
         GoRoute(
