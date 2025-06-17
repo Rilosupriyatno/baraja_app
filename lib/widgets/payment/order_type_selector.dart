@@ -197,7 +197,7 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
         border: OutlineInputBorder(),
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
-      keyboardType: TextInputType.number,
+      keyboardType: TextInputType.text,
       controller: _tableNumberController,
       onChanged: widget.onTableNumberChanged,
     );
