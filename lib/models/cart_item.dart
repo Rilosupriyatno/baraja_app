@@ -1,5 +1,5 @@
 class CartItem {
-  final String id; // Added id field
+  final String id;
   final String name;
   final String imageUrl;
   final int price;
@@ -12,7 +12,7 @@ class CartItem {
   final int _totalprice;
 
   CartItem({
-    required this.id, // Required id parameter
+    required this.id,
     required this.name,
     required this.imageUrl,
     required this.price,

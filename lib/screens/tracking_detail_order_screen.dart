@@ -13,11 +13,11 @@ import '../widgets/tracking_detail/status_section_widget.dart';
 import '../services/order_service.dart';
 import 'menu_rating_screen.dart';
 class TrackingDetailOrderScreen extends StatefulWidget {
-  final String orderId;
+  final String id;
 
   const TrackingDetailOrderScreen({
     super.key,
-    required this.orderId,
+    required this.id,
   });
 
   @override
@@ -70,7 +70,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   Future<void> _checkPaymentDetails() async {
-    final hasDetails = await PaymentStorageService.hasPaymentDetails(widget.orderId);
+    final hasDetails = await PaymentStorageService.hasPaymentDetails(widget.id);
+    print('🔍 Payment details check for order ${widget.id}: $hasDetails');
     setState(() {
       _hasPaymentDetails = hasDetails;
     });
@@ -84,9 +85,9 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     });
 
     try {
-      print('🔍 Fetching order data for ID: ${widget.orderId}');
+      print('🔍 Fetching order data for ID: ${widget.id}');
 
-      final result = await _orderService.getOrderForTracking(widget.orderId);
+      final result = await _orderService.getOrderForTracking(widget.id);
 
       print('📦 Raw result: $result');
 
@@ -147,29 +148,29 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
       // PERBAIKAN: Lebih robust dalam mengekstrak ID
       String? menuItemId;
-      String? orderId;
+      String? id;
 
       // Coba berbagai kemungkinan nama field untuk menuItemId
       menuItemId = firstItem['menuItemId']?.toString() ??
           firstItem['id']?.toString() ??
           firstItem['menu_item_id']?.toString();
 
-      // Coba berbagai kemungkinan nama field untuk orderId
-      orderId = orderData!['_id']?.toString() ??
+      // Coba berbagai kemungkinan nama field untuk id
+      id = orderData!['_id']?.toString() ??
           orderData!['id']?.toString() ??
-          widget.orderId;
+          widget.id;
 
       print('🔍 MenuItemId: $menuItemId');
-      print('🔍 OrderId: $orderId');
+      print('🔍 OrderId: $id');
       print('🔍 First item structure: ${firstItem.keys}');
       print('🔍 Order data structure: ${orderData!.keys}');
 
       if (menuItemId != null) {
-        print('🔍 Calling API with menuItemId: $menuItemId, orderId: $orderId');
+        print('🔍 Calling API with menuItemId: $menuItemId, id: $id');
 
         final rating = await RatingService.getExistingRating(
           menuItemId: menuItemId,
-          orderId: orderId,
+          id: id,
         );
 
         print('🔍 Rating result: $rating');
@@ -181,7 +182,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
           });
         }
       } else {
-        print('❌ Missing required IDs - menuItemId: $menuItemId, orderId: $orderId');
+        print('❌ Missing required IDs - menuItemId: $menuItemId, id: $id');
         if (mounted) {
           setState(() {
             isLoadingRating = false;
@@ -264,13 +265,13 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
       // Connect to socket and listen for payment updates
       _socketService.connectToSocket(
-        orderId: widget.orderId,
+        id: widget.id,
         onPaymentUpdate: _handlePaymentUpdate,
       );
 
       // Add a delay before manually joining the room again
       Future.delayed(const Duration(seconds: 3), () {
-        _socketService.joinOrderRoom(widget.orderId);
+        _socketService.joinOrderRoom(widget.id);
       });
     }
   }
@@ -278,7 +279,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   void _handlePaymentUpdate(Map<String, dynamic> data) {
     print('Payment update received in screen: $data');
 
-    if (data['order_id'] == widget.orderId) {
+    if (data['order_id'] == widget.id) {
       print('Payment update matches our order ID');
 
       if (mounted) {
@@ -310,7 +311,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
           data['transaction_status'] == 'capture') {
         if (mounted) {
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-          orderProvider.updateOrderStatus(widget.orderId, OrderStatus.pending);
+          orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
         }
       }
     } else {
@@ -367,9 +368,9 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   //   });
   //
   //   try {
-  //     print('🔍 Fetching order data for ID: ${widget.orderId}');
+  //     print('🔍 Fetching order data for ID: ${widget.id}');
   //
-  //     final result = await _orderService.getOrderForTracking(widget.orderId);
+  //     final result = await _orderService.getOrderForTracking(widget.id);
   //
   //     print('📦 Raw result: $result');
   //     print('📦 Result success: ${result['success']}');
@@ -459,7 +460,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PaymentDetailsScreen(orderId: widget.orderId),
+        builder: (context) => PaymentDetailsScreen(id: widget.id),
       ),
     );
   }
@@ -476,7 +477,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
           orderData: orderData,
           // Pass data eksplisit jika ada
           menuItemId: firstItem?['menuItemId'] ?? firstItem?['id'],
-          orderId: orderData?['_id'] ?? orderData?['id'],
+          id: orderData?['_id'] ?? orderData?['id'],
           // outletId: orderData?['outletId'] ?? orderData?['outlet_id'],
         ),
       ),

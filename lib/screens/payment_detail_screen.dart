@@ -5,11 +5,11 @@ import '../widgets/utils/classic_app_bar.dart';
 import 'package:intl/intl.dart';
 
 class PaymentDetailsScreen extends StatefulWidget {
-  final String orderId;
+  final String id;
 
   const PaymentDetailsScreen({
     super.key,
-    required this.orderId,
+    required this.id,
   });
 
   @override
@@ -35,7 +35,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     });
 
     try {
-      final data = await PaymentStorageService.getPaymentDetails(widget.orderId);
+      final data = await PaymentStorageService.getPaymentDetails(widget.id);
       setState(() {
         paymentData = data;
         paymentResponse = data?['paymentResponse'] as Map<String, dynamic>?;
@@ -94,6 +94,8 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         return 'BRI';
       case 'mandiri_va':
         return 'Mandiri';
+      case 'cash':
+        return 'Tunai';
       case 'permata_va':
         return 'Permata';
       case 'cimb_va':

@@ -146,11 +146,20 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     }
   }
 
-  // Validasi format table number (customize sesuai kebutuhan)
   bool _isValidTableNumber(String tableNumber) {
-    // Contoh validasi: format A01, B02, C03, dll (1 huruf + 2-3 digit)
-    RegExp tablePattern = RegExp(r'^[A-Z]\d{2,3}$');
-    return tablePattern.hasMatch(tableNumber);
+    String cleanTableNumber = tableNumber.trim().toUpperCase();
+
+    // Berbagai pattern yang umum digunakan:
+    List<RegExp> validPatterns = [
+      RegExp(r'^[A-Z]\d{1,3}$'),        // A1, A01, A123
+      RegExp(r'^[A-Z]{1,2}\d{1,3}$'),   // A1, AB1, AB123
+      RegExp(r'^\d{1,4}$'),             // 1, 01, 123, 1234
+      RegExp(r'^TABLE\d{1,3}$'),        // TABLE1, TABLE01
+      RegExp(r'^T\d{1,3}$'),            // T1, T01, T123
+      RegExp(r'^MEJA\d{1,3}$'),         // MEJA1, MEJA01
+    ];
+
+    return validPatterns.any((pattern) => pattern.hasMatch(cleanTableNumber));
   }
 
   @override

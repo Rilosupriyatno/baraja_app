@@ -9,6 +9,7 @@ class PaymentStorageService {
 
   /// Save payment details for an order with the new payment response format
   static Future<bool> savePaymentDetails({
+    required String id,
     required String orderId,
     required Map<String, dynamic> paymentResponse,
     required Map<String, String?> paymentDetails,
@@ -42,6 +43,7 @@ class PaymentStorageService {
       // Extract key information from payment response
       final paymentData = {
         // Order information
+        'id': id,
         'orderId': orderId,
         'subtotal': subtotal,
         'discount': discount,
@@ -92,7 +94,7 @@ class PaymentStorageService {
       };
 
       final jsonString = jsonEncode(paymentData);
-      return await prefs.setString('$_paymentPrefix$orderId', jsonString);
+      return await prefs.setString('$_paymentPrefix$id', jsonString);
     } catch (e) {
       print('Error saving payment details: $e');
       return false;
@@ -100,10 +102,10 @@ class PaymentStorageService {
   }
 
   /// Get payment details for an order
-  static Future<Map<String, dynamic>?> getPaymentDetails(String orderId) async {
+  static Future<Map<String, dynamic>?> getPaymentDetails(String id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString('$_paymentPrefix$orderId');
+      final jsonString = prefs.getString('$_paymentPrefix$id');
 
       if (jsonString != null) {
         return jsonDecode(jsonString) as Map<String, dynamic>;
@@ -116,9 +118,9 @@ class PaymentStorageService {
   }
 
   /// Get cart items from saved payment details
-  static Future<List<CartItem>?> getCartItems(String orderId) async {
+  static Future<List<CartItem>?> getCartItems(String id) async {
     try {
-      final paymentDetails = await getPaymentDetails(orderId);
+      final paymentDetails = await getPaymentDetails(id);
       if (paymentDetails != null && paymentDetails.containsKey('items')) {
         final itemsJson = paymentDetails['items'] as List<dynamic>;
         return itemsJson.map((item) => CartItem(
@@ -141,9 +143,9 @@ class PaymentStorageService {
   }
 
   /// Get order type from saved payment details
-  static Future<OrderType?> getOrderType(String orderId) async {
+  static Future<OrderType?> getOrderType(String id) async {
     try {
-      final paymentDetails = await getPaymentDetails(orderId);
+      final paymentDetails = await getPaymentDetails(id);
       if (paymentDetails != null && paymentDetails.containsKey('orderType')) {
         final orderTypeString = paymentDetails['orderType'] as String;
         return OrderType.values.firstWhere(
@@ -159,9 +161,9 @@ class PaymentStorageService {
   }
 
   /// Get pickup time from saved payment details
-  static Future<TimeOfDay?> getPickupTime(String orderId) async {
+  static Future<TimeOfDay?> getPickupTime(String id) async {
     try {
-      final paymentDetails = await getPaymentDetails(orderId);
+      final paymentDetails = await getPaymentDetails(id);
       if (paymentDetails != null && paymentDetails.containsKey('pickupTime') && paymentDetails['pickupTime'] != null) {
         final pickupTimeData = paymentDetails['pickupTime'] as Map<String, dynamic>;
         return TimeOfDay(
@@ -177,9 +179,9 @@ class PaymentStorageService {
   }
 
   /// Get only payment response data for an order
-  static Future<Map<String, dynamic>?> getPaymentResponse(String orderId) async {
+  static Future<Map<String, dynamic>?> getPaymentResponse(String id) async {
     try {
-      final paymentDetails = await getPaymentDetails(orderId);
+      final paymentDetails = await getPaymentDetails(id);
       if (paymentDetails != null && paymentDetails.containsKey('paymentResponse')) {
         return paymentDetails['paymentResponse'] as Map<String, dynamic>;
       }
@@ -191,9 +193,9 @@ class PaymentStorageService {
   }
 
   /// Get transaction status for an order
-  static Future<String?> getTransactionStatus(String orderId) async {
+  static Future<String?> getTransactionStatus(String id) async {
     try {
-      final paymentResponse = await getPaymentResponse(orderId);
+      final paymentResponse = await getPaymentResponse(id);
       if (paymentResponse != null) {
         return paymentResponse['transaction_status'] as String?;
       }
@@ -205,9 +207,9 @@ class PaymentStorageService {
   }
 
   /// Get VA numbers for an order (for bank transfer)
-  static Future<List<Map<String, dynamic>>?> getVANumbers(String orderId) async {
+  static Future<List<Map<String, dynamic>>?> getVANumbers(String id) async {
     try {
-      final paymentResponse = await getPaymentResponse(orderId);
+      final paymentResponse = await getPaymentResponse(id);
       if (paymentResponse != null && paymentResponse.containsKey('va_numbers')) {
         return List<Map<String, dynamic>>.from(paymentResponse['va_numbers']);
       }
@@ -219,9 +221,9 @@ class PaymentStorageService {
   }
 
   /// Update transaction status for an order
-  static Future<bool> updateTransactionStatus(String orderId, String newStatus) async {
+  static Future<bool> updateTransactionStatus(String id, String newStatus) async {
     try {
-      final existingData = await getPaymentDetails(orderId);
+      final existingData = await getPaymentDetails(id);
       if (existingData != null) {
         // Update the transaction status in payment response
         if (existingData.containsKey('paymentResponse')) {
@@ -232,7 +234,7 @@ class PaymentStorageService {
 
           final prefs = await SharedPreferences.getInstance();
           final jsonString = jsonEncode(existingData);
-          return await prefs.setString('$_paymentPrefix$orderId', jsonString);
+          return await prefs.setString('$_paymentPrefix$id', jsonString);
         }
       }
       return false;
@@ -243,21 +245,59 @@ class PaymentStorageService {
   }
 
   /// Check if payment details exist for an order
-  static Future<bool> hasPaymentDetails(String orderId) async {
+  static Future<bool> hasPaymentDetails(String id) async {
     try {
+      print('🔍 Checking payment details for ID: $id');
+
+      if (id.isEmpty) {
+        print('❌ Empty ID provided');
+        return false;
+      }
+
       final prefs = await SharedPreferences.getInstance();
-      return prefs.containsKey('$_paymentPrefix$orderId');
+      final key = '$_paymentPrefix$id';
+
+      print('🔍 Looking for key: $key');
+
+      // Method 1: Direct key check
+      final hasKey = prefs.containsKey(key);
+      print('🔍 Has key (direct): $hasKey');
+
+      if (hasKey) {
+        // Verify the data is valid
+        final data = prefs.getString(key);
+        if (data != null && data.isNotEmpty) {
+          try {
+            jsonDecode(data);
+            print('✅ Valid payment data found');
+            return true;
+          } catch (e) {
+            print('❌ Invalid JSON data, removing corrupted entry');
+            await prefs.remove(key);
+            return false;
+          }
+        }
+      }
+
+      // Method 2: Check all keys (fallback)
+      final allKeys = prefs.getKeys();
+      final matchingKeys = allKeys.where((k) => k == key).toList();
+      print('🔍 Matching keys found: ${matchingKeys.length}');
+
+      return matchingKeys.isNotEmpty;
+
     } catch (e) {
-      print('Error checking payment details: $e');
+      print('❌ Error checking payment details: $e');
       return false;
     }
   }
 
+
   /// Remove payment details for an order
-  static Future<bool> removePaymentDetails(String orderId) async {
+  static Future<bool> removePaymentDetails(String id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return await prefs.remove('$_paymentPrefix$orderId');
+      return await prefs.remove('$_paymentPrefix$id');
     } catch (e) {
       print('Error removing payment details: $e');
       return false;
@@ -338,8 +378,8 @@ class PaymentStorageService {
       for (final payment in allPayments) {
         final savedAt = DateTime.tryParse(payment['savedAt'] ?? '');
         if (savedAt != null && savedAt.isBefore(cutoffDate)) {
-          final orderId = payment['orderId'] as String;
-          if (await removePaymentDetails(orderId)) {
+          final id = payment['id'] as String;
+          if (await removePaymentDetails(id)) {
             removedCount++;
           }
         }
