@@ -10,6 +10,7 @@ import '../services/confirm_service.dart';
 import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
 import '../widgets/payment_confirm/payment_success_view.dart';
+import '../widgets/payment_confirm/cash_payment_view.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
 class PaymentConfirmationScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int total;
   final String? voucherCode;
   final String orderId;
+  final String id;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -38,6 +40,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     required this.total,
     this.voucherCode,
     required this.orderId,
+    required this.id,
   });
 
   @override
@@ -52,14 +55,19 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   Map<String, dynamic>? _paymentResponse;
   String? _errorMessage;
   bool _isListeningForPayment = false;
+  bool _isCashPayment = false;
 
   @override
   void initState() {
     super.initState();
 
+    // Check if payment method is cash
+    _isCashPayment = _checkIfCashPayment();
+
     // Create new order instance
     newOrder = Order(
-      id: widget.orderId,
+      id: widget.id,
+      orderId: widget.orderId,
       items: widget.items.map((item) => CartItem(
         id: item.id,
         name: item.name,
@@ -69,7 +77,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         addons: item.addons,
         toppings: item.toppings,
         imageUrl: item.imageUrl,
-        notes: item.notes, // Added notes support
+        notes: item.notes,
       )).toList(),
       orderType: widget.orderType,
       tableNumber: widget.tableNumber,
@@ -84,11 +92,64 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
-    // First setup socket connection
-    _setupSocketConnection();
+    // Defer the payment handling until after the build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isCashPayment) {
+        // For cash payment, just add to order provider and show QR code
+        _handleCashPayment();
+      } else {
+        // For digital payments, setup socket and send order
+        _setupSocketConnection();
+        _sendOrderOnce();
+      }
+    });
+  }
 
-    // Then send order
-    _sendOrderOnce();
+  bool _checkIfCashPayment() {
+    final paymentType = widget.paymentDetails['methodName']?.toLowerCase();
+    return paymentType == 'cash' || paymentType == 'tunai';
+  }
+
+  Future<void> _handleCashPayment() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Add order to provider - now safe to call after build phase
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      orderProvider.addOrder(newOrder);
+
+      // Create mock payment response for cash
+      _paymentResponse = {
+        'status_code': '200',
+        'transaction_status': 'pending',
+        'payment_type': 'cash',
+        'order_id': widget.orderId,
+        'transaction_time': DateTime.now().toIso8601String(),
+        'gross_amount': widget.total.toString(),
+      };
+
+      // Save payment details
+      await _savePaymentDetails();
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      print('Cash payment processed for order: ${widget.orderId}');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
   void _setupSocketConnection() {
@@ -97,18 +158,17 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
       // Connect to socket and listen for payment updates
       _socketService.connectToSocket(
-        orderId: widget.orderId,
+        id: widget.id,
         onPaymentUpdate: _handlePaymentUpdate,
       );
 
       // Add a delay before manually joining the room again
       Future.delayed(const Duration(seconds: 3), () {
-        _socketService.joinOrderRoom(widget.orderId);
+        _socketService.joinOrderRoom(widget.id);
       });
     }
   }
 
-// Update method _handlePaymentUpdate dalam PaymentConfirmationScreen
   void _handlePaymentUpdate(Map<String, dynamic> data) {
     print('Payment update received in screen: $data');
 
@@ -142,7 +202,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           data['transaction_status'] == 'capture') {
         if (mounted) {
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-          orderProvider.updateOrderStatus(widget.orderId, OrderStatus.pending);
+          orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
         }
       }
     } else {
@@ -150,21 +210,20 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-// Add new method to update stored payment status
   Future<void> _updateStoredPaymentStatus(String newStatus) async {
     try {
-      await PaymentStorageService.updateTransactionStatus(widget.orderId, newStatus);
-      print('Stored payment status updated to: $newStatus for order: ${widget.orderId}');
+      await PaymentStorageService.updateTransactionStatus(widget.id, newStatus);
+      print('Stored payment status updated to: $newStatus for order: ${widget.id}');
     } catch (e) {
       print('Error updating stored payment status: $e');
     }
   }
 
-// Update method _savePaymentDetails - FIXED VERSION
   Future<void> _savePaymentDetails() async {
     if (_paymentResponse != null) {
       try {
         await PaymentStorageService.savePaymentDetails(
+          id: widget.id,
           orderId: widget.orderId,
           paymentResponse: _paymentResponse!,
           paymentDetails: widget.paymentDetails,
@@ -172,7 +231,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           discount: widget.discount,
           total: widget.total,
           voucherCode: widget.voucherCode,
-          // Fixed: Pass all required parameters
           items: widget.items,
           orderType: widget.orderType,
           tableNumber: widget.tableNumber,
@@ -197,10 +255,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-// Add helper method to retrieve saved payment data (useful for debugging)
   Future<void> debugPrintSavedPaymentData() async {
     try {
-      final savedData = await PaymentStorageService.getPaymentDetails(widget.orderId);
+      final savedData = await PaymentStorageService.getPaymentDetails(widget.id);
       if (savedData != null) {
         print('=== DEBUG: Saved Payment Data ===');
         print('Order ID: ${savedData['orderId']}');
@@ -229,7 +286,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   }
 
   Future<void> _sendOrderOnce() async {
-    if (!_hasSentOrder) {
+    if (!_hasSentOrder && mounted) {
       setState(() {
         _isLoading = true;
       });
@@ -268,7 +325,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   @override
   void dispose() {
     print('Disposing PaymentConfirmationScreen');
-    _socketService.dispose();
+    if (!_isCashPayment) {
+      _socketService.dispose();
+    }
     super.dispose();
   }
 
@@ -284,9 +343,28 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             ? PaymentErrorView(
           errorMessage: _errorMessage,
           onRetry: () {
-            _hasSentOrder = false;
-            _sendOrderOnce();
+            if (_isCashPayment) {
+              _handleCashPayment();
+            } else {
+              _hasSentOrder = false;
+              _sendOrderOnce();
+            }
           },
+        )
+            : _isCashPayment
+            ? CashPaymentView(
+          order: newOrder,
+          paymentResponse: _paymentResponse,
+          paymentDetails: widget.paymentDetails,
+          orderType: widget.orderType,
+          tableNumber: widget.tableNumber,
+          deliveryAddress: widget.deliveryAddress,
+          pickupTime: widget.pickupTime,
+          subtotal: widget.subtotal,
+          discount: widget.discount,
+          total: widget.total,
+          voucherCode: widget.voucherCode,
+          items: widget.items,
         )
             : PaymentSuccessView(
           order: newOrder,

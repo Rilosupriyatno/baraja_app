@@ -1,14 +1,14 @@
+import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 import '../../models/order_type.dart';
 import '../../utils/currency_formatter.dart';
-import 'payment_status_card.dart';
-import 'payment_instructions.dart';
 
-class PaymentSuccessView extends StatelessWidget {
+class CashPaymentView extends StatefulWidget {
   final Order order;
   final Map<String, dynamic>? paymentResponse;
   final Map<String, String?> paymentDetails;
@@ -22,7 +22,7 @@ class PaymentSuccessView extends StatelessWidget {
   final String? voucherCode;
   final List<CartItem> items;
 
-  const PaymentSuccessView({
+  const CashPaymentView({
     super.key,
     required this.order,
     required this.paymentResponse,
@@ -39,65 +39,142 @@ class PaymentSuccessView extends StatelessWidget {
   });
 
   @override
+  State<CashPaymentView> createState() => _CashPaymentViewState();
+}
+
+class _CashPaymentViewState extends State<CashPaymentView> {
+  bool _isLoading = false;
+  bool _apiCallCompleted = false;
+  String? _errorMessage;
+  Map<String, dynamic>? _paymentData;
+
+  // Create an instance of ConfirmService
+  final ConfirmService _confirmService = ConfirmService();
+
+  @override
+  void initState() {
+    super.initState();
+    _processCashPayment();
+  }
+
+  /// Memproses pembayaran tunai menggunakan PaymentService
+  Future<void> _processCashPayment() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _apiCallCompleted = false;
+    });
+
+    try {
+      // Call the instance method instead of static method
+      final result = await _confirmService.chargeCash(
+        orderId: widget.order.orderId,
+        totalAmount: widget.total,
+      );
+
+      setState(() {
+        _isLoading = false;
+        if (result.success) {
+          _apiCallCompleted = true;
+          _paymentData = result.data;
+          _errorMessage = null;
+        } else {
+          _apiCallCompleted = false;
+          _errorMessage = result.message;
+        }
+      });
+
+      // Optional: Tampilkan snackbar untuk feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: result.success ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (error) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Terjadi kesalahan yang tidak terduga: ${error.toString()}';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Status pembayaran section
+        _buildPaymentStatusSection(),
+
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PaymentStatusCard(paymentResponse: paymentResponse, orderId: order.orderId),
+                // QR Code Section
+                _buildQRCodeSection(),
                 const SizedBox(height: 24),
 
-                _buildSectionTitle('Informasi Pembayaran'),
-                _buildInfoItem('Metode Pembayaran', paymentDetails['bankName'] ?? 'Unknown'),
-                const SizedBox(height: 8),
-                _buildInfoItem('Total Pembayaran', formatCurrency(total)),
+                // Payment Instructions
+                _buildPaymentInstructions(),
+                const SizedBox(height: 24),
 
-                if (paymentResponse != null) ...[
+                // Payment Information
+                _buildSectionTitle('Informasi Pembayaran'),
+                _buildInfoItem('Metode Pembayaran', 'Tunai'),
+                const SizedBox(height: 8),
+                _buildInfoItem('Total Pembayaran', formatCurrency(widget.total)),
+
+                // Tampilkan informasi tambahan dari response API jika ada
+                if (_paymentData != null) ...[
                   const SizedBox(height: 8),
-                  PaymentInstructions(paymentResponse: paymentResponse!),
+                  if (_paymentData!.containsKey('transaction_id'))
+                    _buildInfoItem('Transaction ID', _paymentData!['transaction_id'].toString()),
+                  if (_paymentData!.containsKey('status'))
+                    _buildInfoItem('Status', _paymentData!['status'].toString()),
                 ],
 
                 const Divider(height: 32),
                 _buildSectionTitle('Informasi Pesanan'),
-                _buildInfoItem('Tipe Pesanan', _getOrderTypeText(orderType)),
+                _buildInfoItem('Tipe Pesanan', _getOrderTypeText(widget.orderType)),
 
-                if (orderType == OrderType.dineIn && tableNumber.isNotEmpty)
-                  _buildInfoItem('Nomor Meja', tableNumber),
-                if (orderType == OrderType.delivery && deliveryAddress.isNotEmpty)
-                  _buildInfoItem('Alamat Pengantaran', deliveryAddress),
-                if (orderType == OrderType.pickup && pickupTime != null)
+                if (widget.orderType == OrderType.dineIn && widget.tableNumber.isNotEmpty)
+                  _buildInfoItem('Nomor Meja', widget.tableNumber),
+                if (widget.orderType == OrderType.delivery && widget.deliveryAddress.isNotEmpty)
+                  _buildInfoItem('Alamat Pengantaran', widget.deliveryAddress),
+                if (widget.orderType == OrderType.pickup && widget.pickupTime != null)
                   _buildInfoItem('Waktu Pengambilan',
-                      '${pickupTime!.hour}:${pickupTime!.minute.toString().padLeft(2, '0')}'),
+                      '${widget.pickupTime!.hour}:${widget.pickupTime!.minute.toString().padLeft(2, '0')}'),
 
                 const Divider(height: 32),
                 _buildSectionTitle('Detail Pesanan'),
-                ...items.map((item) => _buildOrderItem(item)),
+                ...widget.items.map((item) => _buildOrderItem(item)),
 
                 const Divider(height: 32),
                 _buildSectionTitle('Rincian Biaya'),
-                _buildInfoItem('Subtotal', formatCurrency(subtotal)),
-                if (discount > 0) ...[
-                  _buildInfoItem('Diskon', '- ${formatCurrency(discount)}'),
-                  if (voucherCode != null && voucherCode!.isNotEmpty)
-                    _buildInfoItem('Voucher', voucherCode!),
+                _buildInfoItem('Subtotal', formatCurrency(widget.subtotal)),
+                if (widget.discount > 0) ...[
+                  _buildInfoItem('Diskon', '- ${formatCurrency(widget.discount)}'),
+                  if (widget.voucherCode != null && widget.voucherCode!.isNotEmpty)
+                    _buildInfoItem('Voucher', widget.voucherCode!),
                 ],
                 const Divider(height: 16),
-                _buildInfoItem('Total', formatCurrency(total), isBold: true),
+                _buildInfoItem('Total', formatCurrency(widget.total), isBold: true),
               ],
             ),
           ),
         ),
+
+        // Bottom button
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
             onPressed: () {
-              // Ganti 'yourOrderId' dengan variabel orderId sebenarnya
-
-              context.go('/orderDetail', extra: order.id);
+              context.go('/orderDetail', extra: widget.order.id);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -116,6 +193,233 @@ class PaymentSuccessView extends StatelessWidget {
       ],
     );
   }
+
+  /// Widget untuk menampilkan status pembayaran
+  Widget _buildPaymentStatusSection() {
+    if (_isLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          border: Border(bottom: BorderSide(color: Colors.blue.withOpacity(0.2))),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Memproses pembayaran tunai...',
+              style: TextStyle(fontSize: 14, color: Colors.blue, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          border: Border(bottom: BorderSide(color: Colors.red.withOpacity(0.2))),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 14, color: Colors.red),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.red, size: 20),
+              onPressed: _processCashPayment,
+              tooltip: 'Coba lagi',
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_apiCallCompleted) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          border: Border(bottom: BorderSide(color: Colors.green.withOpacity(0.2))),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+            SizedBox(width: 12),
+            Text(
+              'Pembayaran tunai berhasil diproses',
+              style: TextStyle(fontSize: 14, color: Colors.green, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildQRCodeSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.qr_code_2,
+            size: 40,
+            color: AppTheme.primaryColor,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'QR Code Pesanan',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            ),
+            child: QrImageView(
+              data: widget.order.id,
+              version: QrVersions.auto,
+              size: 200.0,
+              foregroundColor: Colors.black,
+              backgroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Order ID: ${widget.order.orderId}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentInstructions() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.orange,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Instruksi Pembayaran Tunai',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '1. Tunjukkan QR Code ini kepada kasir',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '2. Kasir akan melakukan scan QR Code untuk verifikasi pesanan',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '3. Bayar total sebesar ${formatCurrency(widget.total)} secara tunai',
+            style: const TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '4. Tunggu konfirmasi dari kasir bahwa pembayaran telah diterima',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withOpacity(0.2)),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.warning_amber,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Pastikan Anda sudah menuju ke kasir untuk menyelesaikan pembayaran',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getOrderTypeText(OrderType type) {
     switch (type) {
       case OrderType.dineIn:
@@ -126,7 +430,6 @@ class PaymentSuccessView extends StatelessWidget {
         return 'Ambil Sendiri';
     }
   }
-
 
   Widget _buildOrderItem(CartItem item) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -352,4 +655,3 @@ class PaymentSuccessView extends StatelessWidget {
     ),
   );
 }
-

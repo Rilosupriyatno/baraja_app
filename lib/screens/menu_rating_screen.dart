@@ -8,13 +8,13 @@ import '../widgets/rating/rating_section.dart';
 class MenuRatingPage extends StatefulWidget {
   final Map<String, dynamic>? orderData;
   final String? menuItemId;
-  final String? orderId;
+  final String? id;
 
   const MenuRatingPage({
     super.key,
     required this.orderData,
     this.menuItemId,
-    this.orderId,
+    this.id,
   });
 
   @override
@@ -77,17 +77,17 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
           widget.orderData?['items']?[0]?['id'] ??
           widget.orderData?['items']?[0]?['itemId'];
 
-      final orderId = widget.orderId ??
-          widget.orderData?['orderId'] ??
+      final id = widget.id ??
+          widget.orderData?['id'] ??
           widget.orderData?['id'] ??
           widget.orderData?['_id'];
 
       // DEBUG: Print extracted values
       print('🔍 Extracted values:');
       print('🔍 menuItemId: $menuItemId');
-      print('🔍 orderId: $orderId');
+      print('🔍 id: $id');
       print('🔍 widget.menuItemId: ${widget.menuItemId}');
-      print('🔍 widget.orderId: ${widget.orderId}');
+      print('🔍 widget.id: ${widget.id}');
 
       // Coba berbagai kemungkinan field name untuk menuItemId
       String? finalMenuItemId = menuItemId;
@@ -101,14 +101,14 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
         print('🔍 Trying alternative menuItemId: $finalMenuItemId');
       }
 
-      // Coba berbagai kemungkinan field name untuk orderId
-      String? finalOrderId = orderId;
+      // Coba berbagai kemungkinan field name untuk id
+      String? finalOrderId = id;
       if (finalOrderId == null) {
-        finalOrderId = widget.orderData?['orderId'] ??
+        finalOrderId = widget.orderData?['id'] ??
             widget.orderData?['order_id'] ??
             widget.orderData?['id'] ??
             widget.orderData?['orderNumber'];
-        print('🔍 Trying alternative orderId: $finalOrderId');
+        print('🔍 Trying alternative id: $finalOrderId');
       }
 
       print('🔍 Final values:');
@@ -129,7 +129,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
 
       final result = await RatingService.submitRating(
         menuItemId: finalMenuItemId,
-        orderId: finalOrderId,
+        id: finalOrderId,
         rating: selectedRating,
         review: _reviewController.text.trim(),
         existingRating: existingRating,
@@ -167,17 +167,17 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
     try {
       print('🔍 DEBUG _checkExistingRating:');
       print('🔍 widget.menuItemId: ${widget.menuItemId}');
-      print('🔍 widget.orderId: ${widget.orderId}');
+      print('🔍 widget.id: ${widget.id}');
       print('🔍 orderData items: ${widget.orderData?['items']}');
 
       final menuItemId = widget.menuItemId ?? widget.orderData?['items']?[0]?['menuItemId'];
-      final orderId = widget.orderId ?? widget.orderData?['orderId'];
+      final id = widget.id ?? widget.orderData?['id'];
 
       print('🔍 Extracted in _checkExistingRating:');
       print('🔍 menuItemId: $menuItemId');
-      print('🔍 orderId: $orderId');
+      print('🔍 id: $id');
 
-      if (menuItemId == null || orderId == null) {
+      if (menuItemId == null || id == null) {
         print('❌ Cannot check existing rating - missing data');
         setState(() {
           isLoading = false;
@@ -187,7 +187,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
 
       final rating = await RatingService.getExistingRating(
         menuItemId: menuItemId,
-        orderId: orderId,
+        id: id,
       );
 
       if (rating != null) {

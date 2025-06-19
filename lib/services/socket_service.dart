@@ -8,7 +8,7 @@ class SocketService {
 
   void connectToSocket({
     required Function(Map<String, dynamic>) onPaymentUpdate,
-    required String orderId
+    required String id
   }) {
     print('Attempting to connect to socket server at: $baseUrl');
 
@@ -29,8 +29,8 @@ class SocketService {
         _isConnected = true;
 
         // Join room with acknowledgement callback
-        print('Attempting to join room for order: $orderId');
-        _socket.emitWithAck('join_order_room', orderId, ack: (data) {
+        print('Attempting to join room for order: $id');
+        _socket.emitWithAck('join_order_room', id, ack: (data) {
           print('Room join acknowledgement: $data');
         });
       });
@@ -96,10 +96,10 @@ class SocketService {
   }
 
   // Method to manually emit join_order_room event
-  void joinOrderRoom(String orderId) {
+  void joinOrderRoom(String id) {
     if (_socket.connected) {
-      print('Manually joining room for order: $orderId');
-      _socket.emitWithAck('join_order_room', orderId, ack: (data) {
+      print('Manually joining room for order: $id');
+      _socket.emitWithAck('join_order_room', id, ack: (data) {
         print('Manual room join acknowledgement: $data');
       });
     } else {

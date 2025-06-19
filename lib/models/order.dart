@@ -13,6 +13,7 @@ enum OrderStatus {
 
 class Order {
   final String id;
+  final String orderId; // Added orderId field for reference
   final List<CartItem> items;
   final OrderType orderType;
   final String tableNumber;
@@ -28,6 +29,7 @@ class Order {
 
   Order({
     required this.id,
+    required this.orderId, // Required orderId parameter
     required this.items,
     required this.orderType,
     this.tableNumber = '',
@@ -104,6 +106,7 @@ class Order {
 
     return Order(
       id: map['id'],
+      orderId: map['orderId'],
       items: (map['items'] as List).map((itemMap) => CartItem(
         id: itemMap['id'],
         name: itemMap['name'],

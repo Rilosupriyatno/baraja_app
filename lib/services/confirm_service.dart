@@ -12,7 +12,7 @@ class ConfirmService {
       final Map<String, dynamic> paymentData = {
         "payment_type": paymentType,
         "transaction_details": {
-          "order_id": order.id,
+          "order_id": order.orderId,
           "gross_amount": order.total,
         },
       };
@@ -43,6 +43,87 @@ class ConfirmService {
     } catch (e) {
       _printException(e);
       throw Exception("Terjadi kesalahan: $e");
+    }
+  }
+
+  // Changed from static to instance method
+  Future<PaymentResult> chargeCash({
+    required String orderId,
+    required int totalAmount,
+  }) async {
+    try {
+      final requestBody = {
+        'payment_type': 'cash',
+        'order_id': orderId,
+        'gross_amount': totalAmount,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/chargeCash'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic>? responseData;
+
+        // Parse response body jika tidak kosong
+        if (response.body.isNotEmpty) {
+          try {
+            responseData = json.decode(response.body);
+          } catch (e) {
+            print('Warning: Failed to parse response body as JSON: $e');
+          }
+        }
+
+        return PaymentResult(
+          success: true,
+          message: 'Pembayaran tunai berhasil diproses',
+          data: responseData,
+        );
+      } else {
+        // Handle error response
+        String errorMessage = 'Gagal memproses pembayaran tunai';
+
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = json.decode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          } catch (e) {
+            errorMessage = 'Error ${response.statusCode}: ${response.body}';
+          }
+        } else {
+          errorMessage = 'Error ${response.statusCode}: ${response.reasonPhrase}';
+        }
+
+        return PaymentResult(
+          success: false,
+          message: errorMessage,
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (error) {
+      print('Cash payment error: $error');
+
+      String errorMessage = 'Terjadi kesalahan saat memproses pembayaran';
+
+      // Customize error message berdasarkan jenis error
+      if (error.toString().contains('SocketException')) {
+        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+      } else if (error.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else if (error.toString().contains('FormatException')) {
+        errorMessage = 'Terjadi kesalahan dalam format data.';
+      }
+
+      return PaymentResult(
+        success: false,
+        message: errorMessage,
+        error: error.toString(),
+      );
     }
   }
 
@@ -117,5 +198,27 @@ class ConfirmService {
     print('🔹 Error Type: ${error.runtimeType}');
     print('🔹 Error Message: $error');
     print('${'=' * 50}\n');
+  }
+}
+
+/// Class untuk menampung hasil dari API call
+class PaymentResult {
+  final bool success;
+  final String message;
+  final Map<String, dynamic>? data;
+  final int? statusCode;
+  final String? error;
+
+  PaymentResult({
+    required this.success,
+    required this.message,
+    this.data,
+    this.statusCode,
+    this.error,
+  });
+
+  @override
+  String toString() {
+    return 'PaymentResult(success: $success, message: $message, data: $data, statusCode: $statusCode, error: $error)';
   }
 }

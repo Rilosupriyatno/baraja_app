@@ -15,13 +15,13 @@ class RatingService {
   // Get existing rating for a specific menu item and order
   static Future<Map<String, dynamic>?> getExistingRating({
     required String menuItemId,
-    required String orderId,
+    required String id,
   }) async {
     try {
-      print('🌐 API Call - URL: $baseUrl/api/my-rating/$menuItemId/$orderId');
+      print('🌐 API Call - URL: $baseUrl/api/my-rating/$menuItemId/$id');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/rating/my-rating/$menuItemId/$orderId'),
+        Uri.parse('$baseUrl/api/rating/my-rating/$menuItemId/$id'),
         headers: _headers,
       );
 
@@ -56,7 +56,7 @@ class RatingService {
   // Create new rating
   static Future<Map<String, dynamic>> createRating({
     required String menuItemId,
-    required String orderId,
+    required String id,
     required int rating,
     String? review,
     // List<String>? tags,
@@ -66,7 +66,7 @@ class RatingService {
 
       final body = {
         'menuItemId': menuItemId,
-        'orderId': orderId,
+        'id': id,
         'rating': rating,
         'review': review ?? '',
       };
@@ -134,7 +134,7 @@ class RatingService {
   // Submit rating (create or update based on existing rating)
   static Future<Map<String, dynamic>> submitRating({
     required String menuItemId,
-    required String orderId,
+    required String id,
     String? outletId,
     required int rating,
     String? review,
@@ -151,7 +151,7 @@ class RatingService {
       // Create new rating
       return await createRating(
         menuItemId: menuItemId,
-        orderId: orderId,
+        id: id,
         rating: rating,
         review: review,
       );
