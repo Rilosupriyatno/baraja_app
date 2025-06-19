@@ -239,10 +239,10 @@ class _MenuScreenState extends State<MenuScreen> {
             '${data.formattedDate} • ${data.formattedTime}',
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
-          Text(
-            '${data.personCount} orang • Lantai ${data.floor}',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
+          // Text(
+          //   '${data.personCount} orang • Lantai ${data.floor}',
+          //   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          // ),
         ],
       ),
     );
