@@ -213,11 +213,12 @@ class OrderService {
     // Cek payment status terlebih dahulu
     final paymentStatus =
         orderData['paymentStatus']?.toString().toLowerCase() ?? '';
+    print(paymentStatus);
     if (paymentStatus == 'settlement') {
       // Jika sudah lunas, cek order status
       final orderStatus = orderData['orderStatus']?.toString() ?? '';
       switch (orderStatus) {
-        case 'Waiting':
+        case 'Pending':
           // return {
           //   'status': 'Pesanan dikonfirmasi',
           //   'color': const Color(0xFF3B82F6),

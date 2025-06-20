@@ -1,6 +1,7 @@
 // screens/reservation_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/table.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
@@ -24,6 +25,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
   TimeOfDay selectedTime = const TimeOfDay(hour: 19, minute: 0);
   Area? selectedArea;
   int personCount = 1;
+  List<TableModel> tables = [];
+  bool isLoadingTables = false;
+
 
   List<Area> areas = [];
   bool isLoadingAreas = true;
@@ -50,6 +54,27 @@ class _ReservationScreenState extends State<ReservationScreen> {
       _showErrorDialog('Gagal memuat data area: $e');
     }
   }
+
+  Future<void> _loadTablesForArea(String areaId) async {
+    setState(() {
+      isLoadingTables = true;
+      tables = [];
+    });
+
+    try {
+      final result = await ReservationService.getAreaTables(areaId);
+      setState(() {
+        tables = result['tables'];
+        isLoadingTables = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingTables = false;
+      });
+      _showErrorDialog('Gagal memuat meja untuk area: $e');
+    }
+  }
+
 
   Future<void> _checkAvailability() async {
     if (selectedArea == null) return;
@@ -307,6 +332,66 @@ class _ReservationScreenState extends State<ReservationScreen> {
       ),
     );
   }
+  Widget _buildTableList() {
+    if (selectedArea == null) return const SizedBox();
+
+    if (isLoadingTables) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (tables.isEmpty) {
+      return const Center(
+        child: Text(
+          'Tidak ada meja tersedia untuk area ini',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nomor Meja Tersedia',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: tables.map((table) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: table.isAvailable ? Colors.green.shade100 : Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  table.tableNumber,
+                  style: TextStyle(
+                    color: table.isAvailable ? Colors.green.shade800 : Colors.red.shade800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }).toList(),
+          )
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -350,12 +435,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   onAreaChanged: (area) {
                     setState(() {
                       selectedArea = area;
-                      // Reset person count if exceeds area capacity
                       if (personCount > area.capacity) {
                         personCount = area.capacity;
                       }
                     });
+                    _loadTablesForArea(area.id); // Load table list
                   },
+
                   isLoading: isLoadingAreas,
                 ),
                 const SizedBox(height: 16),
@@ -370,7 +456,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     });
                   },
                 ),
+                _buildTableList(),
                 const SizedBox(height: 24),
+
 
                 // Reservation button
                 _buildReservationButton(),
