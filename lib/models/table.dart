@@ -1,5 +1,5 @@
 // models/table.dart
-class Table {
+class TableModel {
   final String id;
   final String tableNumber;
   final String areaId;
@@ -10,7 +10,7 @@ class Table {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  Table({
+  TableModel({
     required this.id,
     required this.tableNumber,
     required this.areaId,
@@ -22,8 +22,8 @@ class Table {
     required this.updatedAt,
   });
 
-  factory Table.fromJson(Map<String, dynamic> json) {
-    return Table(
+  factory TableModel.fromJson(Map<String, dynamic> json) {
+    return TableModel(
       id: json['id']?.toString() ?? '',
       tableNumber: json['table_number']?.toString() ?? '',
       areaId: json['area_id']?.toString() ?? '',
@@ -54,7 +54,7 @@ class Table {
     };
   }
 
-  Table copyWith({
+  TableModel copyWith({
     String? id,
     String? tableNumber,
     String? areaId,
@@ -65,7 +65,7 @@ class Table {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return Table(
+    return TableModel(
       id: id ?? this.id,
       tableNumber: tableNumber ?? this.tableNumber,
       areaId: areaId ?? this.areaId,
@@ -86,7 +86,7 @@ class Table {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is Table && other.id == id;
+    return other is TableModel && other.id == id;
   }
 
   @override

@@ -51,7 +51,7 @@ class ReservationService {
           return {
             'area': Area.fromJson(data['area']),
             'tables': (data['tables'] as List)
-                .map((table) => Table.fromJson(table))
+                .map((table) => TableModel.fromJson(table))
                 .toList(),
           };
         } else {

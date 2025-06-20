@@ -8,7 +8,7 @@ class Area {
   final int capacity;
   final String description;
   final bool isActive;
-  final List<Table> tables;
+  final List<TableModel> tables;
   final int totalTables;
   final int availableTables;
   final DateTime? createdAt;
@@ -37,7 +37,7 @@ class Area {
       description: json['description'] ?? '',
       isActive: json['is_active'] ?? true,
       tables: json['tables'] != null
-          ? (json['tables'] as List).map((table) => Table.fromJson(table)).toList()
+          ? (json['tables'] as List).map((table) => TableModel.fromJson(table)).toList()
           : [],
       totalTables: json['total_tables'] ?? 0,
       availableTables: json['available_tables'] ?? 0,
