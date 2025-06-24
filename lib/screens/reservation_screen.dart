@@ -26,8 +26,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   Area? selectedArea;
   int personCount = 1;
   List<TableModel> tables = [];
+  List<String> selectedTableIds = []; // List untuk menyimpan ID meja yang dipilih
   bool isLoadingTables = false;
-
 
   List<Area> areas = [];
   bool isLoadingAreas = true;
@@ -59,6 +59,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
     setState(() {
       isLoadingTables = true;
       tables = [];
+      selectedTableIds.clear(); // Clear selected tables when changing area
     });
 
     try {
@@ -75,9 +76,45 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
   }
 
+  void _toggleTableSelection(String tableId) {
+    setState(() {
+      if (selectedTableIds.contains(tableId)) {
+        selectedTableIds.remove(tableId);
+      } else {
+        selectedTableIds.add(tableId);
+      }
+    });
+  }
+
+  int _calculateTotalCapacity() {
+    int totalCapacity = 0;
+    for (String tableId in selectedTableIds) {
+      final table = tables.firstWhere((t) => t.id == tableId);
+      totalCapacity += table.seats;
+    }
+    return totalCapacity;
+  }
+
+  // Helper method to get selected table numbers
+  String _getSelectedTableNumbers() {
+    List<String> tableNumbers = [];
+    for (String tableId in selectedTableIds) {
+      final table = tables.firstWhere((t) => t.id == tableId);
+      tableNumbers.add(table.tableNumber);
+    }
+    return tableNumbers.join(', ');
+  }
+
+  bool _isTableSelectionValid() {
+    if (selectedTableIds.isEmpty) return false;
+
+    final totalCapacity = _calculateTotalCapacity();
+    return totalCapacity >= personCount;
+  }
+
 
   Future<void> _checkAvailability() async {
-    if (selectedArea == null) return;
+    if (selectedArea == null || selectedTableIds.isEmpty) return;
 
     setState(() {
       isCheckingAvailability = true;
@@ -93,6 +130,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         time: timeStr,
         areaId: selectedArea!.id,
         guestCount: personCount,
+        tableIds: selectedTableIds, // Pass selected table IDs
       );
 
       setState(() {
@@ -132,7 +170,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                isAvailable ? 'Area Tersedia' : 'Area Tidak Tersedia',
+                isAvailable ? 'Meja Tersedia' : 'Meja Tidak Tersedia',
                 style: TextStyle(
                   color: isAvailable ? Colors.green : Colors.red,
                   fontSize: 18,
@@ -166,11 +204,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                       const SizedBox(height: 8),
                       _buildInfoRow('Area', result['data']['area_name']),
                       _buildInfoRow('Jumlah Tamu', '${result['data']['guest_count']} orang'),
-                      _buildInfoRow('Kapasitas Area', '${result['data']['capacity']} orang'),
-                      _buildInfoRow('Total Meja', '${result['data']['total_tables']}'),
-                      _buildInfoRow('Meja Tersedia', '${result['data']['available_tables']}'),
-                      if (result['data']['required_tables'] != null)
-                        _buildInfoRow('Meja Dibutuhkan', '${result['data']['required_tables']}'),
+                      _buildInfoRow('Meja Dipilih', _getSelectedTableNumbers()),
+                      _buildInfoRow('Total Kapasitas', '${_calculateTotalCapacity()} orang'),
                     ],
                   ),
                 ),
@@ -241,6 +276,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       personCount: personCount,
       formattedDate: formattedDate,
       formattedTime: formattedTime,
+      selectedTableIds: selectedTableIds, // Add selected table IDs
     );
 
     Navigator.push(
@@ -280,7 +316,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   bool get _canMakeReservation {
     return selectedArea != null &&
-        personCount <= (selectedArea?.capacity ?? 0) &&
+        selectedTableIds.isNotEmpty &&
+        _isTableSelectionValid() &&
         !isCheckingAvailability;
   }
 
@@ -297,6 +334,16 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   Widget _buildReservationButton() {
+    String buttonText = 'Cek Ketersediaan & Lanjut';
+
+    if (selectedArea == null) {
+      buttonText = 'Pilih Area Terlebih Dahulu';
+    } else if (selectedTableIds.isEmpty) {
+      buttonText = 'Pilih Meja Terlebih Dahulu';
+    } else if (!_isTableSelectionValid()) {
+      buttonText = 'Kapasitas Meja Tidak Mencukupi';
+    }
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -320,9 +367,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
           ),
         )
             : Text(
-          selectedArea == null
-              ? 'Pilih Area Terlebih Dahulu'
-              : 'Cek Ketersediaan & Lanjut',
+          buttonText,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -332,6 +377,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       ),
     );
   }
+
   Widget _buildTableList() {
     if (selectedArea == null) return const SizedBox();
 
@@ -359,39 +405,172 @@ class _ReservationScreenState extends State<ReservationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nomor Meja Tersedia',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Pilih Meja',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              if (selectedTableIds.isNotEmpty)
+                Flexible(
+                  child: Text(
+                    'Dipilih: ${selectedTableIds.length} meja',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.barajaPrimary.primaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
+
+          // Selected tables info
+          if (selectedTableIds.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Total Kapasitas: ${_calculateTotalCapacity()} orang',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.barajaPrimary.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Status: ${_isTableSelectionValid() ? "Mencukupi" : "Tidak Mencukupi"} untuk $personCount orang',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _isTableSelectionValid() ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Tables grid
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: tables.map((table) {
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: table.isAvailable ? Colors.green.shade100 : Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  table.tableNumber,
-                  style: TextStyle(
-                    color: table.isAvailable ? Colors.green.shade800 : Colors.red.shade800,
-                    fontWeight: FontWeight.w500,
+              final isSelected = selectedTableIds.contains(table.id);
+              final canBeSelected = table.isAvailable;
+
+              return GestureDetector(
+                onTap: canBeSelected ? () => _toggleTableSelection(table.id) : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: !canBeSelected
+                        ? Colors.red.shade100
+                        : isSelected
+                        ? AppTheme.barajaPrimary.primaryColor
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: !canBeSelected
+                          ? Colors.red.shade300
+                          : isSelected
+                          ? AppTheme.barajaPrimary.primaryColor
+                          : Colors.grey.shade300,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        table.tableNumber,
+                        style: TextStyle(
+                          color: !canBeSelected
+                              ? Colors.red.shade800
+                              : isSelected
+                              ? Colors.white
+                              : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '${table.seats} kursi',
+                        style: TextStyle(
+                          color: !canBeSelected
+                              ? Colors.red.shade600
+                              : isSelected
+                              ? Colors.white70
+                              : Colors.grey.shade600,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
             }).toList(),
-          )
+          ),
+
+          const SizedBox(height: 8),
+
+          // Legend
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _buildLegendItem(Colors.white, Colors.grey.shade300, 'Tersedia'),
+              _buildLegendItem(AppTheme.barajaPrimary.primaryColor, AppTheme.barajaPrimary.primaryColor, 'Dipilih'),
+              _buildLegendItem(Colors.red.shade100, Colors.red.shade300, 'Tidak Tersedia'),
+            ],
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildLegendItem(Color backgroundColor, Color borderColor, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, color: Colors.grey),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -439,9 +618,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                         personCount = area.capacity;
                       }
                     });
-                    _loadTablesForArea(area.id); // Load table list
+                    _loadTablesForArea(area.id);
                   },
-
                   isLoading: isLoadingAreas,
                 ),
                 const SizedBox(height: 16),
@@ -456,9 +634,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     });
                   },
                 ),
+                const SizedBox(height: 16),
+
+                // Table selection
                 _buildTableList(),
                 const SizedBox(height: 24),
-
 
                 // Reservation button
                 _buildReservationButton(),

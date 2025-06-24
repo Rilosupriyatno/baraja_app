@@ -66,21 +66,29 @@ class ReservationService {
     }
   }
 
-  // Check availability for area
+  // Check availability for area with specific tables
   static Future<Map<String, dynamic>> checkAvailability({
     required String date,
     required String time,
     required String areaId,
     required int guestCount,
+    List<String>? tableIds, // Optional table IDs parameter
   }) async {
     try {
+      final Map<String, String> queryParameters = {
+        'date': date,
+        'time': time,
+        'area_id': areaId,
+        'guest_count': guestCount.toString(),
+      };
+
+      // Add table IDs to query parameters if provided
+      if (tableIds != null && tableIds.isNotEmpty) {
+        queryParameters['table_ids'] = tableIds.join(',');
+      }
+
       final Uri url = Uri.parse('$baseUrl/api/areas/availability').replace(
-        queryParameters: {
-          'date': date,
-          'time': time,
-          'area_id': areaId,
-          'guest_count': guestCount.toString(),
-        },
+        queryParameters: queryParameters,
       );
 
       final response = await http.get(
@@ -114,6 +122,48 @@ class ReservationService {
         'data': null,
         'reason': 'network_error',
       };
+    }
+  }
+
+  // Create reservation with selected tables
+  static Future<Map<String, dynamic>> createReservation({
+    required String date,
+    required String time,
+    required String areaId,
+    required int guestCount,
+    required List<String> tableIds,
+    String? customerName,
+    String? customerPhone,
+    String? notes,
+  }) async {
+    try {
+      final Map<String, dynamic> requestBody = {
+        'date': date,
+        'time': time,
+        'area_id': areaId,
+        'guest_count': guestCount,
+        'table_ids': tableIds,
+        if (customerName != null) 'customer_name': customerName,
+        if (customerPhone != null) 'customer_phone': customerPhone,
+        if (notes != null) 'notes': notes,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/reservations'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestBody),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to create reservation');
+      }
+    } catch (e) {
+      print('Error creating reservation: $e');
+      throw Exception('Error creating reservation: $e');
     }
   }
 
