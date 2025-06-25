@@ -52,7 +52,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   late final Order newOrder;
   bool _hasSentOrder = false;
   bool _isLoading = true;
-  Map<String, dynamic>? _paymentResponse;
+  PaymentResult? _paymentResponse; // Changed from Map<String, dynamic>?
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
@@ -117,31 +117,33 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       _isLoading = true;
     });
 
+    final confirmService = ConfirmService();
+
     try {
-      // Add order to provider - now safe to call after build phase
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      orderProvider.addOrder(newOrder);
-
-      // Create mock payment response for cash
-      _paymentResponse = {
-        'status_code': '200',
-        'transaction_status': 'pending',
-        'payment_type': 'cash',
-        'order_id': widget.orderId,
-        'transaction_time': DateTime.now().toIso8601String(),
-        'gross_amount': widget.total.toString(),
-      };
-
-      // Save payment details
-      await _savePaymentDetails();
+      // Send cash payment through the unified sendOrder method
+      final response = await confirmService.sendOrder(newOrder);
 
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _paymentResponse = response;
         });
-      }
 
-      print('Cash payment processed for order: ${widget.orderId}');
+        if (response.success) {
+          // Add order to provider - now safe to call after build phase
+          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+          orderProvider.addOrder(newOrder);
+
+          // Save payment details
+          await _savePaymentDetails();
+
+          print('Cash payment processed for order: ${widget.orderId}');
+        } else {
+          setState(() {
+            _errorMessage = response.message;
+          });
+        }
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -178,20 +180,32 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       if (mounted) {
         setState(() {
           // Update the payment response with new transaction status
-          if (_paymentResponse != null) {
-            _paymentResponse!['transaction_status'] = data['transaction_status'];
+          if (_paymentResponse != null && _paymentResponse!.data != null) {
+            // Create a mutable copy of the data
+            final updatedData = Map<String, dynamic>.from(_paymentResponse!.data!);
+
+            updatedData['transaction_status'] = data['transaction_status'];
 
             // Update other fields if they exist in the update
             if (data.containsKey('fraud_status')) {
-              _paymentResponse!['fraud_status'] = data['fraud_status'];
+              updatedData['fraud_status'] = data['fraud_status'];
             }
             if (data.containsKey('status_message')) {
-              _paymentResponse!['status_message'] = data['status_message'];
+              updatedData['status_message'] = data['status_message'];
             }
+
+            // Create new PaymentResult with updated data
+            _paymentResponse = PaymentResult(
+              success: _paymentResponse!.success,
+              message: _paymentResponse!.message,
+              data: updatedData,
+              statusCode: _paymentResponse!.statusCode,
+              error: _paymentResponse!.error,
+            );
           }
         });
 
-        // Update stored payment details with new status
+        // Update stored payment status
         _updateStoredPaymentStatus(data['transaction_status']);
       }
 
@@ -220,12 +234,22 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   }
 
   Future<void> _savePaymentDetails() async {
-    if (_paymentResponse != null) {
+    if (_paymentResponse != null && _paymentResponse!.success) {
       try {
+        // Convert PaymentResult to Map for storage compatibility
+        final paymentResponseMap = _paymentResponse!.data ?? {
+          'status_code': _paymentResponse!.statusCode?.toString() ?? '200',
+          'transaction_status': 'pending',
+          'payment_type': widget.paymentDetails['methodName'],
+          'order_id': widget.orderId,
+          'transaction_time': DateTime.now().toIso8601String(),
+          'gross_amount': widget.total.toString(),
+        };
+
         await PaymentStorageService.savePaymentDetails(
           id: widget.id,
           orderId: widget.orderId,
-          paymentResponse: _paymentResponse!,
+          paymentResponse: paymentResponseMap,
           paymentDetails: widget.paymentDetails,
           subtotal: widget.subtotal,
           discount: widget.discount,
@@ -241,13 +265,13 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
         // Log the saved payment response structure for debugging
         print('Saved payment response structure:');
-        print('- Status Code: ${_paymentResponse!['status_code']}');
-        print('- Transaction ID: ${_paymentResponse!['transaction_id']}');
-        print('- Payment Type: ${_paymentResponse!['payment_type']}');
-        print('- Transaction Status: ${_paymentResponse!['transaction_status']}');
+        print('- Status Code: ${paymentResponseMap['status_code']}');
+        print('- Transaction ID: ${paymentResponseMap['transaction_id']}');
+        print('- Payment Type: ${paymentResponseMap['payment_type']}');
+        print('- Transaction Status: ${paymentResponseMap['transaction_status']}');
 
-        if (_paymentResponse!.containsKey('va_numbers')) {
-          print('- VA Numbers available: ${_paymentResponse!['va_numbers']}');
+        if (paymentResponseMap.containsKey('va_numbers')) {
+          print('- VA Numbers available: ${paymentResponseMap['va_numbers']}');
         }
       } catch (e) {
         print('Error saving payment details: $e');
@@ -302,14 +326,20 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             _paymentResponse = response;
           });
 
-          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-          orderProvider.addOrder(newOrder);
+          if (response.success) {
+            final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+            orderProvider.addOrder(newOrder);
 
-          // Save payment details to SharedPreferences
-          await _savePaymentDetails();
+            // Save payment details to SharedPreferences
+            await _savePaymentDetails();
 
-          // Make sure we're connected to socket after order is sent
-          _setupSocketConnection();
+            // Make sure we're connected to socket after order is sent
+            _setupSocketConnection();
+          } else {
+            setState(() {
+              _errorMessage = response.message;
+            });
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -320,6 +350,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         }
       }
     }
+  }
+
+  // Helper method to get payment response data as Map for widget compatibility
+  Map<String, dynamic>? get _paymentResponseData {
+    return _paymentResponse?.data;
   }
 
   @override
@@ -343,6 +378,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             ? PaymentErrorView(
           errorMessage: _errorMessage,
           onRetry: () {
+            setState(() {
+              _errorMessage = null;
+            });
             if (_isCashPayment) {
               _handleCashPayment();
             } else {
@@ -354,7 +392,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             : _isCashPayment
             ? CashPaymentView(
           order: newOrder,
-          paymentResponse: _paymentResponse,
+          paymentResponse: _paymentResponseData, // Use helper getter
           paymentDetails: widget.paymentDetails,
           orderType: widget.orderType,
           tableNumber: widget.tableNumber,
@@ -368,7 +406,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         )
             : PaymentSuccessView(
           order: newOrder,
-          paymentResponse: _paymentResponse,
+          paymentResponse: _paymentResponseData, // Use helper getter
           paymentDetails: widget.paymentDetails,
           orderType: widget.orderType,
           tableNumber: widget.tableNumber,

@@ -67,10 +67,11 @@ class _CashPaymentViewState extends State<CashPaymentView> {
 
     try {
       // Call the instance method instead of static method
-      final result = await _confirmService.chargeCash(
-        orderId: widget.order.orderId,
-        totalAmount: widget.total,
-      );
+      // final result = await _confirmService.sendOrder(
+      //   orderId: widget.order.orderId,
+      //   totalAmount: widget.total,
+      // );
+      final result = await _confirmService.sendOrder(widget.order);
 
       setState(() {
         _isLoading = false;
@@ -428,6 +429,8 @@ class _CashPaymentViewState extends State<CashPaymentView> {
         return 'Pengantaran';
       case OrderType.pickup:
         return 'Ambil Sendiri';
+      case OrderType.reservation:
+        return 'Reservasi';
     }
   }
 

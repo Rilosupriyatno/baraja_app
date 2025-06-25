@@ -6,16 +6,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
+import '../models/reservation_data.dart';
 
 class OrderService {
   // Change this to your actual API base URL
   final String? baseUrl = dotenv.env['BASE_URL'];
-  // Method to create a new order
 
+// Method to create a new order
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
     required String userId,
-    required String userName,
+    required String userName, // This won't be sent to backend but kept for local use
     required OrderType orderType,
     String? tableNumber,
     String? deliveryAddress,
@@ -27,7 +28,8 @@ class OrderService {
     required int subtotal,
     required int discount,
     String? voucherCode,
-    required Map<String, String?> paymentDetails,
+    ReservationData? reservationData,
+    required Map<String, dynamic> paymentDetails,
   }) async {
     try {
       // Convert TimeOfDay to string format if it exists
@@ -46,35 +48,49 @@ class OrderService {
       print('Table Number: "$tableNumber"');
       print('Pickup Time: "$pickupTimeString"');
 
-      // Prepare order data
+      // Prepare order data - matching backend expectations exactly
       final orderData = <String, dynamic>{
         'userId': userId,
-        'userName': userName,
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
-        'pricing': {
-          'subtotal': subtotal,
-          'discount': discount,
-          'total': subtotal - discount,
-        },
-        'voucherCode': voucherCode,
-        'orderDate': DateTime.now().toIso8601String(),
-        'status': 'pending',
-        'outlet': '67cbc9560f025d897d69f889'
+        'outlet': '67cbc9560f025d897d69f889', // Required by backend
       };
 
+      // Add optional fields only if they have values
+      if (voucherCode != null && voucherCode.isNotEmpty) {
+        orderData['voucherCode'] = voucherCode;
+      }
+
       // Add conditional fields based on order type
-      if (orderType.toString().split('.').last == 'dineIn' && tableNumber != null && tableNumber.isNotEmpty) {
+      if (orderType.toString().split('.').last == 'dineIn' &&
+          tableNumber != null && tableNumber.isNotEmpty) {
         orderData['tableNumber'] = tableNumber;
       }
 
-      if (orderType.toString().split('.').last == 'delivery' && deliveryAddress != null && deliveryAddress.isNotEmpty) {
+      if (orderType.toString().split('.').last == 'delivery' &&
+          deliveryAddress != null && deliveryAddress.isNotEmpty) {
         orderData['deliveryAddress'] = deliveryAddress;
       }
 
       if (orderType.toString().split('.').last == 'pickup' && pickupTimeString != null) {
         orderData['pickupTime'] = pickupTimeString;
+      }
+
+      if (orderType.toString().split('.').last == 'reservation') {
+        if (reservationData != null) {
+          orderData['reservationData'] = {
+            'reservationTime': reservationData.formattedTime,
+            'guestCount': reservationData.personCount,
+            'areaIds': reservationData.areaId,
+            'tableIds': reservationData.selectedTableIds,
+            'reservationDate': reservationData.formattedDate,
+          };
+        }
+        // Table number is also required for reservations
+        if (tableNumber != null && tableNumber.isNotEmpty) {
+          orderData['tableNumber'] = tableNumber;
+        }
       }
 
       print('Final orderData:');
@@ -89,10 +105,13 @@ class OrderService {
         Uri.parse('$baseUrl/api/orderApp'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          if (token != null) 'Authorization': 'Bearer $token',
         },
         body: jsonEncode(orderData),
       );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         // Order created successfully
@@ -104,6 +123,7 @@ class OrderService {
             'Failed to create order: ${errorBody['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
+      print('Error creating order: $e');
       throw Exception('Error creating order: $e');
     }
   }

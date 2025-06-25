@@ -25,6 +25,10 @@ class CheckoutButton extends StatelessWidget {
         if (cartProvider.items.isEmpty) {
           return const SizedBox.shrink(); // Tidak menampilkan tombol jika keranjang kosong
         }
+        final bool isReservation = cartProvider.isReservation;
+        final ReservationData? reservationData = cartProvider.reservationData;
+        final bool isDineIn = cartProvider.isDineIn;
+        final String? tableNumber = cartProvider.tableNumber;
         return FloatingActionButton.extended(
           onPressed: () {
             // Prepare extra data for navigation

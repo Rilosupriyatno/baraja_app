@@ -6,22 +6,35 @@ import '../models/order.dart';
 class ConfirmService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
-  Future<Map<String, dynamic>> sendOrder(Order order) async {
+  Future<PaymentResult> sendOrder(Order order) async {
     try {
       final String? paymentType = order.paymentDetails['methodName'];
-      final Map<String, dynamic> paymentData = {
-        "payment_type": paymentType,
-        "transaction_details": {
+
+      // Untuk cash payment, gunakan struktur yang lebih sederhana
+      Map<String, dynamic> paymentData;
+
+      if (paymentType == 'cash') {
+        paymentData = {
+          "payment_type": paymentType,
           "order_id": order.orderId,
           "gross_amount": order.total,
-        },
-      };
-
-      // Tambahkan field tambahan tergantung payment type
-      if (paymentType == 'bank_transfer') {
-        paymentData['bank_transfer'] = {
-          "bank": order.paymentDetails['bankCode'],
         };
+      } else {
+        // Untuk payment type lainnya (bank_transfer, gopay, qris, dll)
+        paymentData = {
+          "payment_type": paymentType,
+          "transaction_details": {
+            "order_id": order.orderId,
+            "gross_amount": order.total,
+          },
+        };
+
+        // Tambahkan field tambahan tergantung payment type
+        if (paymentType == 'bank_transfer') {
+          paymentData['bank_transfer'] = {
+            "bank": order.paymentDetails['bankCode'],
+          };
+        }
       }
 
       _printRequestData(paymentData);
@@ -30,38 +43,6 @@ class ConfirmService {
         Uri.parse('$baseUrl/api/charge'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(paymentData),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        _printSuccessResponse(responseData);
-        return responseData;
-      } else {
-        _printErrorResponse(response);
-        throw Exception("Gagal memproses pembayaran: ${response.statusCode}");
-      }
-    } catch (e) {
-      _printException(e);
-      throw Exception("Terjadi kesalahan: $e");
-    }
-  }
-
-  // Changed from static to instance method
-  Future<PaymentResult> chargeCash({
-    required String orderId,
-    required int totalAmount,
-  }) async {
-    try {
-      final requestBody = {
-        'payment_type': 'cash',
-        'order_id': orderId,
-        'gross_amount': totalAmount,
-      };
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/chargeCash'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
       );
 
       print('Response status: ${response.statusCode}');
@@ -79,14 +60,22 @@ class ConfirmService {
           }
         }
 
+        _printSuccessResponse(responseData ?? {});
+
         return PaymentResult(
           success: true,
-          message: 'Pembayaran tunai berhasil diproses',
+          message: paymentType == 'cash'
+              ? 'Pembayaran tunai berhasil diproses'
+              : 'Pembayaran berhasil diproses',
           data: responseData,
         );
       } else {
+        _printErrorResponse(response);
+
         // Handle error response
-        String errorMessage = 'Gagal memproses pembayaran tunai';
+        String errorMessage = paymentType == 'cash'
+            ? 'Gagal memproses pembayaran tunai'
+            : 'Gagal memproses pembayaran';
 
         if (response.body.isNotEmpty) {
           try {
@@ -106,7 +95,7 @@ class ConfirmService {
         );
       }
     } catch (error) {
-      print('Cash payment error: $error');
+      _printException(error);
 
       String errorMessage = 'Terjadi kesalahan saat memproses pembayaran';
 
@@ -133,8 +122,14 @@ class ConfirmService {
     print('📤 SENDING PAYMENT REQUEST');
     print('=' * 50);
     print('🔹 Payment Type: ${paymentData['payment_type']}');
-    print('🔹 Order ID: ${paymentData['transaction_details']['order_id']}');
-    print('🔹 Amount: ${paymentData['transaction_details']['gross_amount']}');
+
+    if (paymentData.containsKey('transaction_details')) {
+      print('🔹 Order ID: ${paymentData['transaction_details']['order_id']}');
+      print('🔹 Amount: ${paymentData['transaction_details']['gross_amount']}');
+    } else {
+      print('🔹 Order ID: ${paymentData['order_id']}');
+      print('🔹 Amount: ${paymentData['gross_amount']}');
+    }
 
     if (paymentData.containsKey('bank_transfer')) {
       print('🔹 Bank: ${paymentData['bank_transfer']['bank']}');
