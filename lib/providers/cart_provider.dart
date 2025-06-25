@@ -6,22 +6,46 @@ class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
   bool _isReservation = false;
   ReservationData? _reservationData;
+  bool _isDineIn = false;
+  String? _tableNumber;
 
   List<CartItem> get items => _items;
   bool get isReservation => _isReservation;
   ReservationData? get reservationData => _reservationData;
+  bool get isDineIn => _isDineIn;
+  String? get tableNumber => _tableNumber;
 
-  // Set reservation data
-  void setReservationData(bool isReservation, ReservationData? reservationData) {
+  // Method untuk set reservation data (sudah ada, pastikan seperti ini)
+  void setReservationData(bool isReservation, ReservationData? data) {
     _isReservation = isReservation;
-    _reservationData = reservationData;
+    _reservationData = data;
+    _isDineIn = false;
+    _tableNumber = null;
     notifyListeners();
   }
 
-  // Clear reservation data
-  void clearReservationData() {
+  // Method untuk set dine-in data
+  void setDineInData(bool isDineIn, String? tableNumber) {
+    _isDineIn = isDineIn;
+    _tableNumber = tableNumber;
     _isReservation = false;
     _reservationData = null;
+    notifyListeners();
+  }
+
+  // Method untuk clear semua context
+  void clearOrderContext() {
+    _isReservation = false;
+    _reservationData = null;
+    _isDineIn = false;
+    _tableNumber = null;
+    notifyListeners();
+  }
+
+  // Method untuk clear cart sekaligus context
+  void clearCart() {
+    _items.clear();
+    clearOrderContext();
     notifyListeners();
   }
 
@@ -104,13 +128,6 @@ class CartProvider with ChangeNotifier {
       _items.removeAt(index);
       notifyListeners();
     }
-  }
-
-  void clearCart() {
-    _items.clear();
-    // Note: We don't clear reservation data here automatically
-    // as you might want to keep it for the next order
-    notifyListeners();
   }
 
   // Clear everything including reservation data

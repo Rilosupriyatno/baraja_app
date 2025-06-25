@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/reservation_data.dart';
+import '../providers/cart_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/menu/product_grid.dart';
@@ -48,6 +50,17 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+
+    // Set context in cart provider when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+      if (widget.isReservation && widget.reservationData != null) {
+        cartProvider.setReservationData(widget.isReservation, widget.reservationData);
+      } else if (widget.isDineIn && widget.tableNumber != null) {
+        cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
+      }
+    });
   }
 
   // Fungsi untuk memuat produk dari API
@@ -201,7 +214,6 @@ class _MenuScreenState extends State<MenuScreen> {
     }).toList();
   }
 
-  // Widget untuk menampilkan info reservasi
   Widget _buildReservationInfo() {
     if (!widget.isReservation || widget.reservationData == null) {
       return const SizedBox.shrink();
@@ -209,9 +221,17 @@ class _MenuScreenState extends State<MenuScreen> {
 
     final data = widget.reservationData!;
 
+    // Helper method untuk mendapatkan nomor meja yang dipilih
+    String getSelectedTables() {
+      if (data.selectedTableIds.isEmpty) {
+        return 'Belum dipilih';
+      }
+      return '${data.selectedTableIds.length} meja';
+    }
+
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
         borderRadius: BorderRadius.circular(8),
@@ -220,29 +240,61 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
-              Icon(Icons.restaurant_menu, color: Colors.orange.shade700),
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
               const SizedBox(width: 8),
               Text(
-                'Reservasi Menu',
+                'Detail Reservasi',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.orange.shade700,
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 8),
-          Text(
-            '${data.formattedDate} • ${data.formattedTime}',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+
+          // Info dalam 2 baris
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📅 ${data.formattedDate}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Text(
+                '🕐 ${data.formattedTime}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
-          // Text(
-          //   '${data.personCount} orang • Lantai ${data.floor}',
-          //   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          // ),
+
+          const SizedBox(height: 4),
+
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📍 Area ${data.areaCode}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                ),
+              ),
+              Text(
+                '👥 ${data.personCount} orang',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '🪑 ${getSelectedTables()}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
         ],
       ),
     );

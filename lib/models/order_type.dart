@@ -4,6 +4,7 @@ enum OrderType {
   dineIn,
   delivery,
   pickup,
+  reservation,
 }
 
 extension OrderTypeExtension on OrderType {
@@ -15,6 +16,8 @@ extension OrderTypeExtension on OrderType {
         return 'Delivery';
       case OrderType.pickup:
         return 'Pickup';
+      case OrderType.reservation:
+        return 'Reservation';
     }
   }
 
@@ -26,6 +29,8 @@ extension OrderTypeExtension on OrderType {
         return 'We deliver to your location';
       case OrderType.pickup:
         return 'Pick up your order at our store';
+      case OrderType.reservation:
+        return 'Reserve a table for your visit';
     }
   }
 
@@ -37,6 +42,8 @@ extension OrderTypeExtension on OrderType {
         return Icons.delivery_dining;
       case OrderType.pickup:
         return Icons.store;
+      case OrderType.reservation:
+        return Icons.event_seat;
     }
   }
 }

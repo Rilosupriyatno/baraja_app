@@ -46,9 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
     } catch (e) {
       // Handle error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load data: ${e.toString()}')),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Failed to load data: ${e.toString()}')),
+      // );
+      print('Failed to load data: $e');
+
     } finally {
       if (mounted) {
         setState(() {

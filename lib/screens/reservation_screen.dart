@@ -622,6 +622,12 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   },
                   isLoading: isLoadingAreas,
                 ),
+
+                const SizedBox(height: 16),
+
+                // Table selection
+                _buildTableList(),
+
                 const SizedBox(height: 16),
 
                 // Person count
@@ -634,10 +640,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     });
                   },
                 ),
-                const SizedBox(height: 16),
 
-                // Table selection
-                _buildTableList(),
                 const SizedBox(height: 24),
 
                 // Reservation button

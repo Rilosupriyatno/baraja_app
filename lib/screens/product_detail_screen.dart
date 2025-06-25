@@ -440,15 +440,8 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
 
                     cartProvider.addToCart(newItem);
 
-                    // Show a confirmation message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            '${widget.product.name} ditambahkan ke keranjang'),
-                        duration: const Duration(seconds: 2),
-                        backgroundColor: primaryColor,
-                      ),
-                    );
+                    print('${widget.product.name} ditambahkan ke keranjang');
+
                   },
                   child: const Text(
                     'Tambah ke Keranjang',

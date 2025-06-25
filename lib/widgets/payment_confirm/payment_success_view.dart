@@ -124,6 +124,8 @@ class PaymentSuccessView extends StatelessWidget {
         return 'Pengantaran';
       case OrderType.pickup:
         return 'Ambil Sendiri';
+      case OrderType.reservation:
+        return 'Reservasi';
     }
   }
 

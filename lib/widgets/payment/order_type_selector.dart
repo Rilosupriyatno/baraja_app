@@ -138,6 +138,8 @@ class OrderTypeSelector extends StatelessWidget {
         return 'Delivery';
       case OrderType.pickup:
         return 'Pickup';
+      case OrderType.reservation:
+        return 'Reservation';
     }
   }
 
@@ -149,6 +151,8 @@ class OrderTypeSelector extends StatelessWidget {
         return 'Antar ke alamat Anda';
       case OrderType.pickup:
         return 'Ambil sendiri di resto';
+      case OrderType.reservation:
+        return 'Reservasi meja untuk kunjungan Anda';
     }
   }
 }
