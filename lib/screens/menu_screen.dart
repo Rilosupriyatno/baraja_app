@@ -50,7 +50,7 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     _loadProducts();
-
+print(widget.reservationData);
     // Set context in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -220,6 +220,7 @@ class _MenuScreenState extends State<MenuScreen> {
     }
 
     final data = widget.reservationData!;
+    print(data);
 
     // Helper method untuk mendapatkan nomor meja yang dipilih
     String getSelectedTables() {

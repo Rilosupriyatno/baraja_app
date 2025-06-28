@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -13,10 +14,12 @@ class OrderService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
 // Method to create a new order
+// Perbaikan untuk method createOrder di OrderService
+
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
     required String userId,
-    required String userName, // This won't be sent to backend but kept for local use
+    required String userName,
     required OrderType orderType,
     String? tableNumber,
     String? deliveryAddress,
@@ -29,35 +32,35 @@ class OrderService {
     required int discount,
     String? voucherCode,
     ReservationData? reservationData,
+    ReservationType? reservationType, // Parameter sudah ada
     required Map<String, dynamic> paymentDetails,
   }) async {
     try {
       // Convert TimeOfDay to string format if it exists
       String? pickupTimeString;
       if (pickupTime != null) {
-        // Convert TimeOfDay to 24-hour format string (HH:mm)
         final hour = pickupTime.hour.toString().padLeft(2, '0');
         final minute = pickupTime.minute.toString().padLeft(2, '0');
         pickupTimeString = '$hour:$minute';
       }
 
-      // Debug: Print values to verify they're being passed correctly
+      // Debug prints
       print('Order Type: ${orderType.toString().split('.').last}');
+      print('Reservation Type: ${reservationType?.toString().split('.').last}');
       print('Delivery Address: "$deliveryAddress"');
-      print('Delivery Address Length: ${deliveryAddress?.length ?? 0}');
       print('Table Number: "$tableNumber"');
       print('Pickup Time: "$pickupTimeString"');
 
-      // Prepare order data - matching backend expectations exactly
+      // Prepare order data
       final orderData = <String, dynamic>{
         'userId': userId,
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
-        'outlet': '67cbc9560f025d897d69f889', // Required by backend
+        'outlet': '67cbc9560f025d897d69f889',
       };
 
-      // Add optional fields only if they have values
+      // Add optional fields
       if (voucherCode != null && voucherCode.isNotEmpty) {
         orderData['voucherCode'] = voucherCode;
       }
@@ -77,8 +80,10 @@ class OrderService {
         orderData['pickupTime'] = pickupTimeString;
       }
 
+      // PERBAIKAN: Handle reservation with reservationType
       if (orderType.toString().split('.').last == 'reservation') {
         if (reservationData != null) {
+          // Data reservasi dasar
           orderData['reservationData'] = {
             'reservationTime': reservationData.formattedTime,
             'guestCount': reservationData.personCount,
@@ -86,8 +91,18 @@ class OrderService {
             'tableIds': reservationData.selectedTableIds,
             'reservationDate': reservationData.formattedDate,
           };
+
+          // TAMBAHAN: Kirim reservationType ke backend jika ada
+          if (reservationType != null) {
+            orderData['reservationData']['reservationType'] =
+                reservationType.toString().split('.').last; // 'blocking' atau 'nonBlocking'
+
+            // Optional: Kirim sebagai field terpisah juga jika backend memerlukan
+            orderData['reservationType'] = reservationType.toString().split('.').last;
+          }
         }
-        // Table number is also required for reservations
+
+        // Table number untuk reservasi (jika diperlukan)
         if (tableNumber != null && tableNumber.isNotEmpty) {
           orderData['tableNumber'] = tableNumber;
         }
@@ -96,11 +111,10 @@ class OrderService {
       print('Final orderData:');
       print(orderData);
 
-      // Get auth token
+      // Get auth token dan kirim request
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('authToken');
 
-      // Make API request
       final response = await http.post(
         Uri.parse('$baseUrl/api/orderApp'),
         headers: {
@@ -114,10 +128,8 @@ class OrderService {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // Order created successfully
         return jsonDecode(response.body);
       } else {
-        // Handle error
         final errorBody = jsonDecode(response.body);
         throw Exception(
             'Failed to create order: ${errorBody['message'] ?? 'Unknown error'}');

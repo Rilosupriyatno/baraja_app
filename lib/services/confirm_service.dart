@@ -6,7 +6,12 @@ import '../models/order.dart';
 class ConfirmService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
-  Future<PaymentResult> sendOrder(Order order) async {
+  Future<PaymentResult> sendOrder(
+      Order order, {
+        bool? isDownPayment,
+        int? downPaymentAmount,
+        int? remainingPayment,
+      }) async {
     try {
       final String? paymentType = order.paymentDetails['methodName'];
 
@@ -35,6 +40,17 @@ class ConfirmService {
             "bank": order.paymentDetails['bankCode'],
           };
         }
+      }
+
+      // Add reservation payment data if provided
+      if (isDownPayment != null) {
+        paymentData['is_down_payment'] = isDownPayment;
+      }
+      if (downPaymentAmount != null) {
+        paymentData['down_payment_amount'] = downPaymentAmount;
+      }
+      if (remainingPayment != null) {
+        paymentData['remaining_payment'] = remainingPayment;
       }
 
       _printRequestData(paymentData);
@@ -133,6 +149,17 @@ class ConfirmService {
 
     if (paymentData.containsKey('bank_transfer')) {
       print('🔹 Bank: ${paymentData['bank_transfer']['bank']}');
+    }
+
+    // Print reservation payment details if present
+    if (paymentData.containsKey('is_down_payment')) {
+      print('🔹 Is Down Payment: ${paymentData['is_down_payment']}');
+    }
+    if (paymentData.containsKey('down_payment_amount')) {
+      print('🔹 Down Payment Amount: ${paymentData['down_payment_amount']}');
+    }
+    if (paymentData.containsKey('remaining_payment')) {
+      print('🔹 Remaining Payment: ${paymentData['remaining_payment']}');
     }
 
     print('\n📋 Full Request Data:');
