@@ -1,4 +1,5 @@
 import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/widgets/payment/payment_type_widget.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
 
@@ -7,6 +8,8 @@ class CheckoutSummary extends StatelessWidget {
   final int discount;
   final String? voucherCode;
   final VoidCallback onCheckoutPressed;
+  final bool isReservation;
+  final PaymentType? selectedPaymentType;
 
   const CheckoutSummary({
     super.key,
@@ -14,11 +17,21 @@ class CheckoutSummary extends StatelessWidget {
     this.discount = 0,
     this.voucherCode,
     required this.onCheckoutPressed,
+    this.isReservation = false,
+    this.selectedPaymentType,
   });
 
   @override
   Widget build(BuildContext context) {
     final int finalTotal = totalPrice - discount;
+    // Calculate down payment as 50% of the total (you can adjust this percentage)
+    final int downPaymentAmount = (finalTotal * 0.5).round();
+
+    // Determine the amount to be paid based on payment type
+    int amountToPay = finalTotal;
+    if (isReservation && selectedPaymentType == PaymentType.downPayment) {
+      amountToPay = downPaymentAmount;
+    }
 
     return SafeArea(
       child: Container(
@@ -70,17 +83,19 @@ class CheckoutSummary extends StatelessWidget {
                   ),
                 ],
               ),
-              const Divider(),
             ],
 
+            const Divider(),
             const SizedBox(height: 8),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Total",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  isReservation && selectedPaymentType == PaymentType.downPayment
+                      ? "Total Keseluruhan"
+                      : "Total",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   formatCurrency(finalTotal),
@@ -88,6 +103,32 @@ class CheckoutSummary extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Show amount to pay now if it's different from total
+            if (isReservation && selectedPaymentType == PaymentType.downPayment) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Bayar Sekarang",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(amountToPay),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: 16),
 
@@ -103,9 +144,11 @@ class CheckoutSummary extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  "Checkout",
-                  style: TextStyle(
+                child: Text(
+                  isReservation && selectedPaymentType == PaymentType.downPayment
+                      ? "Bayar Down Payment ${formatCurrency(amountToPay)}"
+                      : "Checkout ${formatCurrency(amountToPay)}",
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -117,5 +160,4 @@ class CheckoutSummary extends StatelessWidget {
       ),
     );
   }
-
 }

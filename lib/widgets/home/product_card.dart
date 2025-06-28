@@ -135,7 +135,8 @@ class ProductCard extends StatelessWidget {
                       children: [
                         // Coffee cup image representation
                         Center(
-                          child: product.imageUrl.isNotEmpty
+                          child: product.imageUrl.isNotEmpty &&
+                              product.imageUrl != 'https://placehold.co/1920x1080/png'
                               ? Image.network(
                             product.imageUrl,
                             fit: BoxFit.cover,

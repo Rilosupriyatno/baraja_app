@@ -12,7 +12,11 @@ import '../widgets/payment/cart_item_widget.dart';
 import '../widgets/payment/checkout_summary.dart';
 import '../widgets/payment/order_type_selector.dart';
 import '../widgets/payment/payment_method_widget.dart';
+import '../widgets/payment/payment_type_widget.dart';
 import '../widgets/payment/voucher_widget.dart';
+
+// Enum untuk tipe reservasi
+enum ReservationType { nonBlocking, blocking }
 
 class CheckoutPage extends StatefulWidget {
   final bool isReservation;
@@ -50,6 +54,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedVoucherCode;
   String voucherDescription = "";
   int discountAmount = 0;
+  PaymentType selectedPaymentType = PaymentType.fullPayment;
+
+  // Tambahan untuk reservation type
+  ReservationType selectedReservationType = ReservationType.nonBlocking;
 
   @override
   void initState() {
@@ -95,6 +103,31 @@ class _CheckoutPageState extends State<CheckoutPage> {
       default:
         return 0;
     }
+  }
+
+  // Method untuk mengecek apakah area code memerlukan pilihan reservation type
+  bool _shouldShowReservationType(String? areaCode) {
+    return areaCode == 'A' || areaCode == 'B';
+  }
+
+  // Method untuk mengecek apakah blocking bisa dipilih berdasarkan total dan area code
+  bool _canSelectBlocking(String? areaCode, int totalAmount) {
+    if (areaCode == 'A') {
+      return totalAmount >= 3000000; // Rp. 3.000.000 untuk area A
+    } else if (areaCode == 'B') {
+      return totalAmount >= 2000000; // Rp. 2.000.000 untuk area B
+    }
+    return false;
+  }
+
+  // Method untuk mendapatkan minimum amount untuk blocking
+  int _getMinimumAmountForBlocking(String? areaCode) {
+    if (areaCode == 'A') {
+      return 3000000;
+    } else if (areaCode == 'B') {
+      return 2000000;
+    }
+    return 0;
   }
 
   // Format tampilan metode pembayaran
@@ -190,6 +223,194 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  // Widget untuk pilihan reservation type
+  Widget _buildReservationTypeSelector(ReservationData data, int finalTotal) {
+    if (!_shouldShowReservationType(data.areaCode)) {
+      return const SizedBox.shrink();
+    }
+
+    final bool canSelectBlocking = _canSelectBlocking(data.areaCode, finalTotal);
+    final int minAmount = _getMinimumAmountForBlocking(data.areaCode);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.purple.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.purple.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.event_seat, color: Colors.purple.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Tipe Reservasi',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purple.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Non-Blocking Option
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedReservationType = ReservationType.nonBlocking;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: selectedReservationType == ReservationType.nonBlocking
+                    ? Colors.purple.shade100
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selectedReservationType == ReservationType.nonBlocking
+                      ? Colors.purple.shade400
+                      : Colors.grey.shade300,
+                  width: selectedReservationType == ReservationType.nonBlocking ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    selectedReservationType == ReservationType.nonBlocking
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: Colors.purple.shade700,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Non-Blocking',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.purple.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Meja bisa digunakan customer lain setelah waktu reservasi berakhir',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Blocking Option
+          GestureDetector(
+            onTap: canSelectBlocking ? () {
+              setState(() {
+                selectedReservationType = ReservationType.blocking;
+              });
+            } : null,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: canSelectBlocking
+                    ? (selectedReservationType == ReservationType.blocking
+                    ? Colors.purple.shade100
+                    : Colors.white)
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: canSelectBlocking
+                      ? (selectedReservationType == ReservationType.blocking
+                      ? Colors.purple.shade400
+                      : Colors.grey.shade300)
+                      : Colors.grey.shade300,
+                  width: selectedReservationType == ReservationType.blocking ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    selectedReservationType == ReservationType.blocking
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: canSelectBlocking ? Colors.purple.shade700 : Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Blocking',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: canSelectBlocking ? Colors.purple.shade700 : Colors.grey.shade400,
+                          ),
+                        ),
+                        Text(
+                          canSelectBlocking
+                              ? 'Meja tidak bisa digunakan customer lain sampai Anda datang'
+                              : 'Minimum pembelian Rp${minAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} untuk area ${data.areaCode}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (!canSelectBlocking) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tambahkan Rp${(minAmount - finalTotal).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} lagi untuk mengaktifkan opsi Blocking',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // Widget untuk menampilkan info dine-in
   Widget _buildDineInInfo() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -260,6 +481,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final List<CartItem> cartItems = cartProvider.items;
         final int subtotal = cartProvider.totalPrice;
         final int discount = calculateDiscount(subtotal);
+        final int finalTotal = subtotal - discount;
+
+        // Calculate down payment amount (50% of final total)
+        final int downPaymentAmount = (finalTotal * 0.5).round();
+
+        // Auto-set reservation type to non-blocking if blocking is not available
+        if (cartProvider.isReservation &&
+            cartProvider.reservationData != null &&
+            _shouldShowReservationType(cartProvider.reservationData!.areaCode) &&
+            !_canSelectBlocking(cartProvider.reservationData!.areaCode, finalTotal) &&
+            selectedReservationType == ReservationType.blocking) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              selectedReservationType = ReservationType.nonBlocking;
+            });
+          });
+        }
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -278,6 +516,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         // Reservation info at the top
                         if (cartProvider.isReservation && cartProvider.reservationData != null)
                           _buildReservationInfo(cartProvider.reservationData!),
+
+                        // Reservation Type Selector - untuk area A dan B
+                        if (cartProvider.isReservation &&
+                            cartProvider.reservationData != null &&
+                            _shouldShowReservationType(cartProvider.reservationData!.areaCode))
+                          _buildReservationTypeSelector(cartProvider.reservationData!, finalTotal),
 
                         // Dine-in info at the top
                         if (cartProvider.isDineIn)
@@ -388,6 +632,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ],
                         const SizedBox(height: 24),
 
+                        // Payment Type Selection for Reservations - Moved here
+                        if (cartProvider.isReservation) ...[
+                          ReservationPaymentTypeWidget(
+                            selectedType: selectedPaymentType,
+                            onChanged: (PaymentType type) {
+                              setState(() {
+                                selectedPaymentType = type;
+                              });
+                            },
+                            totalAmount: finalTotal,
+                            downPaymentAmount: downPaymentAmount,
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
                         // Metode Pembayaran
                         PaymentMethodWidget(
                           selectedMethod: displayedPaymentMethod,
@@ -442,11 +701,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
 
-              // Updated Checkout Summary with discount
+              // Updated Checkout Summary without payment type widget
               CheckoutSummary(
                 totalPrice: subtotal,
                 discount: discount,
                 voucherCode: selectedVoucherCode,
+                isReservation: cartProvider.isReservation,
+                selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                 onCheckoutPressed: () async {
                   // Validasi input berdasarkan tipe pesanan
                   bool isValid = true;
@@ -478,7 +739,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   final prefs = await SharedPreferences.getInstance();
                   final userId = prefs.getString('userId');
                   final userName = prefs.getString('userName') ?? 'Guest';
-
+                  int amountToPay = finalTotal;
+                  if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
+                    amountToPay = downPaymentAmount;
+                  }
                   // Tampilkan loading indicator
                   showDialog(
                     context: context,
@@ -514,13 +778,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     // Determine order type based on current context
                     OrderType finalOrderType;
                     if (cartProvider.isReservation) {
-                      finalOrderType = OrderType.reservation; // You might need to add this to your enum
+                      finalOrderType = OrderType.reservation;
                     } else if (cartProvider.isDineIn) {
                       finalOrderType = OrderType.dineIn;
                     } else {
                       finalOrderType = selectedOrderType;
                     }
 
+                    // Create order with payment type information for reservations
                     final orderResult = await orderService.createOrder(
                       items: items,
                       userId: userId ?? 'guest',
@@ -534,13 +799,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       subtotal: subtotal,
                       discount: discount,
                       voucherCode: selectedVoucherCode,
-                      // Add reservation data if applicable
                       reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
+                      // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
+                      reservationType: cartProvider.isReservation &&
+                          cartProvider.reservationData != null &&
+                          _shouldShowReservationType(cartProvider.reservationData!.areaCode)
+                          ? selectedReservationType
+                          : null, // Kirim null jika tidak applicable
                     );
 
                     Navigator.of(context).pop();
 
-                    // Navigate to payment confirmation with appropriate data
+                    // Navigate to payment confirmation with payment type data
                     final extraData = {
                       'items': List.from(cartItems),
                       'userId': userId,
@@ -552,16 +822,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       'paymentDetails': paymentDetails,
                       'subtotal': subtotal,
                       'discount': discount,
-                      'total': subtotal - discount,
+                      'total': finalTotal,
+                      'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
+                      'amountToPay': amountToPay,
                       'voucherCode': selectedVoucherCode,
                       'id': orderResult['order']?['_id'] ?? '',
                       'orderId': orderResult['order']?['order_id'] ?? '',
                     };
 
-                    // Add reservation data if applicable
+                    // Add reservation and payment type data if applicable
                     if (cartProvider.isReservation && cartProvider.reservationData != null) {
                       extraData['reservationData'] = cartProvider.reservationData;
                       extraData['isReservation'] = true;
+                      extraData['paymentType'] = selectedPaymentType;
+                      extraData['downPaymentAmount'] = downPaymentAmount;
+
+                      // Add reservation type data
+                      if (_shouldShowReservationType(cartProvider.reservationData!.areaCode)) {
+                        extraData['reservationType'] = selectedReservationType;
+                        extraData['isBlocking'] = selectedReservationType == ReservationType.blocking;
+                      }
+
+                      // Add remaining payment amount for down payment option
+                      if (selectedPaymentType == PaymentType.downPayment) {
+                        extraData['remainingPayment'] = finalTotal - downPaymentAmount;
+                        extraData['isDownPayment'] = true;
+                      } else {
+                        extraData['remainingPayment'] = 0;
+                        extraData['isDownPayment'] = false;
+                      }
+                    } else {
+                      // For non-reservation orders, set default values
+                      extraData['remainingPayment'] = 0;
+                      extraData['isDownPayment'] = false;
                     }
 
                     context.push('/paymentConfirmation', extra: extraData);

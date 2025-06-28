@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
 import '../models/order_type.dart';
 import '../models/product.dart';
+import '../models/reservation_data.dart';
 import '../pages/account_settings_page.dart';
 import '../pages/favorit_page.dart';
 import '../pages/notification_page.dart';
@@ -21,6 +22,7 @@ import '../screens/register_screen.dart';
 import '../screens/tracking_detail_order_screen.dart';
 import '../screens/voucher_screen.dart';
 import '../services/product_service.dart';
+import '../widgets/payment/payment_type_widget.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
@@ -216,6 +218,16 @@ class AppRouter {
               // orderTime: extras['orderTime'] as DateTime,
               orderId: extras['orderId'] as String,
               id: extras['id'] as String,
+              // New parameters for reservation and payment type support
+              userId: extras['userId'] as String?,
+              userName: extras['userName'] as String?,
+              paymentType: extras['paymentType'] as PaymentType?,
+              amountToPay: extras['amountToPay'] as int,
+              reservationData: extras['reservationData'] as ReservationData?,
+              isReservation: extras['isReservation'] as bool? ?? false,
+              downPaymentAmount: extras['downPaymentAmount'] as int? ?? 0,
+              remainingPayment: extras['remainingPayment'] as int? ?? 0,
+              isDownPayment: extras['isDownPayment'] as bool? ?? false,
             );
           },
         ),

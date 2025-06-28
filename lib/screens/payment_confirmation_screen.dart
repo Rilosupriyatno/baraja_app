@@ -5,42 +5,63 @@ import '../services/socket_service.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../models/order_type.dart';
+import '../models/reservation_data.dart';
 import '../providers/order_provider.dart';
 import '../services/confirm_service.dart';
+import '../widgets/payment/payment_type_widget.dart';
 import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
-import '../widgets/payment_confirm/payment_success_view.dart';
-import '../widgets/payment_confirm/cash_payment_view.dart';
+import '../widgets/payment_confirm/unified_payment_view.dart';
 import '../widgets/utils/classic_app_bar.dart';
+
+
 
 class PaymentConfirmationScreen extends StatefulWidget {
   final List<CartItem> items;
+  final String? userId;
+  final String? userName;
   final OrderType orderType;
-  final String tableNumber;
+  final String? tableNumber;
   final String deliveryAddress;
   final TimeOfDay? pickupTime;
   final Map<String, String?> paymentDetails;
   final int subtotal;
   final int discount;
   final int total;
+  final PaymentType? paymentType;
+  final int amountToPay;
   final String? voucherCode;
   final String orderId;
   final String id;
+  final ReservationData? reservationData;
+  final bool? isReservation;
+  final int? downPaymentAmount;
+  final int remainingPayment;
+  final bool isDownPayment;
 
   const PaymentConfirmationScreen({
     super.key,
     required this.items,
+    this.userId,
+    this.userName,
     required this.orderType,
-    required this.tableNumber,
+    this.tableNumber,
     required this.deliveryAddress,
     required this.pickupTime,
     required this.paymentDetails,
     required this.subtotal,
     required this.discount,
     required this.total,
+    this.paymentType,
+    required this.amountToPay,
     this.voucherCode,
     required this.orderId,
     required this.id,
+    this.reservationData,
+    this.isReservation,
+    this.downPaymentAmount,
+    required this.remainingPayment,
+    required this.isDownPayment,
   });
 
   @override
@@ -52,7 +73,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   late final Order newOrder;
   bool _hasSentOrder = false;
   bool _isLoading = true;
-  PaymentResult? _paymentResponse; // Changed from Map<String, dynamic>?
+  PaymentResult? _paymentResponse;
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
@@ -80,7 +101,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         notes: item.notes,
       )).toList(),
       orderType: widget.orderType,
-      tableNumber: widget.tableNumber,
+      tableNumber: widget.tableNumber ?? '',
       deliveryAddress: widget.deliveryAddress,
       pickupTime: widget.pickupTime,
       paymentDetails: widget.paymentDetails,
@@ -90,6 +111,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       voucherCode: widget.voucherCode,
       orderTime: DateTime.now(),
       status: OrderStatus.processing,
+
     );
 
     // Defer the payment handling until after the build phase
@@ -121,7 +143,12 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
     try {
       // Send cash payment through the unified sendOrder method
-      final response = await confirmService.sendOrder(newOrder);
+      final response = await confirmService.sendOrder(
+        newOrder,
+        isDownPayment: widget.isDownPayment,
+        downPaymentAmount: widget.downPaymentAmount,
+        remainingPayment: widget.remainingPayment,
+      );
 
       if (mounted) {
         setState(() {
@@ -243,8 +270,19 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           'payment_type': widget.paymentDetails['methodName'],
           'order_id': widget.orderId,
           'transaction_time': DateTime.now().toIso8601String(),
-          'gross_amount': widget.total.toString(),
+          'gross_amount': widget.amountToPay.toString(), // Use amountToPay instead of total
         };
+
+        // Add reservation-specific data if applicable
+        if (widget.isReservation == true) {
+          paymentResponseMap['is_reservation'] = true;
+          paymentResponseMap['payment_type_enum'] = widget.paymentType?.toString() ?? PaymentType.fullPayment.toString();
+          paymentResponseMap['is_down_payment'] = widget.isDownPayment;
+          paymentResponseMap['remaining_payment'] = widget.remainingPayment;
+          if (widget.downPaymentAmount != null) {
+            paymentResponseMap['down_payment_amount'] = widget.downPaymentAmount!;
+          }
+        }
 
         await PaymentStorageService.savePaymentDetails(
           id: widget.id,
@@ -257,7 +295,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           voucherCode: widget.voucherCode,
           items: widget.items,
           orderType: widget.orderType,
-          tableNumber: widget.tableNumber,
+          tableNumber: widget.tableNumber ?? '',
           deliveryAddress: widget.deliveryAddress,
           pickupTime: widget.pickupTime,
         );
@@ -269,6 +307,14 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         print('- Transaction ID: ${paymentResponseMap['transaction_id']}');
         print('- Payment Type: ${paymentResponseMap['payment_type']}');
         print('- Transaction Status: ${paymentResponseMap['transaction_status']}');
+        print('- Amount to Pay: ${widget.amountToPay}');
+
+        if (widget.isReservation == true) {
+          print('- Is Reservation: ${paymentResponseMap['is_reservation']}');
+          print('- Payment Type Enum: ${paymentResponseMap['payment_type_enum']}');
+          print('- Is Down Payment: ${paymentResponseMap['is_down_payment']}');
+          print('- Remaining Payment: ${paymentResponseMap['remaining_payment']}');
+        }
 
         if (paymentResponseMap.containsKey('va_numbers')) {
           print('- VA Numbers available: ${paymentResponseMap['va_numbers']}');
@@ -286,6 +332,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         print('=== DEBUG: Saved Payment Data ===');
         print('Order ID: ${savedData['orderId']}');
         print('Total: ${savedData['total']}');
+        print('Amount to Pay: ${widget.amountToPay}');
         print('Saved At: ${savedData['savedAt']}');
 
         if (savedData.containsKey('paymentResponse')) {
@@ -298,6 +345,12 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
           if (paymentResponse.containsKey('va_numbers')) {
             print('- VA Numbers: ${paymentResponse['va_numbers']}');
+          }
+
+          if (widget.isReservation == true) {
+            print('- Is Reservation: ${paymentResponse['is_reservation']}');
+            print('- Is Down Payment: ${paymentResponse['is_down_payment']}');
+            print('- Remaining Payment: ${paymentResponse['remaining_payment']}');
           }
         }
         print('=== END DEBUG ===');
@@ -319,7 +372,12 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       final confirmService = ConfirmService();
 
       try {
-        final response = await confirmService.sendOrder(newOrder);
+        final response = await confirmService.sendOrder(
+          newOrder,
+          isDownPayment: widget.isDownPayment,
+          downPaymentAmount: widget.downPaymentAmount,
+          remainingPayment: widget.remainingPayment,
+        );
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -389,13 +447,12 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             }
           },
         )
-            : _isCashPayment
-            ? CashPaymentView(
+            : UnifiedPaymentView(
           order: newOrder,
-          paymentResponse: _paymentResponseData, // Use helper getter
+          paymentResponse: _paymentResponseData,
           paymentDetails: widget.paymentDetails,
           orderType: widget.orderType,
-          tableNumber: widget.tableNumber,
+          tableNumber: widget.tableNumber ?? '',
           deliveryAddress: widget.deliveryAddress,
           pickupTime: widget.pickupTime,
           subtotal: widget.subtotal,
@@ -403,20 +460,14 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           total: widget.total,
           voucherCode: widget.voucherCode,
           items: widget.items,
-        )
-            : PaymentSuccessView(
-          order: newOrder,
-          paymentResponse: _paymentResponseData, // Use helper getter
-          paymentDetails: widget.paymentDetails,
-          orderType: widget.orderType,
-          tableNumber: widget.tableNumber,
-          deliveryAddress: widget.deliveryAddress,
-          pickupTime: widget.pickupTime,
-          subtotal: widget.subtotal,
-          discount: widget.discount,
-          total: widget.total,
-          voucherCode: widget.voucherCode,
-          items: widget.items,
+          isCashPayment: _isCashPayment,
+          // Add reservation-specific parameters
+          isReservation: widget.isReservation ?? false,
+          paymentType: widget.paymentType,
+          amountToPay: widget.amountToPay,
+          remainingPayment: widget.remainingPayment,
+          isDownPayment: widget.isDownPayment,
+          reservationData: widget.reservationData,
         ),
       ),
     );
