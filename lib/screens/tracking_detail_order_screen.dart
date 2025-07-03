@@ -200,6 +200,465 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
       }
     }
   }
+  // Tambahkan widget ini ke tracking_detail_order_screen.dart
+
+  // Replace your existing _buildReservationSection() method with this fixed version:
+
+  Widget _buildReservationSection() {
+    if (orderData == null || orderData!['reservation'] == null) {
+      return const SizedBox.shrink();
+    }
+
+    final reservation = orderData!['reservation'] as Map<String, dynamic>;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Add this to prevent overflow
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header reservasi
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.08),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.event_seat_rounded,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min, // Add this
+                    children: [
+                      Text(
+                        'Informasi Reservasi',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        reservation['reservationCode'] ?? '-',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getReservationStatusColor(reservation['status']).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _getReservationStatusColor(reservation['status']).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _getReservationStatusText(reservation['status']),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _getReservationStatusColor(reservation['status']),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Detail reservasi
+          Flexible( // Wrap this in Flexible to prevent overflow
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min, // Add this
+                children: [
+                  // Tanggal dan waktu
+                  _buildReservationDetailRow(
+                    icon: Icons.calendar_today_rounded,
+                    iconColor: Colors.orange,
+                    title: 'Tanggal & Waktu',
+                    value: '${reservation['reservationDate']} • ${reservation['reservationTime']}',
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Jumlah tamu
+                  _buildReservationDetailRow(
+                    icon: Icons.people_rounded,
+                    iconColor: Colors.green,
+                    title: 'Jumlah Tamu',
+                    value: '${reservation['guestCount']} orang',
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Area
+                  _buildReservationDetailRow(
+                    icon: Icons.location_on_rounded,
+                    iconColor: Colors.purple,
+                    title: 'Area',
+                    value: reservation['area']?['name'] ?? 'Area tidak tersedia',
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Tipe reservasi
+                  _buildReservationDetailRow(
+                    icon: Icons.bookmark_rounded,
+                    iconColor: Colors.indigo,
+                    title: 'Tipe Reservasi',
+                    value: _getReservationTypeText(reservation['reservationType']),
+                  ),
+
+                  // Notes jika ada
+                  if (reservation['notes'] != null && reservation['notes'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _buildReservationDetailRow(
+                      icon: Icons.note_rounded,
+                      iconColor: Colors.amber,
+                      title: 'Catatan',
+                      value: reservation['notes'],
+                    ),
+                  ],
+
+                  // Tables section
+                  if (reservation['tables'] != null && (reservation['tables'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const Divider(height: 1, color: Colors.grey),
+                    const SizedBox(height: 20),
+                    _buildTablesSection(reservation['tables'] as List),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Also fix the _buildTablesSection method:
+  Widget _buildTablesSection(List tables) {
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Add this
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.table_restaurant_rounded,
+                size: 16,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Meja yang Dipesan',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${tables.length} meja',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Grid meja - Fix the constraint issues
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 200, // Limit the height of the grid
+          ),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: tables.length,
+            itemBuilder: (context, index) {
+              final table = tables[index] as Map<String, dynamic>;
+              return _buildTableCard(table);
+            },
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Total kapasitas
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.green.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min, // Add this
+            children: [
+              const Icon(
+                Icons.event_seat_rounded,
+                size: 16,
+                color: Colors.green,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Total Kapasitas: ${_calculateTotalSeats(tables)} kursi',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReservationDetailRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableCard(Map<String, dynamic> table) {
+    final isAvailable = table['isAvailable'] ?? true;
+    final isActive = table['isActive'] ?? true;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isAvailable && isActive
+            ? Colors.green.withOpacity(0.05)
+            : Colors.grey.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isAvailable && isActive
+              ? Colors.green.withOpacity(0.2)
+              : Colors.grey.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min, // Add this line
+        children: [
+          Flexible( // Wrap the Row in Flexible
+            child: Row(
+              children: [
+                Icon(
+                  Icons.table_restaurant_rounded,
+                  size: 16,
+                  color: isAvailable && isActive ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    table['tableNumber'] ?? 'Unknown',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isAvailable && isActive
+                          ? Colors.green[700]
+                          : Colors.grey[600],
+                    ),
+                    overflow: TextOverflow.ellipsis, // Add overflow handling
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Flexible( // Wrap the second Text in Flexible
+            child: Text(
+              '${table['seats'] ?? 0} kursi • ${_getTableTypeText(table['tableType'])}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+              overflow: TextOverflow.ellipsis, // Add overflow handling
+              maxLines: 1, // Limit to 1 line
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Helper methods
+  Color _getReservationStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      case 'completed':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getReservationStatusText(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return 'Dikonfirmasi';
+      case 'pending':
+        return 'Menunggu';
+      case 'cancelled':
+        return 'Dibatalkan';
+      case 'completed':
+        return 'Selesai';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  String _getReservationTypeText(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'non-blocking':
+        return 'Non-Blocking';
+      case 'blocking':
+        return 'Blocking';
+      default:
+        return type ?? 'Unknown';
+    }
+  }
+
+  String _getTableTypeText(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'regular':
+        return 'Regular';
+      case 'vip':
+        return 'VIP';
+      case 'outdoor':
+        return 'Outdoor';
+      default:
+        return type ?? 'Regular';
+    }
+  }
+
+  int _calculateTotalSeats(List tables) {
+    return tables.fold(0, (total, table) {
+      final seats = table['seats'] as int? ?? 0;
+      return total + seats;
+    });
+  }
 
 // Perbaikan untuk method _shouldShowActionButton dengan logging yang lebih baik
   bool _shouldShowActionButton() {
@@ -361,60 +820,6 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     ));
   }
 
-  // Future<void> _fetchOrderData() async {
-  //   setState(() {
-  //     isLoading = true;
-  //     errorMessage = null;
-  //   });
-  //
-  //   try {
-  //     print('🔍 Fetching order data for ID: ${widget.id}');
-  //
-  //     final result = await _orderService.getOrderForTracking(widget.id);
-  //
-  //     print('📦 Raw result: $result');
-  //     print('📦 Result success: ${result['success']}');
-  //     print('📦 Result data: ${result['data']}');
-  //     print('📦 Result error: ${result['error']}');
-  //
-  //     if (result['success']) {
-  //       final data = result['data'];
-  //
-  //       print('📋 Order data keys: ${data?.keys}');
-  //       if (data != null) {
-  //         print('📋 Payment status: ${data['paymentDetails']?['status']}');
-  //         print('📋 Order status: ${data['status']}');
-  //         print('📋 Order items count: ${data['items']?.length}');
-  //       }
-  //
-  //       setState(() {
-  //         orderData = data;
-  //         isLoading = false;
-  //         _updateOrderStatus();
-  //       });
-  //
-  //       // Check for existing rating after order data is loaded
-  //       await _checkExistingRating();
-  //
-  //       // Start animations when data is loaded
-  //       _fadeController.forward();
-  //       _slideController.forward();
-  //     } else {
-  //       print('❌ Failed to fetch order: ${result['error']}');
-  //       setState(() {
-  //         isLoading = false;
-  //         errorMessage = result['error'];
-  //       });
-  //     }
-  //   } catch (e, stackTrace) {
-  //     print('❌ Exception in _fetchOrderData: $e');
-  //     print('❌ Stack trace: $stackTrace');
-  //     setState(() {
-  //       isLoading = false;
-  //       errorMessage = 'Terjadi kesalahan: ${e.toString()}';
-  //     });
-  //   }
-  // }
 
   void _updateOrderStatus() {
     if (orderData == null) {
@@ -922,6 +1327,9 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   @override
+  // Update bagian build method di tracking_detail_order_screen.dart
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -977,6 +1385,13 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                         ),
                       ),
 
+                    // *** TAMBAHAN BARU: Reservation Section ***
+                    if (orderData != null && orderData!['reservation'] != null)
+                      SlideTransition(
+                        position: _slideAnimation,
+                        child: _buildReservationSection(),
+                      ),
+
                     // Rating Display - Show rating if exists
                     if (_hasRating())
                       SlideTransition(
@@ -1023,4 +1438,105 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
       ),
     );
   }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     backgroundColor: Colors.white,
+  //     appBar: const ClassicAppBar(title: 'Detail Pesanan'),
+  //     body: isLoading
+  //         ? _buildLoadingState()
+  //         : errorMessage != null
+  //         ? _buildErrorState()
+  //         : FadeTransition(
+  //       opacity: _fadeAnimation,
+  //       child: Column(
+  //         children: [
+  //           // Scrollable content
+  //           Expanded(
+  //             child: SingleChildScrollView(
+  //               physics: const BouncingScrollPhysics(),
+  //               child: Column(
+  //                 children: [
+  //                   // Coffee Animation Section - Full width immersive
+  //                   SlideTransition(
+  //                     position: _slideAnimation,
+  //                     child: Container(
+  //                       width: double.infinity,
+  //                       color: Colors.white,
+  //                       child: const CoffeeAnimationWidget(),
+  //                     ),
+  //                   ),
+  //
+  //                   // Status Section - Full width with top spacing
+  //                   SlideTransition(
+  //                     position: _slideAnimation,
+  //                     child: Container(
+  //                       width: double.infinity,
+  //                       color: Colors.white,
+  //                       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+  //                       child: StatusSectionWidget(
+  //                         orderStatus: orderStatus,
+  //                         statusColor: statusColor,
+  //                         statusIcon: statusIcon,
+  //                         pulseAnimation: _pulseAnimation,
+  //                       ),
+  //                     ),
+  //                   ),
+  //
+  //                   // Order Details - Full width
+  //                   if (orderData != null)
+  //                     SlideTransition(
+  //                       position: _slideAnimation,
+  //                       child: Container(
+  //                         width: double.infinity,
+  //                         color: Colors.white,
+  //                         child: OrderDetailWidget(orderData: orderData!),
+  //                       ),
+  //                     ),
+  //
+  //                   // Rating Display - Show rating if exists
+  //                   if (_hasRating())
+  //                     SlideTransition(
+  //                       position: _slideAnimation,
+  //                       child: _buildRatingDisplay(),
+  //                     ),
+  //
+  //                   // Loading indicator for rating check
+  //                   if (isLoadingRating)
+  //                     Container(
+  //                       margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+  //                       padding: const EdgeInsets.all(20),
+  //                       child: Row(
+  //                         mainAxisAlignment: MainAxisAlignment.center,
+  //                         children: [
+  //                           SizedBox(
+  //                             width: 16,
+  //                             height: 16,
+  //                             child: CircularProgressIndicator(
+  //                               strokeWidth: 2,
+  //                               valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+  //                             ),
+  //                           ),
+  //                           const SizedBox(width: 12),
+  //                           Text(
+  //                             'Mengecek rating...',
+  //                             style: TextStyle(
+  //                               fontSize: 14,
+  //                               color: Colors.grey[600],
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //
+  //           // Action Button - Fixed at bottom (Payment or Rating)
+  //           _buildActionButton(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }
