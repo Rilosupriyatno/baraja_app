@@ -90,7 +90,8 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                       color: product.imageColor ?? Colors.grey.shade300,
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: product.imageUrl.isNotEmpty
+                    child: product.imageUrl.isNotEmpty &&
+                        product.imageUrl != 'https://placehold.co/1920x1080/png'
                         ? Image.network(
                       product.imageUrl,
                       fit: BoxFit.cover,

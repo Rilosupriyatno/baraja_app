@@ -117,7 +117,8 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                     height: 200,
                     width: double.infinity,
                     color: product.imageColor ?? Colors.grey.shade300,
-                    child: product.imageUrl.isNotEmpty
+                    child: product.imageUrl.isNotEmpty &&
+                        product.imageUrl != 'https://placehold.co/1920x1080/png'
                         ? Image.network(
                       product.imageUrl,
                       fit: BoxFit.cover,
