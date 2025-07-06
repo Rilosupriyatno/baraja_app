@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/payment_storage_service.dart';
 import '../services/socket_service.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -161,9 +160,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.addOrder(newOrder);
 
-          // Save payment details
-          await _savePaymentDetails();
-
           print('Cash payment processed for order: ${widget.orderId}');
         } else {
           setState(() {
@@ -231,9 +227,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             );
           }
         });
-
-        // Update stored payment status
-        _updateStoredPaymentStatus(data['transaction_status']);
       }
 
       print('Payment status updated to: ${data['transaction_status']}');
@@ -248,117 +241,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       }
     } else {
       print('Received payment update for different order: ${data['order_id']}');
-    }
-  }
-
-  Future<void> _updateStoredPaymentStatus(String newStatus) async {
-    try {
-      await PaymentStorageService.updateTransactionStatus(widget.id, newStatus);
-      print('Stored payment status updated to: $newStatus for order: ${widget.id}');
-    } catch (e) {
-      print('Error updating stored payment status: $e');
-    }
-  }
-
-  Future<void> _savePaymentDetails() async {
-    if (_paymentResponse != null && _paymentResponse!.success) {
-      try {
-        // Convert PaymentResult to Map for storage compatibility
-        final paymentResponseMap = _paymentResponse!.data ?? {
-          'status_code': _paymentResponse!.statusCode?.toString() ?? '200',
-          'transaction_status': 'pending',
-          'payment_type': widget.paymentDetails['methodName'],
-          'order_id': widget.orderId,
-          'transaction_time': DateTime.now().toIso8601String(),
-          'gross_amount': widget.amountToPay.toString(), // Use amountToPay instead of total
-        };
-
-        // Add reservation-specific data if applicable
-        if (widget.isReservation == true) {
-          paymentResponseMap['is_reservation'] = true;
-          paymentResponseMap['payment_type_enum'] = widget.paymentType?.toString() ?? PaymentType.fullPayment.toString();
-          paymentResponseMap['is_down_payment'] = widget.isDownPayment;
-          paymentResponseMap['remaining_payment'] = widget.remainingPayment;
-          if (widget.downPaymentAmount != null) {
-            paymentResponseMap['down_payment_amount'] = widget.downPaymentAmount!;
-          }
-        }
-
-        await PaymentStorageService.savePaymentDetails(
-          id: widget.id,
-          orderId: widget.orderId,
-          paymentResponse: paymentResponseMap,
-          paymentDetails: widget.paymentDetails,
-          subtotal: widget.subtotal,
-          discount: widget.discount,
-          total: widget.total,
-          voucherCode: widget.voucherCode,
-          items: widget.items,
-          orderType: widget.orderType,
-          tableNumber: widget.tableNumber ?? '',
-          deliveryAddress: widget.deliveryAddress,
-          pickupTime: widget.pickupTime,
-        );
-        print('Payment details saved successfully for order: ${widget.orderId}');
-
-        // Log the saved payment response structure for debugging
-        print('Saved payment response structure:');
-        print('- Status Code: ${paymentResponseMap['status_code']}');
-        print('- Transaction ID: ${paymentResponseMap['transaction_id']}');
-        print('- Payment Type: ${paymentResponseMap['payment_type']}');
-        print('- Transaction Status: ${paymentResponseMap['transaction_status']}');
-        print('- Amount to Pay: ${widget.amountToPay}');
-
-        if (widget.isReservation == true) {
-          print('- Is Reservation: ${paymentResponseMap['is_reservation']}');
-          print('- Payment Type Enum: ${paymentResponseMap['payment_type_enum']}');
-          print('- Is Down Payment: ${paymentResponseMap['is_down_payment']}');
-          print('- Remaining Payment: ${paymentResponseMap['remaining_payment']}');
-        }
-
-        if (paymentResponseMap.containsKey('va_numbers')) {
-          print('- VA Numbers available: ${paymentResponseMap['va_numbers']}');
-        }
-      } catch (e) {
-        print('Error saving payment details: $e');
-      }
-    }
-  }
-
-  Future<void> debugPrintSavedPaymentData() async {
-    try {
-      final savedData = await PaymentStorageService.getPaymentDetails(widget.id);
-      if (savedData != null) {
-        print('=== DEBUG: Saved Payment Data ===');
-        print('Order ID: ${savedData['orderId']}');
-        print('Total: ${savedData['total']}');
-        print('Amount to Pay: ${widget.amountToPay}');
-        print('Saved At: ${savedData['savedAt']}');
-
-        if (savedData.containsKey('paymentResponse')) {
-          final paymentResponse = savedData['paymentResponse'];
-          print('Payment Response:');
-          print('- Transaction Status: ${paymentResponse['transaction_status']}');
-          print('- Payment Type: ${paymentResponse['payment_type']}');
-          print('- Transaction ID: ${paymentResponse['transaction_id']}');
-          print('- Expiry Time: ${paymentResponse['expiry_time']}');
-
-          if (paymentResponse.containsKey('va_numbers')) {
-            print('- VA Numbers: ${paymentResponse['va_numbers']}');
-          }
-
-          if (widget.isReservation == true) {
-            print('- Is Reservation: ${paymentResponse['is_reservation']}');
-            print('- Is Down Payment: ${paymentResponse['is_down_payment']}');
-            print('- Remaining Payment: ${paymentResponse['remaining_payment']}');
-          }
-        }
-        print('=== END DEBUG ===');
-      } else {
-        print('No saved payment data found for order: ${widget.orderId}');
-      }
-    } catch (e) {
-      print('Error debugging saved payment data: $e');
     }
   }
 
@@ -387,9 +269,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           if (response.success) {
             final orderProvider = Provider.of<OrderProvider>(context, listen: false);
             orderProvider.addOrder(newOrder);
-
-            // Save payment details to SharedPreferences
-            await _savePaymentDetails();
 
             // Make sure we're connected to socket after order is sent
             _setupSocketConnection();

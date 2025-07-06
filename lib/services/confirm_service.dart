@@ -131,7 +131,83 @@ class ConfirmService {
       );
     }
   }
+  /// METHOD BARU: getPayment
+  Future<PaymentResult> getPayment(String orderId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/getPayment/$orderId'),
+        headers: {'Content-Type': 'application/json'},
+      );
 
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+
+        if (jsonData.containsKey('payment')) {
+          final paymentData = jsonData['payment'] as Map<String, dynamic>;
+          paymentData.remove('raw_response');
+
+          _printGetPaymentSuccess(paymentData);
+
+          return PaymentResult(
+            success: true,
+            message: 'Data pembayaran berhasil diambil',
+            data: paymentData,
+          );
+        } else {
+          return PaymentResult(
+            success: false,
+            message: 'Data pembayaran tidak ditemukan di response',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        _printErrorResponse(response);
+        String errorMessage = 'Gagal mengambil data pembayaran';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = json.decode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          } catch (_) {}
+        }
+        return PaymentResult(
+          success: false,
+          message: errorMessage,
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (error) {
+      _printException(error);
+      String errorMessage = 'Terjadi kesalahan saat mengambil data pembayaran';
+      if (error.toString().contains('SocketException')) {
+        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+      } else if (error.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else if (error.toString().contains('FormatException')) {
+        errorMessage = 'Terjadi kesalahan dalam format data.';
+      }
+      return PaymentResult(
+        success: false,
+        message: errorMessage,
+        error: error.toString(),
+      );
+    }
+  }
+  void _printGetPaymentSuccess(Map<String, dynamic> paymentData) {
+    print('\n${'=' * 50}');
+    print('✅ GET PAYMENT SUCCESS');
+    print('=' * 50);
+    print('🔹 Order ID: ${paymentData['order_id']}');
+    print('🔹 Transaction ID: ${paymentData['transaction_id']}');
+    print('🔹 Method: ${paymentData['method']}');
+    print('🔹 Status: ${paymentData['status']}');
+    print('🔹 Amount: ${paymentData['amount']}');
+    print('🔹 Transaction Time: ${paymentData['transaction_time']}');
+    print('🔹 Expiry Time: ${paymentData['expiry_time']}');
+    print('${'=' * 50}\n');
+  }
   // Helper method untuk print request data
   void _printRequestData(Map<String, dynamic> paymentData) {
     print('\n${'=' * 50}');

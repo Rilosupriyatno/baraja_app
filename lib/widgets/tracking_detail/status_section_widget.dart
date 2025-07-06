@@ -5,6 +5,7 @@ class StatusSectionWidget extends StatelessWidget {
   final Color statusColor;
   final IconData statusIcon;
   final Animation<double> pulseAnimation;
+  final Map<String, dynamic>? orderData; // Add orderData parameter
 
   const StatusSectionWidget({
     super.key,
@@ -12,15 +13,60 @@ class StatusSectionWidget extends StatelessWidget {
     required this.statusColor,
     required this.statusIcon,
     required this.pulseAnimation,
+    this.orderData, // Optional parameter
   });
+
+  // Helper method to get payment status info
+  Map<String, dynamic> _getPaymentStatusInfo() {
+    if (orderData == null) return {};
+
+    final paymentStatus = orderData!['paymentStatus'] ?? '';
+
+    switch (paymentStatus) {
+      case 'expire':
+        return {
+          'subtitle': 'Pembayaran telah kadaluarsa',
+          'description': 'Silakan buat pesanan baru untuk melanjutkan',
+          'showPulse': false,
+        };
+      case 'pending':
+        return {
+          'subtitle': 'Menunggu pembayaran Anda',
+          'description': 'Selesaikan pembayaran sebelum waktu habis',
+          'showPulse': true,
+        };
+      case 'settlement':
+      case 'capture':
+        return {
+          'subtitle': 'Pembayaran berhasil',
+          'description': 'Pesanan Anda sedang diproses',
+          'showPulse': true,
+        };
+      case 'cancel':
+        return {
+          'subtitle': 'Pembayaran dibatalkan',
+          'description': 'Pesanan telah dibatalkan',
+          'showPulse': false,
+        };
+      default:
+        return {
+          'subtitle': '',
+          'description': '',
+          'showPulse': true,
+        };
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final paymentInfo = _getPaymentStatusInfo();
+    final shouldPulse = paymentInfo['showPulse'] ?? true;
+
     return AnimatedBuilder(
       animation: pulseAnimation,
       builder: (context, child) {
         return Transform.scale(
-          scale: pulseAnimation.value,
+          scale: shouldPulse ? pulseAnimation.value : 1.0,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -72,15 +118,27 @@ class StatusSectionWidget extends StatelessWidget {
                           color: statusColor,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      // Text(
-                      //   'Estimasi 5-8 menit',
-                      //   style: TextStyle(
-                      //     fontSize: 13,
-                      //     color: Colors.grey.shade600,
-                      //     fontWeight: FontWeight.w500,
-                      //   ),
-                      // ),
+                      if (paymentInfo['subtitle'] != null && paymentInfo['subtitle'].isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          paymentInfo['subtitle'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: statusColor.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                      if (paymentInfo['description'] != null && paymentInfo['description'].isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          paymentInfo['description'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -90,13 +148,13 @@ class StatusSectionWidget extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: statusColor,
                     shape: BoxShape.circle,
-                    boxShadow: [
+                    boxShadow: shouldPulse ? [
                       BoxShadow(
                         color: statusColor.withOpacity(0.4),
                         spreadRadius: 2,
                         blurRadius: 8,
                       ),
-                    ],
+                    ] : [],
                   ),
                 ),
               ],
