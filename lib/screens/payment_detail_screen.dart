@@ -1,6 +1,6 @@
+import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/payment_storage_service.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import 'package:intl/intl.dart';
 
@@ -18,7 +18,6 @@ class PaymentDetailsScreen extends StatefulWidget {
 
 class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   Map<String, dynamic>? paymentData;
-  Map<String, dynamic>? paymentResponse;
   bool isLoading = true;
   String? errorMessage;
 
@@ -35,13 +34,16 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     });
 
     try {
-      final data = await PaymentStorageService.getPaymentDetails(widget.id);
+      // Ganti dengan service API Anda
+      final result = await ConfirmService().getPayment(widget.id);
+
       setState(() {
-        paymentData = data;
-        paymentResponse = data?['paymentResponse'] as Map<String, dynamic>?;
-        isLoading = false;
-        if (data == null) {
-          errorMessage = 'Detail pembayaran tidak ditemukan';
+        if (result.success && result.data != null) {
+          paymentData = result.data;
+          isLoading = false;
+        } else {
+          isLoading = false;
+          errorMessage = result.message;
         }
       });
     } catch (e) {
@@ -86,19 +88,17 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
 
   String _getBankName(String? method) {
     switch (method?.toLowerCase()) {
-      case 'bca_va':
+      case 'bca':
         return 'BCA';
-      case 'bni_va':
+      case 'bni':
         return 'BNI';
-      case 'bri_va':
+      case 'bri':
         return 'BRI';
-      case 'mandiri_va':
+      case 'mandiri':
         return 'Mandiri';
-      case 'cash':
-        return 'Tunai';
-      case 'permata_va':
+      case 'permata':
         return 'Permata';
-      case 'cimb_va':
+      case 'cimb':
         return 'CIMB Niaga';
       default:
         return method?.toUpperCase() ?? 'Virtual Account';
@@ -330,10 +330,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                 color: statusColor,
               ),
             ),
-            if (paymentResponse?['transaction_time'] != null) ...[
+            if (paymentData?['transaction_time'] != null) ...[
               const SizedBox(height: 6),
               Text(
-                _formatDateTime(paymentResponse!['transaction_time']),
+                _formatDateTime(paymentData!['transaction_time']),
                 style: TextStyle(
                   fontSize: 14,
                   color: statusColor.withOpacity(0.8),
@@ -406,10 +406,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   }
 
   Widget _buildPaymentInfoCard() {
-    final paymentType = paymentResponse?['payment_type'];
-    final vaNumbers = paymentResponse?['va_numbers'] as List<dynamic>?;
-    final qrString = paymentResponse?['qr_string'];
-    final deeplinkUrl = paymentResponse?['deeplink_redirect_url'];
+    final method = paymentData?['method'];
+    final vaNumbers = paymentData?['va_numbers'] as List<dynamic>?;
+    final qrString = paymentData?['qr_string'];
+    final deeplinkUrl = paymentData?['deeplink_redirect_url'];
 
     return _buildCard(
       title: 'Informasi Pembayaran',
@@ -432,7 +432,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
             children: [
               Expanded(
                 child: SelectableText(
-                  paymentData?['orderId'] ?? '-',
+                  paymentData?['order_id'] ?? '-',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -445,7 +445,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
               const SizedBox(width: 12),
               InkWell(
                 onTap: () => _copyToClipboard(
-                  paymentData?['orderId'] ?? '',
+                  paymentData?['order_id'] ?? '',
                   'ID Pesanan',
                 ),
                 borderRadius: BorderRadius.circular(8),
@@ -492,11 +492,11 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
           ]
           // E-wallet or QRIS Section
           else if (qrString != null || deeplinkUrl != null) ...[
-            _buildEWalletItem(paymentType, qrString, deeplinkUrl),
+            _buildEWalletItem(method, qrString, deeplinkUrl),
           ]
           // Other payment methods
           else ...[
-              _buildGenericPaymentMethod(paymentType),
+              _buildGenericPaymentMethod(method),
             ],
         ],
       ),
@@ -572,7 +572,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     );
   }
 
-  Widget _buildEWalletItem(String? paymentType, String? qrString, String? deeplinkUrl) {
+  Widget _buildEWalletItem(String? method, String? qrString, String? deeplinkUrl) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -583,7 +583,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            _getPaymentMethodName(paymentType),
+            _getPaymentMethodName(method),
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -642,7 +642,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     );
   }
 
-  Widget _buildGenericPaymentMethod(String? paymentType) {
+  Widget _buildGenericPaymentMethod(String? method) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -650,7 +650,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        _getPaymentMethodName(paymentType),
+        _getPaymentMethodName(method),
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -661,9 +661,9 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   }
 
   Widget _buildAmountCard() {
-    final subtotal = paymentData?['subtotal'] ?? 0;
+    final total = paymentData?['amount'] ?? 0;
     final discount = paymentData?['discount'] ?? 0;
-    final total = paymentResponse?['gross_amount'] ?? paymentData?['total'] ?? 0;
+    final subtotal = total + discount; // Hitung subtotal dari total + discount
 
     return _buildCard(
       title: 'Rincian Pembayaran',
@@ -676,37 +676,6 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
           if (discount > 0) ...[
             const SizedBox(height: 12),
             _buildAmountRow('Diskon', -discount, isDiscount: true),
-          ],
-
-          if (paymentData?['voucherCode'] != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Kode Voucher',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF8E8E93),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00C896).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    paymentData!['voucherCode'],
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF00C896),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
 
           const SizedBox(height: 16),
@@ -766,8 +735,8 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   }
 
   Widget _buildExpiryTimeCard() {
-    if (paymentResponse?['expiry_time'] == null ||
-        paymentResponse?['transaction_status']?.toLowerCase() != 'pending') {
+    if (paymentData?['expiry_time'] == null ||
+        paymentData?['status']?.toLowerCase() != 'pending') {
       return const SizedBox.shrink();
     }
 
@@ -819,7 +788,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatDateTime(paymentResponse!['expiry_time']),
+                  _formatDateTime(paymentData!['expiry_time']),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -848,7 +817,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusCard(paymentResponse?['transaction_status']),
+            _buildStatusCard(paymentData?['status']),
             _buildPaymentInfoCard(),
             _buildAmountCard(),
             _buildExpiryTimeCard(),

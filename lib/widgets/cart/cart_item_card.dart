@@ -14,8 +14,32 @@ class CartItemCard extends StatelessWidget {
     required this.onDecrease,
   });
 
+  // Method untuk menghitung total harga item termasuk addons dan toppings
+  int _calculateItemTotalPrice() {
+    int totalPrice = item.price;
+
+    // Add toppings price
+    if (item.toppings != null && item.toppings is List) {
+      for (var topping in item.toppings as List) {
+        if (topping is Map && topping.containsKey('price')) {
+          totalPrice += (topping['price'] as num).toInt();
+        }
+      }
+    }
+
+    // Add addons price
+    for (var addon in item.addons as List) {
+      if (addon is Map && addon.containsKey('price')) {
+        totalPrice += (addon['price'] as num).toInt();
+      }
+    }
+
+    return totalPrice;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final itemTotalPrice = _calculateItemTotalPrice();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -297,7 +321,7 @@ class CartItemCard extends StatelessWidget {
                 ),
               ),
               Text(
-                formatCurrency(item.price * item.quantity),
+                formatCurrency(itemTotalPrice * item.quantity),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

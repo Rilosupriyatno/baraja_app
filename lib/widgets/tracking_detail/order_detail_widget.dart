@@ -12,6 +12,7 @@ class OrderDetailWidget extends StatelessWidget {
   Map<String, dynamic> _getPaymentStatus(String status) {
     switch (status) {
       case 'settlement':
+      case 'capture':
         return {
           'label': 'Lunas',
           'icon': Icons.check_circle,
@@ -19,20 +20,38 @@ class OrderDetailWidget extends StatelessWidget {
         };
       case 'pending':
         return {
-          'label': 'Bayar Dulu',
+          'label': 'Menunggu Pembayaran',
           'icon': Icons.access_time,
           'color': Colors.orange,
         };
-      case 'expired':
+      case 'expire':
         return {
           'label': 'Kadaluarsa',
+          'icon': Icons.timer_off,
+          'color': Colors.red,
+        };
+      case 'cancel':
+        return {
+          'label': 'Dibatalkan',
           'icon': Icons.cancel,
+          'color': Colors.red,
+        };
+      case 'deny':
+        return {
+          'label': 'Ditolak',
+          'icon': Icons.block,
+          'color': Colors.red,
+        };
+      case 'failure':
+        return {
+          'label': 'Gagal',
+          'icon': Icons.error,
           'color': Colors.red,
         };
       default:
         return {
-          'label': 'Tidak Diketahui',
-          'icon': Icons.help,
+          'label': 'Status Tidak Diketahui',
+          'icon': Icons.help_outline,
           'color': Colors.grey,
         };
     }
@@ -380,7 +399,7 @@ class OrderDetailWidget extends StatelessWidget {
                       ],
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),

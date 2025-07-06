@@ -140,10 +140,53 @@ class CartProvider with ChangeNotifier {
 
   int get totalItems => _items.fold(0, (sum, item) => sum + item.quantity);
 
+  // Fixed total price calculation
   int get totalPrice {
     return _items.fold(0, (sum, item) {
-      // Calculate each item's total price correctly
-      return sum + (item.price * item.quantity);
+      // Calculate base price
+      int itemPrice = item.price;
+
+      // Add toppings price
+      if (item.toppings != null && item.toppings is List) {
+        for (var topping in item.toppings as List) {
+          if (topping is Map && topping.containsKey('price')) {
+            itemPrice += (topping['price'] as num).toInt();
+          }
+        }
+      }
+
+      // Add addons price
+      for (var addon in item.addons as List) {
+        if (addon is Map && addon.containsKey('price')) {
+          itemPrice += (addon['price'] as num).toInt();
+        }
+      }
+
+      // Calculate total for this item (price per item * quantity)
+      return sum + (itemPrice * item.quantity);
     });
+  }
+
+  // Helper method to get individual item total price (including addons and toppings)
+  int getItemTotalPrice(CartItem item) {
+    int itemPrice = item.price;
+
+    // Add toppings price
+    if (item.toppings != null && item.toppings is List) {
+      for (var topping in item.toppings as List) {
+        if (topping is Map && topping.containsKey('price')) {
+          itemPrice += (topping['price'] as num).toInt();
+        }
+      }
+    }
+
+    // Add addons price
+    for (var addon in item.addons as List) {
+      if (addon is Map && addon.containsKey('price')) {
+        itemPrice += (addon['price'] as num).toInt();
+      }
+    }
+
+    return itemPrice * item.quantity;
   }
 }
