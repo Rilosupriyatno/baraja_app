@@ -22,8 +22,9 @@ class ProductService {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
 
-        if (jsonData['success'] == true && jsonData['formattedData'] != null) {
-          final List<dynamic> productsJson = jsonData['formattedData'];
+        // Ubah dari 'formattedData' ke 'data'
+        if (jsonData['success'] == true && jsonData['data'] != null) {
+          final List<dynamic> productsJson = jsonData['data'];
 
           return productsJson.map((productJson) {
             // Parse toppings
@@ -76,78 +77,60 @@ class ProductService {
               discountPercentage = productJson['discountPercentage'].toString();
             }
 
-            // print(discountPercentage);
-
-            // Parse prices safely
+            // Parse prices safely - sesuaikan dengan backend response
             double originalPrice = 0.0;
-            if (productJson['price'] != null) {
-              originalPrice = productJson['price'] is int
-                  ? productJson['price'].toDouble()
-                  : double.tryParse(productJson['price'].toString()) ?? 0.0;
-            } else if (productJson['originalPrice'] != null) {
+            if (productJson['originalPrice'] != null) {
               originalPrice = productJson['originalPrice'] is int
                   ? productJson['originalPrice'].toDouble()
                   : double.tryParse(productJson['originalPrice'].toString()) ?? 0.0;
             }
 
             double discountPrice = originalPrice;
-            if (productJson['discountPrice'] != null) {
-              discountPrice = productJson['discountPrice'] is int
-                  ? productJson['discountPrice'].toDouble()
-                  : double.tryParse(productJson['discountPrice'].toString()) ?? 0.0;
+            if (productJson['discountedPrice'] != null) {
+              discountPrice = productJson['discountedPrice'] is int
+                  ? productJson['discountedPrice'].toDouble()
+                  : double.tryParse(productJson['discountedPrice'].toString()) ?? 0.0;
             }
 
-            // Process category - IMPORTANT: Handle various types safely
+            // Process category - sesuaikan dengan backend response
             dynamic rawCategory = productJson['category'] ?? 'Uncategorized';
 
-            // Keep the category in its original form (list or string)
-            // We'll process it in the MenuScreen _extractCategories method
+            // Backend mengembalikan object category dengan struktur: { id: ..., name: ... }
+            String categoryName = 'Uncategorized';
+            if (rawCategory is Map && rawCategory['name'] != null) {
+              categoryName = rawCategory['name'];
+            } else if (rawCategory is String) {
+              categoryName = rawCategory;
+            }
 
-            // Default mainCategory to 'Makanan' for foods and 'Minuman' for drinks
+            // Default mainCategory logic
             String mainCategory = 'Makanan';
-
-            // Try to determine if this is a drink based on categories
             bool isDrink = false;
 
-            if (rawCategory is List) {
-              for (var cat in rawCategory) {
-                if (cat is String &&
-                    (cat.toLowerCase().contains('coffee') ||
-                        cat.toLowerCase().contains('chocolate') ||
-                        cat.toLowerCase().contains('tea') ||
-                        cat.toLowerCase().contains('milk'))) {
-                  isDrink = true;
-                  break;
-                }
-              }
-            } else if (rawCategory is String) {
-              if (rawCategory.toLowerCase().contains('coffee') ||
-                  rawCategory.toLowerCase().contains('chocolate') ||
-                  rawCategory.toLowerCase().contains('tea') ||
-                  rawCategory.toLowerCase().contains('milk')) {
-                isDrink = true;
-              }
+            if (categoryName.toLowerCase().contains('coffee') ||
+                categoryName.toLowerCase().contains('chocolate') ||
+                categoryName.toLowerCase().contains('tea') ||
+                categoryName.toLowerCase().contains('milk') ||
+                categoryName.toLowerCase().contains('minuman')) {
+              isDrink = true;
             }
 
             mainCategory = isDrink ? 'Minuman' : 'Makanan';
 
-            // Use explicit mainCategory if provided
-            if (productJson['mainCategory'] != null) {
-              if (productJson['mainCategory'] is String) {
-                mainCategory = productJson['mainCategory'];
-              } else if (productJson['mainCategory'] is List &&
-                  (productJson['mainCategory'] as List).isNotEmpty) {
-                mainCategory = productJson['mainCategory'][0].toString();
+            // Use subCategory if available
+            if (productJson['subCategory'] != null) {
+              var subCat = productJson['subCategory'];
+              if (subCat is Map && subCat['name'] != null) {
+                mainCategory = subCat['name'];
               }
             }
-            // print(productJson['averageRating']);
 
             return Product(
-              id: productJson['_id'] ?? productJson['id'] ?? '',
+              id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
-              category: rawCategory, // Pass the raw category data
+              category: categoryName, // Pass the category name
               mainCategory: mainCategory,
-              imageUrl: productJson['imageURL'] ?? productJson['imageUrl'] ?? '',
+              imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
               description: productJson['description'] ?? '',
@@ -157,18 +140,20 @@ class ProductService {
               averageRating: productJson['averageRating'] is num
                   ? (productJson['averageRating'] as num).toDouble()
                   : 0.0,
-              reviewCount: productJson['reviewsCount'] is int
-                  ? productJson['reviewsCount']
-                  : (productJson['reviewsCount'] ?? 0),
+              reviewCount: productJson['reviewCount'] is int
+                  ? productJson['reviewCount']
+                  : (productJson['reviewCount'] ?? 0),
               imageColor: generateImageColor(mainCategory),
             );
           }).toList();
         } else {
           debugPrint('API returned error: ${jsonData['message'] ?? 'Unknown error'}');
+          debugPrint('Response body: ${response.body}'); // Debug tambahan
           throw Exception('Failed to load products');
         }
       } else {
         debugPrint('HTTP error: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}'); // Debug tambahan
         throw Exception('Failed to load products');
       }
     } catch (e) {
