@@ -13,8 +13,6 @@ import '../widgets/payment_confirm/payment_loading_view.dart';
 import '../widgets/payment_confirm/unified_payment_view.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
-
-
 class PaymentConfirmationScreen extends StatefulWidget {
   final List<CartItem> items;
   final String? userId;
@@ -70,12 +68,12 @@ class PaymentConfirmationScreen extends StatefulWidget {
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   final SocketService _socketService = SocketService();
   late final Order newOrder;
-  bool _hasSentOrder = false;
   bool _isLoading = true;
   PaymentResult? _paymentResponse;
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
+  bool _isProcessing = false; // Add this flag to prevent duplicate processing
 
   @override
   void initState() {
@@ -110,19 +108,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       voucherCode: widget.voucherCode,
       orderTime: DateTime.now(),
       status: OrderStatus.processing,
-
     );
 
     // Defer the payment handling until after the build phase
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isCashPayment) {
-        // For cash payment, just add to order provider and show QR code
-        _handleCashPayment();
-      } else {
-        // For digital payments, setup socket and send order
-        _setupSocketConnection();
-        _sendOrderOnce();
-      }
+      _processPayment();
     });
   }
 
@@ -131,17 +121,19 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     return paymentType == 'cash' || paymentType == 'tunai';
   }
 
-  Future<void> _handleCashPayment() async {
-    if (!mounted) return;
+  // Single method to handle all payment processing
+  Future<void> _processPayment() async {
+    if (_isProcessing || !mounted) return;
 
     setState(() {
+      _isProcessing = true;
       _isLoading = true;
     });
 
     final confirmService = ConfirmService();
 
     try {
-      // Send cash payment through the unified sendOrder method
+      // Send order (works for both cash and digital payments)
       final response = await confirmService.sendOrder(
         newOrder,
         isDownPayment: widget.isDownPayment,
@@ -156,11 +148,16 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         });
 
         if (response.success) {
-          // Add order to provider - now safe to call after build phase
+          // Add order to provider
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.addOrder(newOrder);
 
-          print('Cash payment processed for order: ${widget.orderId}');
+          print('Payment processed successfully for order: ${widget.orderId}');
+
+          // For non-cash payments, setup socket connection
+          if (!_isCashPayment) {
+            _setupSocketConnection();
+          }
         } else {
           setState(() {
             _errorMessage = response.message;
@@ -172,6 +169,12 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         setState(() {
           _isLoading = false;
           _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
         });
       }
     }
@@ -244,54 +247,18 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-  Future<void> _sendOrderOnce() async {
-    if (!_hasSentOrder && mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      _hasSentOrder = true;
-      final confirmService = ConfirmService();
-
-      try {
-        final response = await confirmService.sendOrder(
-          newOrder,
-          isDownPayment: widget.isDownPayment,
-          downPaymentAmount: widget.downPaymentAmount,
-          remainingPayment: widget.remainingPayment,
-        );
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _paymentResponse = response;
-          });
-
-          if (response.success) {
-            final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-            orderProvider.addOrder(newOrder);
-
-            // Make sure we're connected to socket after order is sent
-            _setupSocketConnection();
-          } else {
-            setState(() {
-              _errorMessage = response.message;
-            });
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = e.toString();
-          });
-        }
-      }
-    }
-  }
-
   // Helper method to get payment response data as Map for widget compatibility
   Map<String, dynamic>? get _paymentResponseData {
     return _paymentResponse?.data;
+  }
+
+  // Retry method for handling errors
+  void _retryPayment() {
+    setState(() {
+      _errorMessage = null;
+      _isProcessing = false;
+    });
+    _processPayment();
   }
 
   @override
@@ -314,17 +281,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             : _errorMessage != null
             ? PaymentErrorView(
           errorMessage: _errorMessage,
-          onRetry: () {
-            setState(() {
-              _errorMessage = null;
-            });
-            if (_isCashPayment) {
-              _handleCashPayment();
-            } else {
-              _hasSentOrder = false;
-              _sendOrderOnce();
-            }
-          },
+          onRetry: _retryPayment,
         )
             : UnifiedPaymentView(
           order: newOrder,

@@ -492,7 +492,7 @@ class OrderDetailWidget extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Status Pembayaran',
+                        'Status',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
