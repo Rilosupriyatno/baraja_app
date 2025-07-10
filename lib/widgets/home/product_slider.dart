@@ -116,7 +116,7 @@ class _ProductSliderState extends State<ProductSlider> {
                   child: ProductCard(
                     product: widget.products[productIndex],
                     isActive: isActive,
-                    bundleText: widget.isBundle ? '2 Items' : null,
+                    // bundleText: widget.isBundle ? '2 Items' : null,
                   ),
                 ),
               );

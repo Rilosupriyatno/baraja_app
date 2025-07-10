@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
@@ -19,11 +20,15 @@ class AddOrderPageState extends State<AddOrderPage> {
   List<Topping> selectedToppings = [];
   Map<String, AddonOption?> selectedAddonOptions = {};
   final TextEditingController notesController = TextEditingController();
+  final TextEditingController quantityController = TextEditingController();
   final Color primaryColor = const Color(0xFF076A3B);
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize quantity controller
+    quantityController.text = quantity.toString();
 
     // Initialize default addon options if available
     if (widget.product.addons != null) {
@@ -47,6 +52,7 @@ class AddOrderPageState extends State<AddOrderPage> {
   @override
   void dispose() {
     notesController.dispose();
+    quantityController.dispose();
     super.dispose();
   }
 
@@ -66,9 +72,24 @@ class AddOrderPageState extends State<AddOrderPage> {
   }
 
   void updateQuantity(int newQuantity) {
+    if (newQuantity < 1) return;
     setState(() {
       quantity = newQuantity;
+      quantityController.text = quantity.toString();
     });
+  }
+
+  void updateQuantityFromInput(String value) {
+    if (value.isEmpty) return;
+    int? newQuantity = int.tryParse(value);
+    if (newQuantity != null && newQuantity > 0) {
+      setState(() {
+        quantity = newQuantity;
+      });
+    } else {
+      // Reset to current quantity if invalid input
+      quantityController.text = quantity.toString();
+    }
   }
 
   void toggleTopping(Topping topping) {
@@ -93,9 +114,9 @@ class AddOrderPageState extends State<AddOrderPage> {
 
     List<Map<String, dynamic>> toppingsList = selectedToppings
         .map((topping) => {
-              "name": topping.name,
-              "price": topping.price,
-            })
+      "name": topping.name,
+      "price": topping.price,
+    })
         .toList();
 
     List<Map<String, dynamic>> addonList = [];
@@ -125,14 +146,6 @@ class AddOrderPageState extends State<AddOrderPage> {
     cartProvider.addToCart(newItem);
 
     Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${widget.product.name} ditambahkan ke keranjang'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: primaryColor,
-      ),
-    );
   }
 
   @override
@@ -178,19 +191,19 @@ class AddOrderPageState extends State<AddOrderPage> {
                   clipBehavior: Clip.antiAlias,
                   child: product.imageUrl.isNotEmpty
                       ? Image.network(
-                          product.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.asset(
-                              'assets/images/product_default_image.jpeg',
-                              fit: BoxFit.cover,
-                            );
-                          },
-                        )
+                    product.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/product_default_image.jpeg',
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
                       : Image.asset(
-                          'assets/images/product_default_image.jpeg',
-                          fit: BoxFit.cover,
-                        ),
+                    'assets/images/product_default_image.jpeg',
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -207,8 +220,8 @@ class AddOrderPageState extends State<AddOrderPage> {
                       const SizedBox(height: 4),
                       Text(
                         formatCurrency((product.discountPrice ??
-                                product.originalPrice ??
-                                0)
+                            product.originalPrice ??
+                            0)
                             .toInt()),
                         style: TextStyle(
                           fontSize: 14,
@@ -270,14 +283,32 @@ class AddOrderPageState extends State<AddOrderPage> {
                                 iconSize: 18,
                                 color: quantity > 1 ? primaryColor : Colors.grey,
                               ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  quantity.toString(),
+                              Container(
+                                width: 60,
+                                height: 40,
+                                alignment: Alignment.center,
+                                child: TextField(
+                                  controller: quantityController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(3),
+                                  ],
+                                  textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  onChanged: updateQuantityFromInput,
+                                  onSubmitted: (value) {
+                                    updateQuantityFromInput(value);
+                                    // Remove focus after submitting
+                                    FocusScope.of(context).unfocus();
+                                  },
                                 ),
                               ),
                               IconButton(
@@ -315,8 +346,8 @@ class AddOrderPageState extends State<AddOrderPage> {
                           Row(
                             children: [
                               Icon(Icons.add_circle_outline,
-                                color: primaryColor,
-                                size: 20
+                                  color: primaryColor,
+                                  size: 20
                               ),
                               const SizedBox(width: 8),
                               const Text(
@@ -330,20 +361,20 @@ class AddOrderPageState extends State<AddOrderPage> {
                           ),
                           const SizedBox(height: 12),
                           ...product.toppings!.map((topping) => Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: CheckboxListTile(
-                                  title: Text(topping.name),
-                                  subtitle: Text(
-                                    formatCurrency(topping.price.toInt()),
-                                    style: TextStyle(color: primaryColor),
-                                  ),
-                                  value: selectedToppings.contains(topping),
-                                  activeColor: primaryColor,
-                                  controlAffinity: ListTileControlAffinity.leading,
-                                  contentPadding: EdgeInsets.zero,
-                                  onChanged: (_) => toggleTopping(topping),
-                                ),
-                              )),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: CheckboxListTile(
+                              title: Text(topping.name),
+                              subtitle: Text(
+                                formatCurrency(topping.price.toInt()),
+                                style: TextStyle(color: primaryColor),
+                              ),
+                              value: selectedToppings.contains(topping),
+                              activeColor: primaryColor,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                              onChanged: (_) => toggleTopping(topping),
+                            ),
+                          )),
                         ],
                       ),
                     ),
@@ -352,58 +383,58 @@ class AddOrderPageState extends State<AddOrderPage> {
                   // Addons section
                   if (product.addons != null && product.addons!.isNotEmpty) ...[
                     ...product.addons!.map((addon) => Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.tune,
-                                    color: primaryColor,
-                                    size: 20
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    addon.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                              Icon(Icons.tune,
+                                  color: primaryColor,
+                                  size: 20
                               ),
-                              const SizedBox(height: 12),
-                              ...addon.options.map((option) => Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: RadioListTile<AddonOption>(
-                                      title: Text(option.label),
-                                      subtitle: Text(
-                                        formatCurrency(option.price.toInt()),
-                                        style: TextStyle(color: primaryColor),
-                                      ),
-                                      value: option,
-                                      groupValue: selectedAddonOptions[addon.id],
-                                      activeColor: primaryColor,
-                                      contentPadding: EdgeInsets.zero,
-                                      onChanged: (value) =>
-                                          selectAddonOption(addon.id, value),
-                                    ),
-                                  )),
+                              const SizedBox(width: 8),
+                              Text(
+                                addon.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
-                        )),
+                          const SizedBox(height: 12),
+                          ...addon.options.map((option) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: RadioListTile<AddonOption>(
+                              title: Text(option.label),
+                              subtitle: Text(
+                                formatCurrency(option.price.toInt()),
+                                style: TextStyle(color: primaryColor),
+                              ),
+                              value: option,
+                              groupValue: selectedAddonOptions[addon.id],
+                              activeColor: primaryColor,
+                              contentPadding: EdgeInsets.zero,
+                              onChanged: (value) =>
+                                  selectAddonOption(addon.id, value),
+                            ),
+                          )),
+                        ],
+                      ),
+                    )),
                   ],
 
                   // Notes section
@@ -427,8 +458,8 @@ class AddOrderPageState extends State<AddOrderPage> {
                         Row(
                           children: [
                             Icon(Icons.note_alt_outlined,
-                              color: primaryColor,
-                              size: 20
+                                color: primaryColor,
+                                size: 20
                             ),
                             const SizedBox(width: 8),
                             const Text(

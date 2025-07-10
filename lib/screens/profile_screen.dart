@@ -100,15 +100,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               iconColor: Colors.redAccent, // Merah hati
             ),
-            const Divider(),
-            MenuItem(
-              icon: Icons.notifications,
-              label: 'Pemberitahuan',
-              onTap: () {
-                context.push('/notification');
-              },
-              iconColor: Colors.amber, // Kuning lonceng
-            ),
+            // const Divider(),
+            // MenuItem(
+            //   icon: Icons.notifications,
+            //   label: 'Pemberitahuan',
+            //   onTap: () {
+            //     context.push('/notification');
+            //   },
+            //   iconColor: Colors.amber, // Kuning lonceng
+            // ),
             const Divider(),
             MenuItem(
               icon: Icons.settings,
