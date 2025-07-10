@@ -1,5 +1,6 @@
 // home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../services/product_service.dart'; // Import ProductService
@@ -103,9 +104,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            color: Colors.black,
-            onPressed: () {},
+            icon: const Icon(Icons.notifications),
+            color: Colors.amber,
+            onPressed: () {
+              context.push('/notification');
+            },
           ),
           const SizedBox(width: 16),
         ],
