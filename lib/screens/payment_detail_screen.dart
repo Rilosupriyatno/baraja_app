@@ -522,18 +522,18 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
             color: const Color(0xFF00C896).withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.payments_rounded,
                 size: 14,
-                color: const Color(0xFF00C896),
+                color: Color(0xFF00C896),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 'Cash',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF00C896),
@@ -662,16 +662,16 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                     color: const Color(0xFF007AFF).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.copy_rounded,
                         size: 16,
                         color: Color(0xFF007AFF),
                       ),
-                      const SizedBox(width: 6),
-                      const Text(
+                      SizedBox(width: 6),
+                      Text(
                         'Salin ID Pesanan',
                         style: TextStyle(
                           fontSize: 13,
@@ -699,10 +699,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
+              const Icon(
                 Icons.info_outline_rounded,
                 size: 16,
-                color: const Color(0xFF00C896),
+                color: Color(0xFF00C896),
               ),
               const SizedBox(width: 8),
               Expanded(
