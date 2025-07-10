@@ -1,6 +1,7 @@
 import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart'; // Add this import
 import '../widgets/utils/classic_app_bar.dart';
 import 'package:intl/intl.dart';
 
@@ -119,6 +120,8 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         return 'OVO';
       case 'qris':
         return 'QRIS';
+      case 'cash':
+        return 'Cash';
       case 'bca_va':
       case 'bni_va':
       case 'bri_va':
@@ -490,16 +493,232 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
               if (i < vaNumbers.length - 1) const SizedBox(height: 16),
             ],
           ]
+          // Cash payment method
+          else if (method?.toLowerCase() == 'cash') ...[
+            _buildCashPaymentItem(),
+          ]
           // E-wallet or QRIS Section
           else if (qrString != null || deeplinkUrl != null) ...[
-            _buildEWalletItem(method, qrString, deeplinkUrl),
-          ]
-          // Other payment methods
-          else ...[
-              _buildGenericPaymentMethod(method),
-            ],
+              _buildEWalletItem(method, qrString, deeplinkUrl),
+            ]
+            // Other payment methods
+            else ...[
+                _buildGenericPaymentMethod(method),
+              ],
         ],
       ),
+    );
+  }
+
+  Widget _buildCashPaymentItem() {
+    final orderId = paymentData?['order_id'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF00C896).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.payments_rounded,
+                size: 14,
+                color: const Color(0xFF00C896),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Cash',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF00C896),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // QR Code Section
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFE5E5EA),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'QR Code untuk Pembayaran Cash',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1C1C1E),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // QR Code
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: QrImageView(
+                  data: orderId,
+                  version: QrVersions.auto,
+                  size: 200,
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1C1C1E),
+                  errorStateBuilder: (context, error) {
+                    return Container(
+                      width: 200,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4757).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Color(0xFFFF4757),
+                            size: 32,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Gagal membuat QR Code',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFFF4757),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Order ID display
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 16,
+                      color: Color(0xFF007AFF),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'ID: $orderId',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF007AFF),
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Copy button
+              InkWell(
+                onTap: () => _copyToClipboard(orderId, 'ID Pesanan'),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.copy_rounded,
+                        size: 16,
+                        color: Color(0xFF007AFF),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Salin ID Pesanan',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF007AFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Instructions
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF00C896).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: const Color(0xFF00C896),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tunjukkan QR Code ini kepada kasir untuk menyelesaikan pembayaran cash',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color(0xFF00C896).withOpacity(0.8),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
