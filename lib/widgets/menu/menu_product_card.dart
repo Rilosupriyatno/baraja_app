@@ -148,28 +148,6 @@ class MenuProductCard extends StatelessWidget {
                           height: double.infinity,
                         ),
                     ),
-                    //   child: product.imageUrl.isNotEmpty
-                    //       ? Image.network(
-                    //     product.imageUrl,
-                    //     fit: BoxFit.cover,
-                    //     width: double.infinity,
-                    //     height: double.infinity,
-                    //     errorBuilder: (context, error, stackTrace) {
-                    //       return Image.asset(
-                    //         'assets/images/product_default_image.jpeg',
-                    //         fit: BoxFit.cover,
-                    //         width: double.infinity,
-                    //         height: double.infinity,
-                    //       );
-                    //     },
-                    //   )
-                    //       : Image.asset(
-                    //     'assets/images/product_default_image.jpeg',
-                    //     fit: BoxFit.cover,
-                    //     width: double.infinity,
-                    //     height: double.infinity,
-                    //   ),
-                    // ),
                     if (bundleText != null)
                       Positioned(
                         top: 8,

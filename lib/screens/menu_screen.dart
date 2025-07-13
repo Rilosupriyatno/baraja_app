@@ -8,6 +8,7 @@ import '../services/product_service.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
+import '../widgets/menu/menu_selector.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -37,10 +38,10 @@ class _MenuScreenState extends State<MenuScreen> {
   Map<String, List<Category>> _categoriesMap = {};
 
   // Selected menu (Makanan atau Minuman)
-  String selectedMenu = 'Minuman';
+  String selectedMenu = 'Makanan';
 
   // Selected sub-menu
-  String selectedSubMenu = 'Coffee';
+  String selectedSubMenu = '';
 
   // Loading state
   bool _isLoading = true;
@@ -50,7 +51,8 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     _loadProducts();
-print(widget.reservationData);
+    print(widget.reservationData);
+
     // Set context in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -74,14 +76,11 @@ print(widget.reservationData);
       // Ambil semua produk dari service
       final products = await _productService.getProducts();
 
-      // Normalisasi produk - pindahkan Uncategorized ke Makanan
-      final normalizedProducts = _normalizeProducts(products);
-
       setState(() {
-        _allProducts = normalizedProducts;
+        _allProducts = products;
 
         // Buat map kategori dari produk yang diterima
-        _generateCategoriesMap(normalizedProducts);
+        _generateCategoriesMap(products);
 
         // Set default selection berdasarkan data yang tersedia
         _setInitialSelections();
@@ -97,80 +96,33 @@ print(widget.reservationData);
     }
   }
 
-  // Normalisasi produk - pindahkan Uncategorized ke Makanan
-  List<Product> _normalizeProducts(List<Product> products) {
-    return products;  // Simply return the products as-is for now
-  }
-
-  // Extracting individual categories from product
-  List<String> _extractCategories(Product product) {
-    List<String> categories = [];
-
-    if (product.category is List) {
-      // Process each category in the list
-      for (var cat in product.category as List) {
-        if (cat != null && cat is String && !_isMongoDbId(cat) && cat.isNotEmpty) {
-          categories.add(cat);
-        }
-      }
-    }
-    else if (product.category is String) {
-      String categoryStr = product.category.toString();
-      // Split by comma if it contains commas
-      if (categoryStr.contains(',')) {
-        List<String> splitCategories = categoryStr.split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty && !_isMongoDbId(e))
-            .toList();
-        categories.addAll(splitCategories);
-      } else if (!_isMongoDbId(categoryStr)) {
-        // Single category string
-        categories.add(categoryStr);
-      }
-    }
-
-    // If no valid categories found, add a default
-    if (categories.isEmpty) {
-      categories.add('General');
-    }
-
-    return categories;
-  }
-
-  // Helper to check if a string looks like a MongoDB ObjectId
-  bool _isMongoDbId(String str) {
-    // MongoDB ObjectIds are 24 character hex strings
-    return str.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(str);
-  }
-
-  // Membuat map kategori dari produk
+  // Membuat map kategori dari produk berdasarkan mainCategory dan subCategory
   void _generateCategoriesMap(List<Product> products) {
     try {
       // Temporary map untuk menyimpan kategori yang unik
       Map<String, Set<String>> tempCategoriesMap = {};
 
-      // Kumpulkan semua kategori dari produk
+      // Kumpulkan semua subCategory berdasarkan mainCategory
       for (var product in products) {
-        final String mainCategory = product.mainCategory;
+        // Tentukan mainCategory berdasarkan category dari backend
+        String mainCategory = _determineMainCategory(product.category);
+
+        // Ambil subCategory dari product service response
+        String subCategory = _extractSubCategory(product);
 
         if (!tempCategoriesMap.containsKey(mainCategory)) {
           tempCategoriesMap[mainCategory] = <String>{};
         }
 
-        // Ekstrak kategori dari produk - now as individual items
-        List<String> categories = _extractCategories(product);
-
-        // Tambahkan semua kategori ke map
-        tempCategoriesMap[mainCategory]!.addAll(categories);
+        // Tambahkan subCategory ke mainCategory
+        tempCategoriesMap[mainCategory]!.add(subCategory);
       }
 
       // Konversi Set menjadi List<Category>
       _categoriesMap = {};
-      tempCategoriesMap.forEach((mainCategory, categories) {
-        _categoriesMap[mainCategory] = categories
-            .map((name) => Category(
-          name: name,
-        ))
+      tempCategoriesMap.forEach((mainCategory, subCategories) {
+        _categoriesMap[mainCategory] = subCategories
+            .map((name) => Category(name: name))
             .toList();
       });
 
@@ -179,17 +131,62 @@ print(widget.reservationData);
       debugPrint("Error in _generateCategoriesMap: $e");
       // Fallback to default categories if there's an error
       _categoriesMap = {
-        'Minuman': [Category(name: 'Coffee'), Category(name: 'Tea')],
-        'Makanan': [Category(name: 'Snack'), Category(name: 'Meal')]
+        'Makanan': [Category(name: 'Nasi Goreng')],
+        'Minuman': [Category(name: 'Minuman Dingin')]
       };
     }
+  }
+
+  // Menentukan mainCategory berdasarkan category dari backend
+  String _determineMainCategory(dynamic category) {
+    String categoryName = '';
+
+    if (category is Map && category['name'] != null) {
+      categoryName = category['name'].toString();
+    } else if (category is String) {
+      categoryName = category;
+    }
+
+    // Klasifikasi berdasarkan nama kategori
+    if (categoryName.toLowerCase().contains('minuman') ||
+        categoryName.toLowerCase().contains('drink') ||
+        categoryName.toLowerCase().contains('coffee') ||
+        categoryName.toLowerCase().contains('tea')) {
+      return 'Minuman';
+    } else {
+      return 'Makanan';
+    }
+  }
+
+  // Ekstrak subCategory dari product
+  String _extractSubCategory(Product product) {
+    // Prioritas: gunakan subCategory dari backend response jika ada
+    if (product.mainCategory.isNotEmpty && product.mainCategory != 'Makanan' && product.mainCategory != 'Minuman') {
+      return product.mainCategory; // mainCategory sudah diisi dengan subCategory di service
+    }
+
+    // Fallback: gunakan category name
+    if (product.category is Map && product.category['name'] != null) {
+      return product.category['name'];
+    } else if (product.category is String) {
+      return product.category;
+    }
+
+    return 'Lainnya';
   }
 
   // Set pilihan awal berdasarkan data yang tersedia
   void _setInitialSelections() {
     // Pastikan ada main kategori
     if (_categoriesMap.isNotEmpty) {
-      selectedMenu = _categoriesMap.keys.first;
+      // Prioritas: Makanan dulu, baru Minuman
+      if (_categoriesMap.containsKey('Makanan')) {
+        selectedMenu = 'Makanan';
+      } else if (_categoriesMap.containsKey('Minuman')) {
+        selectedMenu = 'Minuman';
+      } else {
+        selectedMenu = _categoriesMap.keys.first;
+      }
 
       // Pastikan ada sub kategori
       if (_categoriesMap[selectedMenu]!.isNotEmpty) {
@@ -201,16 +198,22 @@ print(widget.reservationData);
   // Filter produk berdasarkan kategori yang dipilih
   List<Product> _getFilteredProducts() {
     return _allProducts.where((product) {
+      // Tentukan mainCategory produk
+      String productMainCategory = _determineMainCategory(product.category);
+
       // Cek main category
-      if (product.mainCategory != selectedMenu) {
+      if (productMainCategory != selectedMenu) {
         return false;
       }
 
-      // Ekstrak kategori produk as separate items
-      List<String> productCategories = _extractCategories(product);
+      // Jika selectedSubMenu kosong, tampilkan semua produk dari mainCategory
+      if (selectedSubMenu.isEmpty) {
+        return true;
+      }
 
-      // Cek apakah selectedSubMenu ada dalam kategori produk
-      return productCategories.contains(selectedSubMenu);
+      // Cek sub category
+      String productSubCategory = _extractSubCategory(product);
+      return productSubCategory == selectedSubMenu;
     }).toList();
   }
 
@@ -395,18 +398,18 @@ print(widget.reservationData);
             // Dine-in info (only shown if isDineIn is true)
             _buildDineInInfo(),
 
-            // Menu selector (Makanan/Minuman) - Commented out for now
-            // MenuSelector(
-            //   selectedMenu: selectedMenu,
-            //   onMenuSelected: (menu) {
-            //     setState(() {
-            //       selectedMenu = menu;
-            //       if (_categoriesMap[menu]!.isNotEmpty) {
-            //         selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
-            //       }
-            //     });
-            //   },
-            // ),
+            // Menu selector (Makanan/Minuman)
+            MenuSelector(
+              selectedMenu: selectedMenu,
+              onMenuSelected: (menu) {
+                setState(() {
+                  selectedMenu = menu;
+                  if (_categoriesMap[menu]!.isNotEmpty) {
+                    selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
+                  }
+                });
+              },
+            ),
 
             // Sub-menu slider
             SubMenuSlider(

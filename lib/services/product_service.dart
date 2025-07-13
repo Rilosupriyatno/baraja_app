@@ -93,43 +93,36 @@ class ProductService {
             }
 
             // Process category - sesuaikan dengan backend response
-            dynamic rawCategory = productJson['category'] ?? 'Uncategorized';
+            dynamic rawCategory = productJson['category'] ?? {'name': 'Uncategorized'};
 
-            // Backend mengembalikan object category dengan struktur: { id: ..., name: ... }
-            String categoryName = 'Uncategorized';
-            if (rawCategory is Map && rawCategory['name'] != null) {
-              categoryName = rawCategory['name'];
-            } else if (rawCategory is String) {
-              categoryName = rawCategory;
-            }
-
-            // Default mainCategory logic
-            String mainCategory = 'Makanan';
-            bool isDrink = false;
-
-            if (categoryName.toLowerCase().contains('coffee') ||
-                categoryName.toLowerCase().contains('chocolate') ||
-                categoryName.toLowerCase().contains('tea') ||
-                categoryName.toLowerCase().contains('milk') ||
-                categoryName.toLowerCase().contains('minuman')) {
-              isDrink = true;
-            }
-
-            mainCategory = isDrink ? 'Minuman' : 'Makanan';
-
-            // Use subCategory if available
+            // Process subCategory - ambil dari backend response
+            String subCategoryName = 'Lainnya';
             if (productJson['subCategory'] != null) {
               var subCat = productJson['subCategory'];
               if (subCat is Map && subCat['name'] != null) {
-                mainCategory = subCat['name'];
+                subCategoryName = subCat['name'];
+              } else if (subCat is String) {
+                subCategoryName = subCat;
+              }
+            }
+
+            // Determine mainCategory berdasarkan category
+            String mainCategory = 'Makanan';
+            if (rawCategory is Map && rawCategory['name'] != null) {
+              String categoryName = rawCategory['name'];
+              if (categoryName.toLowerCase().contains('minuman') ||
+                  categoryName.toLowerCase().contains('drink') ||
+                  categoryName.toLowerCase().contains('coffee') ||
+                  categoryName.toLowerCase().contains('tea')) {
+                mainCategory = 'Minuman';
               }
             }
 
             return Product(
               id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
-              category: categoryName, // Pass the category name
-              mainCategory: mainCategory,
+              category: rawCategory, // Pass the full category object
+              mainCategory: subCategoryName, // Use subCategory as mainCategory for filtering
               imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
