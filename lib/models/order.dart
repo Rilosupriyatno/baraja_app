@@ -6,6 +6,7 @@ enum OrderStatus {
   pending,
   processing,
   onTheWay,
+  waiting,
   ready,
   completed,
   cancelled
@@ -137,6 +138,8 @@ class Order {
     switch (status) {
       case OrderStatus.pending:
         return 'Menunggu Pembayaran';
+      case OrderStatus.waiting:
+        return 'Menunggu Diproses';
       case OrderStatus.processing:
         return 'Sedang Diproses';
       case OrderStatus.onTheWay:

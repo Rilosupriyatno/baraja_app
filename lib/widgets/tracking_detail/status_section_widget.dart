@@ -5,7 +5,7 @@ class StatusSectionWidget extends StatelessWidget {
   final Color statusColor;
   final IconData statusIcon;
   final Animation<double> pulseAnimation;
-  final Map<String, dynamic>? orderData; // Add orderData parameter
+  final Map<String, dynamic>? orderData;
 
   const StatusSectionWidget({
     super.key,
@@ -13,15 +13,81 @@ class StatusSectionWidget extends StatelessWidget {
     required this.statusColor,
     required this.statusIcon,
     required this.pulseAnimation,
-    this.orderData, // Optional parameter
+    this.orderData,
   });
 
-  // Helper method to get payment status info
-  Map<String, dynamic> _getPaymentStatusInfo() {
+  // Helper method to get comprehensive status info
+  Map<String, dynamic> _getStatusInfo() {
     if (orderData == null) return {};
 
     final paymentStatus = orderData!['paymentStatus'] ?? '';
+    final orderStatusValue = orderData!['orderStatus'] ?? '';
 
+    // Prioritize order status if payment is successful
+    if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
+      return _getOrderStatusInfo(orderStatusValue);
+    } else {
+      return _getPaymentStatusInfo(paymentStatus);
+    }
+  }
+
+  // Get order status information when payment is successful
+  Map<String, dynamic> _getOrderStatusInfo(String orderStatusValue) {
+    switch (orderStatusValue) {
+      case 'Pending':
+        return {
+          'subtitle': 'Menunggu konfirmasi dari kasir',
+          'description': 'Pesanan Anda akan segera diproses',
+          'showPulse': true,
+        };
+      case 'Waiting':
+        return {
+          'subtitle': 'Menunggu konfirmasi dari dapur',
+          'description': 'Pesanan Anda akan segera diproses oleh chef',
+          'showPulse': true,
+        };
+      case 'OnProcess':
+        return {
+          'subtitle': 'Sedang diproses oleh dapur',
+          'description': 'Chef sedang menyiapkan pesanan Anda',
+          'showPulse': true,
+        };
+      case 'Ready':
+        return {
+          'subtitle': 'Pesanan siap!',
+          'description': 'Silakan ambil pesanan Anda',
+          'showPulse': true,
+        };
+      case 'OnTheWay':
+        return {
+          'subtitle': 'Dalam perjalanan',
+          'description': 'Pesanan Anda sedang diantar ke alamat tujuan',
+          'showPulse': true,
+        };
+      case 'Completed':
+        return {
+          'subtitle': 'Pesanan selesai',
+          'description': 'Terima kasih telah memesan di Baraja Coffee',
+          'showPulse': false,
+        };
+      case 'Canceled':
+      case 'Cancelled':
+        return {
+          'subtitle': 'Pesanan dibatalkan',
+          'description': 'Pesanan telah dibatalkan',
+          'showPulse': false,
+        };
+      default:
+        return {
+          'subtitle': 'Status pesanan',
+          'description': 'Pesanan Anda sedang diproses',
+          'showPulse': true,
+        };
+    }
+  }
+
+  // Get payment status information when payment is not successful
+  Map<String, dynamic> _getPaymentStatusInfo(String paymentStatus) {
     switch (paymentStatus) {
       case 'expire':
         return {
@@ -35,13 +101,6 @@ class StatusSectionWidget extends StatelessWidget {
           'description': 'Selesaikan pembayaran sebelum waktu habis',
           'showPulse': true,
         };
-      case 'settlement':
-      case 'capture':
-        return {
-          'subtitle': 'Pembayaran berhasil',
-          'description': 'Pesanan Anda sedang diproses',
-          'showPulse': true,
-        };
       case 'cancel':
         return {
           'subtitle': 'Pembayaran dibatalkan',
@@ -50,8 +109,8 @@ class StatusSectionWidget extends StatelessWidget {
         };
       default:
         return {
-          'subtitle': '',
-          'description': '',
+          'subtitle': 'Status pembayaran',
+          'description': 'Menunggu konfirmasi pembayaran',
           'showPulse': true,
         };
     }
@@ -59,8 +118,8 @@ class StatusSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paymentInfo = _getPaymentStatusInfo();
-    final shouldPulse = paymentInfo['showPulse'] ?? true;
+    final statusInfo = _getStatusInfo();
+    final shouldPulse = statusInfo['showPulse'] ?? true;
 
     return AnimatedBuilder(
       animation: pulseAnimation,
@@ -118,10 +177,10 @@ class StatusSectionWidget extends StatelessWidget {
                           color: statusColor,
                         ),
                       ),
-                      if (paymentInfo['subtitle'] != null && paymentInfo['subtitle'].isNotEmpty) ...[
+                      if (statusInfo['subtitle'] != null && statusInfo['subtitle'].isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          paymentInfo['subtitle'],
+                          statusInfo['subtitle'],
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -129,10 +188,10 @@ class StatusSectionWidget extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (paymentInfo['description'] != null && paymentInfo['description'].isNotEmpty) ...[
+                      if (statusInfo['description'] != null && statusInfo['description'].isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          paymentInfo['description'],
+                          statusInfo['description'],
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,

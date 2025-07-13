@@ -209,37 +209,83 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     if (orderData == null) return;
 
     try {
-      final statusInfo = _orderService.getOrderStatusInfo(orderData!);
       final paymentStatus = orderData!['paymentStatus'] ?? '';
+      final orderStatusValue = orderData!['orderStatus'] ?? '';
 
-      // Override status based on payment status for better UX
-      String finalStatus = statusInfo['status'];
-      Color finalColor = statusInfo['color'];
-      IconData finalIcon = statusInfo['icon'];
+      String finalStatus;
+      Color finalColor;
+      IconData finalIcon;
 
-      switch (paymentStatus) {
-        case 'expire':
-          finalStatus = 'Pembayaran Kadaluarsa';
-          finalColor = Colors.red;
-          finalIcon = Icons.timer_off;
-          break;
-        case 'pending':
-          finalStatus = 'Menunggu Pembayaran';
-          finalColor = Colors.orange;
-          finalIcon = Icons.access_time;
-          break;
-        case 'cancel':
-          finalStatus = 'Pesanan Dibatalkan';
-          finalColor = Colors.red;
-          finalIcon = Icons.cancel;
-          break;
-        case 'settlement':
-        case 'capture':
-        // Use original order status for successful payments
-          break;
-        default:
-        // Use original order status
-          break;
+      // Prioritize order status if payment is successful
+      if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
+        // Payment successful, show order status
+        switch (orderStatusValue) {
+          case 'Pending':
+            finalStatus = 'Menunggu konfirmasi kasir';
+            finalColor = const Color(0xFFF68F3B);
+            finalIcon = Icons.alarm_outlined;
+            break;
+          case 'Waiting':
+            finalStatus = 'Menunggu konfirmasi kitchen';
+            finalColor = const Color(0xFF3B82F6);
+            finalIcon = Icons.restaurant_menu;
+            break;
+          case 'OnProcess':
+            finalStatus = 'Pesananmu sedang dibuat';
+            finalColor = const Color(0xFFF59E0B);
+            finalIcon = Icons.coffee_maker;
+            break;
+          case 'Ready':
+            finalStatus = 'Pesanan siap diambil';
+            finalColor = const Color(0xFF10B981);
+            finalIcon = Icons.check_circle;
+            break;
+          case 'OnTheWay':
+            finalStatus = 'Pesanan dalam perjalanan';
+            finalColor = const Color(0xFF8B5CF6);
+            finalIcon = Icons.local_shipping;
+            break;
+          case 'Completed':
+            finalStatus = 'Selamat Menikmati';
+            finalColor = const Color(0xFF10B981);
+            finalIcon = Icons.done_all;
+            break;
+          case 'Canceled':
+          case 'Cancelled':
+            finalStatus = 'Pesanan dibatalkan';
+            finalColor = const Color(0xFFEF4444);
+            finalIcon = Icons.cancel;
+            break;
+          default:
+            finalStatus = 'Status: $orderStatusValue';
+            finalColor = const Color(0xFFF68F3B);
+            finalIcon = Icons.info_outline;
+            break;
+        }
+      } else {
+        // Payment not successful, show payment status
+        switch (paymentStatus) {
+          case 'pending':
+            finalStatus = 'Menunggu Pembayaran';
+            finalColor = const Color(0xFFF59E0B);
+            finalIcon = Icons.access_time;
+            break;
+          case 'expire':
+            finalStatus = 'Pembayaran Kadaluarsa';
+            finalColor = const Color(0xFFEF4444);
+            finalIcon = Icons.timer_off;
+            break;
+          case 'cancel':
+            finalStatus = 'Pesanan Dibatalkan';
+            finalColor = const Color(0xFFEF4444);
+            finalIcon = Icons.cancel;
+            break;
+          default:
+            finalStatus = 'Status pembayaran: $paymentStatus';
+            finalColor = const Color(0xFF6B7280);
+            finalIcon = Icons.help_outline;
+            break;
+        }
       }
 
       setState(() {

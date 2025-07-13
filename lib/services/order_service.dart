@@ -198,9 +198,9 @@ class OrderService {
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/order/$id'),
-            headers: headers,
-          )
+        Uri.parse('$baseUrl/api/order/$id'),
+        headers: headers,
+      )
           .timeout(requestTimeout);
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -242,73 +242,108 @@ class OrderService {
   /// - icon: IconData (status icon)
 
   Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
+    print('=== getOrderStatusInfo Debug ===');
+    print('Input orderData: $orderData');
+
     // Cek payment status terlebih dahulu
-    final paymentStatus =
-        orderData['paymentStatus']?.toString().toLowerCase() ?? '';
-    print(paymentStatus);
-    if (paymentStatus == 'settlement') {
+    final paymentStatus = orderData['paymentStatus']?.toString() ?? '';
+    final orderStatus = orderData['orderStatus']?.toString() ?? '';
+
+    print('Payment Status: "$paymentStatus"');
+    print('Order Status: "$orderStatus"');
+
+    // Expanded payment status recognition
+    if (paymentStatus.toLowerCase() == 'settlement' ||
+        paymentStatus.toLowerCase() == 'paid' ||
+        paymentStatus.toLowerCase() == 'capture') {
+
+      print('Payment is successful, checking order status...');
+
       // Jika sudah lunas, cek order status
-      final orderStatus = orderData['orderStatus']?.toString() ?? '';
       switch (orderStatus) {
         case 'Pending':
-          // return {
-          //   'status': 'Pesanan dikonfirmasi',
-          //   'color': const Color(0xFF3B82F6),
-          //   'icon': Icons.check_circle,
-          // };
+          print('Returning Pending status');
           return {
-            'status': 'Menunggu konfirmasi',
+            'status': 'Menunggu konfirmasi kasir',
             'color': const Color(0xFFF68F3B),
             'icon': Icons.alarm_outlined,
           };
+        case 'Waiting':
+          print('Returning Waiting status');
+          return {
+            'status': 'Menunggu konfirmasi kitchen',
+            'color': const Color(0xFF3B82F6),
+            'icon': Icons.restaurant_menu,
+          };
         case 'OnProcess':
+          print('Returning OnProcess status');
           return {
             'status': 'Pesananmu sedang dibuat',
             'color': const Color(0xFFF59E0B),
             'icon': Icons.coffee_maker,
           };
         case 'Completed':
+          print('Returning Completed status');
           return {
             'status': 'Selamat Menikmati',
             'color': const Color(0xFF10B981),
             'icon': Icons.done_all,
           };
-
-        // case 'on the way':
-        //   return {
-        //     'status': 'Pesanan dalam perjalanan',
-        //     'color': const Color(0xFF8B5CF6),
-        //     'icon': Icons.local_shipping,
-        //   };
-        // case 'completed':
-        //   return {
-        //     'status': 'Pesanan selesai',
-        //     'color': const Color(0xFF059669),
-        //     'icon': Icons.celebration,
-        //   };
-
+        case 'OnTheWay':
+          print('Returning OnTheWay status');
+          return {
+            'status': 'Pesanan dalam perjalanan',
+            'color': const Color(0xFF8B5CF6),
+            'icon': Icons.local_shipping,
+          };
+        case 'Ready':
+          print('Returning Ready status');
+          return {
+            'status': 'Pesanan siap diambil',
+            'color': const Color(0xFF10B981),
+            'icon': Icons.check_circle,
+          };
         case 'Canceled':
+        case 'Cancelled':
+          print('Returning Cancelled status');
           return {
             'status': 'Pesanan dibatalkan',
             'color': const Color(0xFFEF4444),
             'icon': Icons.cancel,
           };
         default:
+          print('Unknown order status, returning default');
           return {
-            'status': 'Pesananmu sedang dibuat',
-            'color': const Color(0xFFF59E0B),
-            'icon': Icons.coffee_maker,
+            'status': 'Status: $orderStatus',
+            'color': const Color(0xFFF68F3B),
+            'icon': Icons.info_outline,
           };
       }
-    } else if (paymentStatus == 'pending') {
+    } else if (paymentStatus.toLowerCase() == 'pending') {
+      print('Returning pending payment status');
       return {
         'status': 'Menunggu pembayaran',
         'color': const Color(0xFFEF4444),
         'icon': Icons.payment,
       };
-    } else {
+    } else if (paymentStatus.toLowerCase() == 'expire') {
+      print('Returning expired payment status');
       return {
-        'status': 'Status tidak diketahui',
+        'status': 'Pembayaran kadaluarsa',
+        'color': const Color(0xFFEF4444),
+        'icon': Icons.timer_off,
+      };
+    } else if (paymentStatus.toLowerCase() == 'cancel') {
+      print('Returning cancelled payment status');
+      return {
+        'status': 'Pembayaran dibatalkan',
+        'color': const Color(0xFFEF4444),
+        'icon': Icons.cancel,
+      };
+    } else {
+      print('Unknown payment status, returning unknown status');
+      return {
+        'status': 'Status pembayaran: $paymentStatus',
         'color': const Color(0xFF6B7280),
         'icon': Icons.help_outline,
       };
@@ -324,7 +359,9 @@ class OrderService {
       switch (statusString.toLowerCase()) {
         case 'pending':
           return OrderStatus.pending;
-        case 'processing':
+        case 'waiting':
+          return OrderStatus.waiting;
+        case 'onprocess':
           return OrderStatus.processing;
         case 'on the way':
           return OrderStatus.onTheWay;
