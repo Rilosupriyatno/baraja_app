@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/table.dart';
+import '../utils/base_screen_wrapper.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
@@ -111,7 +112,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final totalCapacity = _calculateTotalCapacity();
     return totalCapacity >= personCount;
   }
-
 
   Future<void> _checkAvailability() async {
     if (selectedArea == null || selectedTableIds.isEmpty) return;
@@ -574,78 +574,82 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Reservasi'),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date selection
-                DateSelector(
-                  selectedDate: selectedDate,
-                  onDateChanged: (date) {
-                    setState(() {
-                      selectedDate = date;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
+    return BaseScreenWrapper(
+      canPop: false,
+      customBackRoute: '/main', // Always go back to main for menu
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: const ClassicAppBar(title: 'Reservasi'),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date selection
+                  DateSelector(
+                    selectedDate: selectedDate,
+                    onDateChanged: (date) {
+                      setState(() {
+                        selectedDate = date;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
 
-                // Time selection
-                TimeSelector(
-                  selectedTime: selectedTime,
-                  onTimeChanged: (time) {
-                    setState(() {
-                      selectedTime = time;
-                    });
-                  },
-                  selectTime: () => _selectTime(context),
-                ),
-                const SizedBox(height: 16),
+                  // Time selection
+                  TimeSelector(
+                    selectedTime: selectedTime,
+                    onTimeChanged: (time) {
+                      setState(() {
+                        selectedTime = time;
+                      });
+                    },
+                    selectTime: () => _selectTime(context),
+                  ),
+                  const SizedBox(height: 16),
 
-                // Area selection
-                AreaSelector(
-                  areas: areas,
-                  selectedAreaId: selectedArea?.id,
-                  onAreaChanged: (area) {
-                    setState(() {
-                      selectedArea = area;
-                      if (personCount > area.capacity) {
-                        personCount = area.capacity;
-                      }
-                    });
-                    _loadTablesForArea(area.id);
-                  },
-                  isLoading: isLoadingAreas,
-                ),
+                  // Area selection
+                  AreaSelector(
+                    areas: areas,
+                    selectedAreaId: selectedArea?.id,
+                    onAreaChanged: (area) {
+                      setState(() {
+                        selectedArea = area;
+                        if (personCount > area.capacity) {
+                          personCount = area.capacity;
+                        }
+                      });
+                      _loadTablesForArea(area.id);
+                    },
+                    isLoading: isLoadingAreas,
+                  ),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Table selection
-                _buildTableList(),
+                  // Table selection
+                  _buildTableList(),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Person count
-                PersonCounter(
-                  personCount: personCount,
-                  maxPersons: selectedArea?.capacity ?? 30,
-                  onPersonCountChanged: (count) {
-                    setState(() {
-                      personCount = count;
-                    });
-                  },
-                ),
+                  // Person count
+                  PersonCounter(
+                    personCount: personCount,
+                    maxPersons: selectedArea?.capacity ?? 30,
+                    onPersonCountChanged: (count) {
+                      setState(() {
+                        personCount = count;
+                      });
+                    },
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Reservation button
-                _buildReservationButton(),
-              ],
+                  // Reservation button
+                  _buildReservationButton(),
+                ],
+              ),
             ),
           ),
         ),

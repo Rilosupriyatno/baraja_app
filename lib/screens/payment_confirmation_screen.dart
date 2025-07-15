@@ -1,3 +1,4 @@
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/socket_service.dart';
@@ -272,38 +273,45 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Konfirmasi Pembayaran'),
-      body: SafeArea(
-        child: _isLoading
-            ? const PaymentLoadingView()
-            : _errorMessage != null
-            ? PaymentErrorView(
-          errorMessage: _errorMessage,
-          onRetry: _retryPayment,
-        )
-            : UnifiedPaymentView(
-          order: newOrder,
-          paymentResponse: _paymentResponseData,
-          paymentDetails: widget.paymentDetails,
-          orderType: widget.orderType,
-          tableNumber: widget.tableNumber ?? '',
-          deliveryAddress: widget.deliveryAddress,
-          pickupTime: widget.pickupTime,
-          subtotal: widget.subtotal,
-          discount: widget.discount,
-          total: widget.total,
-          voucherCode: widget.voucherCode,
-          items: widget.items,
-          isCashPayment: _isCashPayment,
-          // Add reservation-specific parameters
-          isReservation: widget.isReservation ?? false,
-          paymentType: widget.paymentType,
-          amountToPay: widget.amountToPay,
-          remainingPayment: widget.remainingPayment,
-          isDownPayment: widget.isDownPayment,
-          reservationData: widget.reservationData,
+    return BaseScreenWrapper(
+      customBackRoute: '/history',
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+          appBar: const ClassicAppBar(
+            title: 'Konfirmasi Pembayaran',
+            customBackRoute: '/history',
+          ),
+        body: SafeArea(
+          child: _isLoading
+              ? const PaymentLoadingView()
+              : _errorMessage != null
+              ? PaymentErrorView(
+            errorMessage: _errorMessage,
+            onRetry: _retryPayment,
+          )
+              : UnifiedPaymentView(
+            order: newOrder,
+            paymentResponse: _paymentResponseData,
+            paymentDetails: widget.paymentDetails,
+            orderType: widget.orderType,
+            tableNumber: widget.tableNumber ?? '',
+            deliveryAddress: widget.deliveryAddress,
+            pickupTime: widget.pickupTime,
+            subtotal: widget.subtotal,
+            discount: widget.discount,
+            total: widget.total,
+            voucherCode: widget.voucherCode,
+            items: widget.items,
+            isCashPayment: _isCashPayment,
+            // Add reservation-specific parameters
+            isReservation: widget.isReservation ?? false,
+            paymentType: widget.paymentType,
+            amountToPay: widget.amountToPay,
+            remainingPayment: widget.remainingPayment,
+            isDownPayment: widget.isDownPayment,
+            reservationData: widget.reservationData,
+          ),
         ),
       ),
     );

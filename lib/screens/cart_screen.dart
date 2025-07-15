@@ -1,4 +1,5 @@
 import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -211,190 +212,194 @@ class CartScreenState extends State<CartScreen> {
         final bool isDineIn = cartProvider.isDineIn;
         final String? tableNumber = cartProvider.tableNumber;
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          extendBodyBehindAppBar: true,
-          body: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.white,
-                elevation: 4,
-                shadowColor: Colors.grey.shade300,
-                centerTitle: true,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Navigator.of(context).pop(),
+        return BaseScreenWrapper(
+          customBackRoute: '/menu',
+          canPop: false,
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            extendBodyBehindAppBar: true,
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  backgroundColor: Colors.white,
+                  surfaceTintColor: Colors.white,
+                  elevation: 4,
+                  shadowColor: Colors.grey.shade300,
+                  centerTitle: true,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  title: Text(_getTitle(isReservation, isDineIn),
+                      style: const TextStyle(color: Colors.black)),
                 ),
-                title: Text(_getTitle(isReservation, isDineIn),
-                    style: const TextStyle(color: Colors.black)),
-              ),
 
-              // Reservation info at the top
-              if (isReservation && reservationData != null)
+                // Reservation info at the top
+                if (isReservation && reservationData != null)
+                  SliverToBoxAdapter(
+                    child: _buildReservationInfo(reservationData),
+                  ),
+
+                // Dine-in info at the top
+                if (isDineIn && tableNumber != null)
+                  SliverToBoxAdapter(
+                    child: _buildDineInInfo(tableNumber),
+                  ),
+
+                if (_isLoading)
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (cartItems.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade400),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Keranjang Anda kosong',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _getEmptyStateMessage(isReservation, isDineIn),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                          final item = cartItems[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: CartItemCard(
+                              item: item,
+                              onIncrease: () {
+                                cartProvider.increaseQuantity(index);
+                              },
+                              onDecrease: () {
+                                cartProvider.decreaseQuantity(index);
+                              },
+                            ),
+                          );
+                        },
+                        childCount: cartItems.length,
+                      ),
+                    ),
+                  ),
                 SliverToBoxAdapter(
-                  child: _buildReservationInfo(reservationData),
-                ),
-
-              // Dine-in info at the top
-              if (isDineIn && tableNumber != null)
-                SliverToBoxAdapter(
-                  child: _buildDineInInfo(tableNumber),
-                ),
-
-              if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (cartItems.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Keranjang Anda kosong',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getEmptyStateMessage(isReservation, isDineIn),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                        final item = cartItems[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: CartItemCard(
-                            item: item,
-                            onIncrease: () {
-                              cartProvider.increaseQuantity(index);
-                            },
-                            onDecrease: () {
-                              cartProvider.decreaseQuantity(index);
-                            },
-                          ),
-                        );
-                      },
-                      childCount: cartItems.length,
-                    ),
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate back to menu with appropriate context
-                      if (isReservation && reservationData != null) {
-                        context.pop(); // Just go back to the menu screen
-                      } else if (isDineIn && tableNumber != null) {
-                        context.pop(); // Just go back to the menu screen
-                      } else {
-                        context.push('/menu');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                      backgroundColor: AppTheme.primaryColor,
-                    ),
-                    icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
-                    label: const Text(
-                      'Tambah Pesanan',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          bottomNavigationBar: SafeArea(
-            child: Material(
-              elevation: 4,
-              shadowColor: Colors.grey.shade300,
-              color: Colors.white,
-              clipBehavior: Clip.none,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.4),
-                      spreadRadius: 1,
-                      blurRadius: 6,
-                      offset: const Offset(0, -3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text(
-                            formatCurrency(cartProvider.totalPrice),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: cartItems.isEmpty ? null : () {
-                        // Pass all relevant data to checkout
-                        Map<String, dynamic> extraData = {};
-
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Navigate back to menu with appropriate context
                         if (isReservation && reservationData != null) {
-                          extraData = {
-                            'isReservation': true,
-                            'reservationData': reservationData,
-                          };
+                          context.pop(); // Just go back to the menu screen
                         } else if (isDineIn && tableNumber != null) {
-                          extraData = {
-                            'isDineIn': true,
-                            'tableNumber': tableNumber,
-                          };
-                        }
-
-                        if (extraData.isNotEmpty) {
-                          context.go('/checkout', extra: extraData);
+                          context.pop(); // Just go back to the menu screen
                         } else {
-                          context.go('/checkout');
+                          context.push('/menu');
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         backgroundColor: AppTheme.primaryColor,
                       ),
-                      child: Text(
-                        _getCheckoutButtonText(isReservation, isDineIn),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                      icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
+                      label: const Text(
+                        'Tambah Pesanan',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+            bottomNavigationBar: SafeArea(
+              child: Material(
+                elevation: 4,
+                shadowColor: Colors.grey.shade300,
+                color: Colors.white,
+                clipBehavior: Clip.none,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.4),
+                        spreadRadius: 1,
+                        blurRadius: 6,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(
+                              formatCurrency(cartProvider.totalPrice),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: cartItems.isEmpty ? null : () {
+                          // Pass all relevant data to checkout
+                          Map<String, dynamic> extraData = {};
+
+                          if (isReservation && reservationData != null) {
+                            extraData = {
+                              'isReservation': true,
+                              'reservationData': reservationData,
+                            };
+                          } else if (isDineIn && tableNumber != null) {
+                            extraData = {
+                              'isDineIn': true,
+                              'tableNumber': tableNumber,
+                            };
+                          }
+
+                          if (extraData.isNotEmpty) {
+                            context.go('/checkout', extra: extraData);
+                          } else {
+                            context.go('/checkout');
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          backgroundColor: AppTheme.primaryColor,
+                        ),
+                        child: Text(
+                          _getCheckoutButtonText(isReservation, isDineIn),
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

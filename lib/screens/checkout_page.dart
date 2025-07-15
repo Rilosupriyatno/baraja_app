@@ -1,3 +1,4 @@
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -499,380 +500,387 @@ class _CheckoutPageState extends State<CheckoutPage> {
           });
         }
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: const ClassicAppBar(title: 'Pembayaran'),
-          resizeToAvoidBottomInset: true,
-          body: Column(
-            children: [
-              // Konten utama dengan scroll
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Reservation info at the top
-                        if (cartProvider.isReservation && cartProvider.reservationData != null)
-                          _buildReservationInfo(cartProvider.reservationData!),
+        return BaseScreenWrapper(
+          customBackRoute: '/cart',
+          canPop: false,
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            appBar: const ClassicAppBar(
+              title: 'Pembayaran',
+              customBackRoute: '/history',
+            ),
+            resizeToAvoidBottomInset: true,
+            body: Column(
+              children: [
+                // Konten utama dengan scroll
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Reservation info at the top
+                          if (cartProvider.isReservation && cartProvider.reservationData != null)
+                            _buildReservationInfo(cartProvider.reservationData!),
 
-                        // Reservation Type Selector - untuk area A dan B
-                        if (cartProvider.isReservation &&
-                            cartProvider.reservationData != null &&
-                            _shouldShowReservationType(cartProvider.reservationData!.areaCode))
-                          _buildReservationTypeSelector(cartProvider.reservationData!, finalTotal),
+                          // Reservation Type Selector - untuk area A dan B
+                          if (cartProvider.isReservation &&
+                              cartProvider.reservationData != null &&
+                              _shouldShowReservationType(cartProvider.reservationData!.areaCode))
+                            _buildReservationTypeSelector(cartProvider.reservationData!, finalTotal),
 
-                        // Dine-in info at the top
-                        if (cartProvider.isDineIn)
-                          _buildDineInInfo(),
+                          // Dine-in info at the top
+                          if (cartProvider.isDineIn)
+                            _buildDineInInfo(),
 
-                        // Daftar Item Keranjang
-                        if (cartItems.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: Text(
-                                "Keranjang belanja kosong",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ...cartItems.asMap().entries.map((entry) {
-                            CartItem item = entry.value;
-                            return CartItemWidget(
-                              item: item,
-                            );
-                          }),
-                        const SizedBox(height: 24),
-
-                        // Pemilihan Tipe Pesanan - Conditional Display
-                        Text(
-                          _getOrderTypeTitle(cartProvider),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-
-                        if (_shouldShowOrderTypeSelector(cartProvider)) ...[
-                          Text(
-                            "*Kami buka 24 Jam",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Custom Order Type Selector - Hanya tampilkan Delivery dan Pickup
-                          OrderTypeSelector(
-                            selectedType: selectedOrderType,
-                            onChanged: (type) {
-                              setState(() {
-                                selectedOrderType = type;
-                              });
-                            },
-                            tableNumber: tableNumber,
-                            onTableNumberChanged: (value) {
-                              setState(() {
-                                tableNumber = value;
-                              });
-                            },
-                            deliveryAddress: deliveryAddress,
-                            onDeliveryAddressChanged: (value) {
-                              setState(() {
-                                deliveryAddress = value;
-                              });
-                            },
-                            pickupTime: pickupTime,
-                            onPickupTimeChanged: (time) {
-                              setState(() {
-                                pickupTime = time;
-                              });
-                            },
-                            // Parameter baru untuk menyembunyikan opsi dine-in
-                            hideDineInOption: true,
-                          ),
-                        ] else ...[
-                          // Show fixed order type info untuk reservasi/dine-in
-                          Container(
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green.shade600,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  cartProvider.isReservation
-                                      ? 'Pesanan untuk reservasi Anda'
-                                      : 'Pesanan untuk meja ${cartProvider.tableNumber}',
+                          // Daftar Item Keranjang
+                          if (cartItems.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text(
+                                  "Keranjang belanja kosong",
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                    color: Colors.grey,
                                   ),
                                 ),
-                              ],
+                              ),
+                            )
+                          else
+                            ...cartItems.asMap().entries.map((entry) {
+                              CartItem item = entry.value;
+                              return CartItemWidget(
+                                item: item,
+                              );
+                            }),
+                          const SizedBox(height: 24),
+
+                          // Pemilihan Tipe Pesanan - Conditional Display
+                          Text(
+                            _getOrderTypeTitle(cartProvider),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 24),
 
-                        // Payment Type Selection for Reservations - Moved here
-                        if (cartProvider.isReservation) ...[
-                          ReservationPaymentTypeWidget(
-                            selectedType: selectedPaymentType,
-                            onChanged: (PaymentType type) {
+                          if (_shouldShowOrderTypeSelector(cartProvider)) ...[
+                            Text(
+                              "*Kami buka 24 Jam",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Custom Order Type Selector - Hanya tampilkan Delivery dan Pickup
+                            OrderTypeSelector(
+                              selectedType: selectedOrderType,
+                              onChanged: (type) {
+                                setState(() {
+                                  selectedOrderType = type;
+                                });
+                              },
+                              tableNumber: tableNumber,
+                              onTableNumberChanged: (value) {
+                                setState(() {
+                                  tableNumber = value;
+                                });
+                              },
+                              deliveryAddress: deliveryAddress,
+                              onDeliveryAddressChanged: (value) {
+                                setState(() {
+                                  deliveryAddress = value;
+                                });
+                              },
+                              pickupTime: pickupTime,
+                              onPickupTimeChanged: (time) {
+                                setState(() {
+                                  pickupTime = time;
+                                });
+                              },
+                              // Parameter baru untuk menyembunyikan opsi dine-in
+                              hideDineInOption: true,
+                            ),
+                          ] else ...[
+                            // Show fixed order type info untuk reservasi/dine-in
+                            Container(
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green.shade600,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    cartProvider.isReservation
+                                        ? 'Pesanan untuk reservasi Anda'
+                                        : 'Pesanan untuk meja ${cartProvider.tableNumber}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+
+                          // Payment Type Selection for Reservations - Moved here
+                          if (cartProvider.isReservation) ...[
+                            ReservationPaymentTypeWidget(
+                              selectedType: selectedPaymentType,
+                              onChanged: (PaymentType type) {
+                                setState(() {
+                                  selectedPaymentType = type;
+                                });
+                              },
+                              totalAmount: finalTotal,
+                              downPaymentAmount: downPaymentAmount,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          // Metode Pembayaran
+                          PaymentMethodWidget(
+                            selectedMethod: displayedPaymentMethod,
+                            onTap: () async {
+                              final result = await context
+                                  .push<Map<String, dynamic>>('/paymentMethod');
+                              if (result != null) {
+                                setState(() {
+                                  selectedPaymentMethod = result['payment_method'];
+                                  selectedPaymentMethodName =
+                                  result['payment_method_name'];
+                                  if (result.containsKey('name')) {
+                                    selectedBankName = result['name'];
+                                  } else {
+                                    selectedBankName = null;
+                                  }
+                                  if (result.containsKey('bank_code')) {
+                                    selectedBankCode = result['bank_code'];
+                                  } else {
+                                    selectedBankCode = null;
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          VoucherWidget(
+                            voucherCode: selectedVoucherCode ?? "",
+                            voucherApplied: selectedVoucherCode != null,
+                            onVoucherSelected: (String selectedCode) {
                               setState(() {
-                                selectedPaymentType = type;
+                                selectedVoucherCode = selectedCode;
+                                discountAmount = calculateDiscount(subtotal);
+                                switch (selectedCode) {
+                                  case 'DISC10':
+                                    voucherDescription = 'Disc 10% up to Rp20.000';
+                                    break;
+                                  case 'DISC15':
+                                    voucherDescription = 'Disc 15% up to Rp25.000';
+                                    break;
+                                  default:
+                                    voucherDescription = '';
+                                }
                               });
                             },
-                            totalAmount: finalTotal,
-                            downPaymentAmount: downPaymentAmount,
                           ),
                           const SizedBox(height: 24),
                         ],
-
-                        // Metode Pembayaran
-                        PaymentMethodWidget(
-                          selectedMethod: displayedPaymentMethod,
-                          onTap: () async {
-                            final result = await context
-                                .push<Map<String, dynamic>>('/paymentMethod');
-                            if (result != null) {
-                              setState(() {
-                                selectedPaymentMethod = result['payment_method'];
-                                selectedPaymentMethodName =
-                                result['payment_method_name'];
-                                if (result.containsKey('name')) {
-                                  selectedBankName = result['name'];
-                                } else {
-                                  selectedBankName = null;
-                                }
-                                if (result.containsKey('bank_code')) {
-                                  selectedBankCode = result['bank_code'];
-                                } else {
-                                  selectedBankCode = null;
-                                }
-                              });
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        VoucherWidget(
-                          voucherCode: selectedVoucherCode ?? "",
-                          voucherApplied: selectedVoucherCode != null,
-                          onVoucherSelected: (String selectedCode) {
-                            setState(() {
-                              selectedVoucherCode = selectedCode;
-                              discountAmount = calculateDiscount(subtotal);
-                              switch (selectedCode) {
-                                case 'DISC10':
-                                  voucherDescription = 'Disc 10% up to Rp20.000';
-                                  break;
-                                case 'DISC15':
-                                  voucherDescription = 'Disc 15% up to Rp25.000';
-                                  break;
-                                default:
-                                  voucherDescription = '';
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              // Updated Checkout Summary without payment type widget
-              CheckoutSummary(
-                totalPrice: subtotal,
-                discount: discount,
-                voucherCode: selectedVoucherCode,
-                isReservation: cartProvider.isReservation,
-                selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
-                onCheckoutPressed: () async {
-                  // Validasi input berdasarkan tipe pesanan
-                  bool isValid = true;
-                  String errorMessage = '';
+                // Updated Checkout Summary without payment type widget
+                CheckoutSummary(
+                  totalPrice: subtotal,
+                  discount: discount,
+                  voucherCode: selectedVoucherCode,
+                  isReservation: cartProvider.isReservation,
+                  selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
+                  onCheckoutPressed: () async {
+                    // Validasi input berdasarkan tipe pesanan
+                    bool isValid = true;
+                    String errorMessage = '';
 
-                  // Skip validation untuk reservasi dan dine-in karena sudah pre-configured
-                  if (!cartProvider.isReservation && !cartProvider.isDineIn) {
-                    if (selectedOrderType == OrderType.delivery &&
-                        deliveryAddress.isEmpty) {
-                      isValid = false;
-                      errorMessage = 'Silakan masukkan alamat pengantaran';
-                    } else if (selectedOrderType == OrderType.pickup &&
-                        pickupTime == null) {
-                      isValid = false;
-                      errorMessage = 'Silakan pilih waktu pengambilan';
-                    }
-                  }
-
-                  if (selectedPaymentMethod == null) {
-                    isValid = false;
-                    errorMessage = 'Silakan pilih metode pembayaran';
-                  }
-
-                  if (!isValid) {
-                    print(errorMessage);
-                    return;
-                  }
-
-                  final prefs = await SharedPreferences.getInstance();
-                  final userId = prefs.getString('userId');
-                  final userName = prefs.getString('userName') ?? 'Guest';
-                  int amountToPay = finalTotal;
-                  if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
-                    amountToPay = downPaymentAmount;
-                  }
-                  // Tampilkan loading indicator
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    },
-                  );
-
-                  try {
-                    final orderService = serviceorder.OrderService();
-                    final List<Map<String, dynamic>> items = cartItems
-                        .map((item) => {
-                      'productId': item.id,
-                      'productName': item.name,
-                      'price': item.price,
-                      'quantity': item.quantity,
-                      'addons': item.addons,
-                      'toppings': item.toppings,
-                      'notes': item.notes,
-                    })
-                        .toList();
-
-                    final Map<String, String?> paymentDetails = {
-                      'method': selectedPaymentMethodName,
-                      'methodName': selectedPaymentMethod,
-                      'bankName': selectedBankName,
-                      'bankCode': selectedBankCode,
-                    };
-
-                    // Determine order type based on current context
-                    OrderType finalOrderType;
-                    if (cartProvider.isReservation) {
-                      finalOrderType = OrderType.reservation;
-                    } else if (cartProvider.isDineIn) {
-                      finalOrderType = OrderType.dineIn;
-                    } else {
-                      finalOrderType = selectedOrderType;
+                    // Skip validation untuk reservasi dan dine-in karena sudah pre-configured
+                    if (!cartProvider.isReservation && !cartProvider.isDineIn) {
+                      if (selectedOrderType == OrderType.delivery &&
+                          deliveryAddress.isEmpty) {
+                        isValid = false;
+                        errorMessage = 'Silakan masukkan alamat pengantaran';
+                      } else if (selectedOrderType == OrderType.pickup &&
+                          pickupTime == null) {
+                        isValid = false;
+                        errorMessage = 'Silakan pilih waktu pengambilan';
+                      }
                     }
 
-                    // Create order with payment type information for reservations
-                    final orderResult = await orderService.createOrder(
-                      items: items,
-                      userId: userId ?? 'guest',
-                      userName: userName,
-                      orderType: finalOrderType,
-                      tableNumber: cartProvider.isDineIn ? cartProvider.tableNumber :
-                      (finalOrderType == OrderType.dineIn ? tableNumber : null),
-                      deliveryAddress: finalOrderType == OrderType.delivery ? deliveryAddress : null,
-                      pickupTime: finalOrderType == OrderType.pickup ? pickupTime : null,
-                      paymentDetails: paymentDetails,
-                      subtotal: subtotal,
-                      discount: discount,
-                      voucherCode: selectedVoucherCode,
-                      reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
-                      // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
-                      reservationType: cartProvider.isReservation &&
-                          cartProvider.reservationData != null &&
-                          _shouldShowReservationType(cartProvider.reservationData!.areaCode)
-                          ? selectedReservationType
-                          : null, // Kirim null jika tidak applicable
+                    if (selectedPaymentMethod == null) {
+                      isValid = false;
+                      errorMessage = 'Silakan pilih metode pembayaran';
+                    }
+
+                    if (!isValid) {
+                      print(errorMessage);
+                      return;
+                    }
+
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getString('userId');
+                    final userName = prefs.getString('userName') ?? 'Guest';
+                    int amountToPay = finalTotal;
+                    if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
+                      amountToPay = downPaymentAmount;
+                    }
+                    // Tampilkan loading indicator
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      },
                     );
 
-                    Navigator.of(context).pop();
+                    try {
+                      final orderService = serviceorder.OrderService();
+                      final List<Map<String, dynamic>> items = cartItems
+                          .map((item) => {
+                        'productId': item.id,
+                        'productName': item.name,
+                        'price': item.price,
+                        'quantity': item.quantity,
+                        'addons': item.addons,
+                        'toppings': item.toppings,
+                        'notes': item.notes,
+                      })
+                          .toList();
 
-                    // Navigate to payment confirmation with payment type data
-                    final extraData = {
-                      'items': List.from(cartItems),
-                      'userId': userId,
-                      'userName': userName,
-                      'orderType': finalOrderType,
-                      'tableNumber': cartProvider.isDineIn ? cartProvider.tableNumber : tableNumber,
-                      'deliveryAddress': deliveryAddress,
-                      'pickupTime': pickupTime,
-                      'paymentDetails': paymentDetails,
-                      'subtotal': subtotal,
-                      'discount': discount,
-                      'total': finalTotal,
-                      'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
-                      'amountToPay': amountToPay,
-                      'voucherCode': selectedVoucherCode,
-                      'id': orderResult['order']?['_id'] ?? '',
-                      'orderId': orderResult['order']?['order_id'] ?? '',
-                    };
+                      final Map<String, String?> paymentDetails = {
+                        'method': selectedPaymentMethodName,
+                        'methodName': selectedPaymentMethod,
+                        'bankName': selectedBankName,
+                        'bankCode': selectedBankCode,
+                      };
 
-                    // Add reservation and payment type data if applicable
-                    if (cartProvider.isReservation && cartProvider.reservationData != null) {
-                      extraData['reservationData'] = cartProvider.reservationData;
-                      extraData['isReservation'] = true;
-                      extraData['paymentType'] = selectedPaymentType;
-                      extraData['downPaymentAmount'] = downPaymentAmount;
-
-                      // Add reservation type data
-                      if (_shouldShowReservationType(cartProvider.reservationData!.areaCode)) {
-                        extraData['reservationType'] = selectedReservationType;
-                        extraData['isBlocking'] = selectedReservationType == ReservationType.blocking;
+                      // Determine order type based on current context
+                      OrderType finalOrderType;
+                      if (cartProvider.isReservation) {
+                        finalOrderType = OrderType.reservation;
+                      } else if (cartProvider.isDineIn) {
+                        finalOrderType = OrderType.dineIn;
+                      } else {
+                        finalOrderType = selectedOrderType;
                       }
 
-                      // Add remaining payment amount for down payment option
-                      if (selectedPaymentType == PaymentType.downPayment) {
-                        extraData['remainingPayment'] = finalTotal - downPaymentAmount;
-                        extraData['isDownPayment'] = true;
+                      // Create order with payment type information for reservations
+                      final orderResult = await orderService.createOrder(
+                        items: items,
+                        userId: userId ?? 'guest',
+                        userName: userName,
+                        orderType: finalOrderType,
+                        tableNumber: cartProvider.isDineIn ? cartProvider.tableNumber :
+                        (finalOrderType == OrderType.dineIn ? tableNumber : null),
+                        deliveryAddress: finalOrderType == OrderType.delivery ? deliveryAddress : null,
+                        pickupTime: finalOrderType == OrderType.pickup ? pickupTime : null,
+                        paymentDetails: paymentDetails,
+                        subtotal: subtotal,
+                        discount: discount,
+                        voucherCode: selectedVoucherCode,
+                        reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
+                        // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
+                        reservationType: cartProvider.isReservation &&
+                            cartProvider.reservationData != null &&
+                            _shouldShowReservationType(cartProvider.reservationData!.areaCode)
+                            ? selectedReservationType
+                            : null, // Kirim null jika tidak applicable
+                      );
+
+                      Navigator.of(context).pop();
+
+                      // Navigate to payment confirmation with payment type data
+                      final extraData = {
+                        'items': List.from(cartItems),
+                        'userId': userId,
+                        'userName': userName,
+                        'orderType': finalOrderType,
+                        'tableNumber': cartProvider.isDineIn ? cartProvider.tableNumber : tableNumber,
+                        'deliveryAddress': deliveryAddress,
+                        'pickupTime': pickupTime,
+                        'paymentDetails': paymentDetails,
+                        'subtotal': subtotal,
+                        'discount': discount,
+                        'total': finalTotal,
+                        'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
+                        'amountToPay': amountToPay,
+                        'voucherCode': selectedVoucherCode,
+                        'id': orderResult['order']?['_id'] ?? '',
+                        'orderId': orderResult['order']?['order_id'] ?? '',
+                      };
+
+                      // Add reservation and payment type data if applicable
+                      if (cartProvider.isReservation && cartProvider.reservationData != null) {
+                        extraData['reservationData'] = cartProvider.reservationData;
+                        extraData['isReservation'] = true;
+                        extraData['paymentType'] = selectedPaymentType;
+                        extraData['downPaymentAmount'] = downPaymentAmount;
+
+                        // Add reservation type data
+                        if (_shouldShowReservationType(cartProvider.reservationData!.areaCode)) {
+                          extraData['reservationType'] = selectedReservationType;
+                          extraData['isBlocking'] = selectedReservationType == ReservationType.blocking;
+                        }
+
+                        // Add remaining payment amount for down payment option
+                        if (selectedPaymentType == PaymentType.downPayment) {
+                          extraData['remainingPayment'] = finalTotal - downPaymentAmount;
+                          extraData['isDownPayment'] = true;
+                        } else {
+                          extraData['remainingPayment'] = 0;
+                          extraData['isDownPayment'] = false;
+                        }
                       } else {
+                        // For non-reservation orders, set default values
                         extraData['remainingPayment'] = 0;
                         extraData['isDownPayment'] = false;
                       }
-                    } else {
-                      // For non-reservation orders, set default values
-                      extraData['remainingPayment'] = 0;
-                      extraData['isDownPayment'] = false;
+
+                      context.push('/paymentConfirmation', extra: extraData);
+
+                      // Clear cart after successful checkout
+                      cartProvider.clearCart();
+                    } catch (e) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Gagal membuat pesanan: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
-
-                    context.push('/paymentConfirmation', extra: extraData);
-
-                    // Clear cart after successful checkout
-                    cartProvider.clearCart();
-                  } catch (e) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal membuat pesanan: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
