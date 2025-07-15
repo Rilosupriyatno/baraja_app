@@ -147,7 +147,7 @@ class ConfirmService {
 
         if (jsonData.containsKey('payment')) {
           final paymentData = jsonData['payment'] as Map<String, dynamic>;
-          paymentData.remove('raw_response');
+          // paymentData.remove('raw_response');
 
           _printGetPaymentSuccess(paymentData);
 

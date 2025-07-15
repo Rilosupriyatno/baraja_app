@@ -411,7 +411,8 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   Widget _buildPaymentInfoCard() {
     final method = paymentData?['method'];
     final vaNumbers = paymentData?['va_numbers'] as List<dynamic>?;
-    final qrString = paymentData?['qr_string'];
+    final qrString = paymentData?['qr_string'] ?? paymentData?['raw_response']?['qr_string'];
+    print('QR String: $qrString');
     final deeplinkUrl = paymentData?['deeplink_redirect_url'];
 
     return _buildCard(
@@ -810,8 +811,202 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        if (qrString != null) ...[
+        const SizedBox(height: 20),
+
+        // QR Code Section for QRIS
+        if (method?.toLowerCase() == 'qris' && qrString != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFE5E5EA),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'Scan QR Code untuk Pembayaran QRIS',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1C1C1E),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // QR Code
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: qrString,
+                    version: QrVersions.auto,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF1C1C1E),
+                    errorStateBuilder: (context, error) {
+                      return Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF4757).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFFF4757),
+                              size: 32,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Gagal membuat QR Code',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFFF4757),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Payment method indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00C896).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.qr_code_scanner_rounded,
+                        size: 16,
+                        color: Color(0xFF00C896),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'QRIS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF00C896),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Copy QR String button
+                InkWell(
+                  onTap: () => _copyToClipboard(qrString, 'QR Code String'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF007AFF).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 16,
+                          color: Color(0xFF007AFF),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Salin QR Code',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF007AFF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Instructions
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00C896).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: Color(0xFF00C896),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cara Pembayaran QRIS:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF00C896).withOpacity(0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '1. Buka aplikasi mobile banking atau e-wallet Anda\n'
+                            '2. Pilih menu "Scan QR" atau "QRIS"\n'
+                            '3. Scan QR Code di atas\n'
+                            '4. Konfirmasi pembayaran',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: const Color(0xFF00C896).withOpacity(0.8),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]
+        // For other e-wallet methods (non-QRIS)
+        else if (qrString != null) ...[
           Row(
             children: [
               const Expanded(
