@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 // Import Menu Screen
@@ -165,41 +166,45 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // QR Scanner View
-          _buildQrView(context),
+    return BaseScreenWrapper(
+      customBackRoute: '/main',
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // QR Scanner View
+            _buildQrView(context),
 
-          // Top overlay with title and close button
-          _buildTopOverlay(),
+            // Top overlay with title and close button
+            _buildTopOverlay(),
 
-          // Bottom overlay with controls and result
-          _buildBottomOverlay(),
+            // Bottom overlay with controls and result
+            _buildBottomOverlay(),
 
-          // Scan line animation (optional)
-          if (!isPaused) _buildScanLine(),
+            // Scan line animation (optional)
+            if (!isPaused) _buildScanLine(),
 
-          // Processing overlay
-          if (_isProcessingResult)
-            Container(
-              color: Colors.black.withOpacity(0.7),
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 16),
-                    Text(
-                      'Memproses QR Code...',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ],
+            // Processing overlay
+            if (_isProcessingResult)
+              Container(
+                color: Colors.black.withOpacity(0.7),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: Colors.white),
+                      SizedBox(height: 16),
+                      Text(
+                        'Memproses QR Code...',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../models/product.dart';
 import '../models/reservation_data.dart';
 import '../providers/cart_provider.dart';
 import '../services/product_service.dart';
+import '../utils/base_screen_wrapper.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
@@ -382,58 +383,62 @@ class _MenuScreenState extends State<MenuScreen> {
     // Ambil produk yang sesuai dengan menu dan sub-menu yang dipilih
     final List<Product> filteredProducts = _getFilteredProducts();
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: ClassicAppBar(title: _getAppBarTitle()),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage.isNotEmpty
-            ? Center(child: Text(_errorMessage))
-            : Column(
-          children: [
-            // Reservation info (only shown if isReservation is true)
-            _buildReservationInfo(),
+    return BaseScreenWrapper(
+      canPop: false,
+      customBackRoute: '/main', // Always go back to main for menu
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: ClassicAppBar(title: _getAppBarTitle()),
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage.isNotEmpty
+              ? Center(child: Text(_errorMessage))
+              : Column(
+            children: [
+              // Reservation info (only shown if isReservation is true)
+              _buildReservationInfo(),
 
-            // Dine-in info (only shown if isDineIn is true)
-            _buildDineInInfo(),
+              // Dine-in info (only shown if isDineIn is true)
+              _buildDineInInfo(),
 
-            // Menu selector (Makanan/Minuman)
-            MenuSelector(
-              selectedMenu: selectedMenu,
-              onMenuSelected: (menu) {
-                setState(() {
-                  selectedMenu = menu;
-                  if (_categoriesMap[menu]!.isNotEmpty) {
-                    selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
-                  }
-                });
-              },
-            ),
+              // Menu selector (Makanan/Minuman)
+              MenuSelector(
+                selectedMenu: selectedMenu,
+                onMenuSelected: (menu) {
+                  setState(() {
+                    selectedMenu = menu;
+                    if (_categoriesMap[menu]!.isNotEmpty) {
+                      selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
+                    }
+                  });
+                },
+              ),
 
-            // Sub-menu slider
-            SubMenuSlider(
-              subMenus: subMenuList,
-              selectedSubMenu: selectedSubMenu,
-              onSubMenuSelected: (subMenu) {
-                setState(() {
-                  selectedSubMenu = subMenu;
-                });
-              },
-            ),
+              // Sub-menu slider
+              SubMenuSlider(
+                subMenus: subMenuList,
+                selectedSubMenu: selectedSubMenu,
+                onSubMenuSelected: (subMenu) {
+                  setState(() {
+                    selectedSubMenu = subMenu;
+                  });
+                },
+              ),
 
-            // Product grid (scrollable)
-            Expanded(
-              child: ProductGrid(products: filteredProducts),
-            ),
-          ],
+              // Product grid (scrollable)
+              Expanded(
+                child: ProductGrid(products: filteredProducts),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: CheckoutButton(
-        isReservation: widget.isReservation,
-        reservationData: widget.reservationData,
-        isDineIn: widget.isDineIn,
-        tableNumber: widget.tableNumber,
+        floatingActionButton: CheckoutButton(
+          isReservation: widget.isReservation,
+          reservationData: widget.reservationData,
+          isDineIn: widget.isDineIn,
+          tableNumber: widget.tableNumber,
+        ),
       ),
     );
   }

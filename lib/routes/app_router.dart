@@ -26,17 +26,18 @@ import '../widgets/payment/payment_type_widget.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
+  static final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+
   static GoRouter getRouter() {
     return GoRouter(
+      navigatorKey: _rootNavigatorKey,
       initialLocation: '/',
       routes: [
-        // Existing routes (home, cart, etc.)
+        // Auth routes
         GoRoute(
           path: '/',
           builder: (context, state) => const AuthRedirectPage(),
         ),
-
-        // auth routes
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
@@ -46,27 +47,29 @@ class AppRouter {
           builder: (context, state) => const RegisterScreen(),
         ),
 
-
-
-        // main routes
+        // Main navigation route
         GoRoute(
           path: '/main',
           builder: (context, state) => const MainNavigationBar(),
         ),
+
+        // Other routes that should have proper back navigation
         GoRoute(
           path: '/menu',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const MenuScreen(),
         ),
+
         GoRoute(
           path: '/qrscanner',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const QRScanner(),
         ),
-
-
 
         // Product detail route
         GoRoute(
           path: '/product/:id',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final productId = state.pathParameters['id']!;
             final productService = ProductService();
@@ -102,48 +105,27 @@ class AppRouter {
           },
         ),
 
-        // GoRoute(
-        //   path: '/product/:id',
-        //   builder: (context, state) {
-        //     final productId = state.pathParameters['id']!;
-        //     final product = ProductData.getProductById(productId);
-        //
-        //     if (product == null) {
-        //       return Scaffold(
-        //         appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
-        //         body: const Center(child: Text("Produk tidak ditemukan.")),
-        //       );
-        //     }
-        //
-        //     return ProductDetailScreen(product: product);
-        //   },
-        // ),
-        // GoRoute(
-        //   path: '/cart',
-        //   builder: (context, state) => const CartScreen(),
-        // ),
-
-
-
-        //   profile routes
+        // Profile routes
         GoRoute(
           path: '/favorite',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const FavoritePage(),
         ),
         GoRoute(
           path: '/notification',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const NotificationPage(),
         ),
         GoRoute(
           path: '/settings',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const AccountSettingsPage(),
         ),
 
-
-
-        // Checkout route
+        // Cart route
         GoRoute(
           path: '/cart',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return CartScreen(
@@ -154,22 +136,11 @@ class AppRouter {
             );
           },
         ),
-        // GoRoute(
-        //   path: '/checkout',
-        //   builder: (context, state) {
-        //     final extra = state.extra as Map<String, dynamic>?;
-        //     return CheckoutPage(
-        //       isReservation: extra?['isReservation'] ?? false,
-        //       reservationData: extra?['reservationData'],
-        //     );
-        //   },
-        // ),
-        // GoRoute(
-        //   path: '/checkout',
-        //   builder: (context, state) => const CheckoutPage(),
-        // ),
+
+        // Checkout route
         GoRoute(
           path: '/checkout',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return CheckoutPage(
@@ -184,23 +155,23 @@ class AppRouter {
         // Payment method selection page
         GoRoute(
           path: '/paymentMethod',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const PaymentMethodScreen(),
         ),
 
         GoRoute(
           path: '/voucher',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            // Ambil parameter dari GoRouter
             final appliedVoucherCode = state.extra as String?;
             return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
           },
         ),
 
-
-
         // Payment confirmation page
         GoRoute(
           path: '/paymentConfirmation',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
             final Map<String, dynamic> extras = state.extra as Map<String, dynamic>;
 
@@ -215,10 +186,8 @@ class AppRouter {
               discount: extras['discount'] as int,
               total: extras['total'] as int,
               voucherCode: extras['voucherCode'] as String?,
-              // orderTime: extras['orderTime'] as DateTime,
               orderId: extras['orderId'] as String,
               id: extras['id'] as String,
-              // New parameters for reservation and payment type support
               userId: extras['userId'] as String?,
               userName: extras['userName'] as String?,
               paymentType: extras['paymentType'] as PaymentType?,
@@ -235,8 +204,9 @@ class AppRouter {
         // Order tracking page
         GoRoute(
           path: '/orderDetail',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            final id = state.extra as String; // Ambil ID-nya
+            final id = state.extra as String;
             return TrackingDetailOrderScreen(id: id);
           },
         ),
@@ -244,16 +214,17 @@ class AppRouter {
         // Order history page
         GoRoute(
           path: '/history',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const OrderHistoryScreen(),
         ),
 
-      //   Reservation
+        // Reservation
         GoRoute(
           path: '/reservation',
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const ReservationScreen(),
         ),
       ],
-      navigatorKey: GlobalKey<NavigatorState>(),
     );
   }
 }

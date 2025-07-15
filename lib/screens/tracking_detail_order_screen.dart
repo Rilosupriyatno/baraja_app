@@ -1,5 +1,6 @@
 import 'package:baraja_app/screens/payment_detail_screen.dart';
 import 'package:baraja_app/services/rating_service.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -341,96 +342,103 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Detail Pesanan'),
-      body: isLoading
-          ? TrackingStatesWidget.buildLoadingState(statusColor: statusColor)
-          : errorMessage != null
-          ? TrackingStatesWidget.buildErrorState(
-        errorMessage: errorMessage,
-        statusColor: statusColor,
-        onRetry: _refreshData,
-      )
-          : FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Coffee Animation
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.white,
-                        child: const CoffeeAnimationWidget(),
-                      ),
-                    ),
-
-                    // Status Section
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.white,
-                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                        child: StatusSectionWidget(
-                          orderStatus: orderStatus,
-                          statusColor: statusColor,
-                          statusIcon: statusIcon,
-                          pulseAnimation: _pulseAnimation,
-                          orderData: orderData, // Add this line
-                        ),
-                      ),
-                    ),
-
-                    // Order Details
-                    if (orderData != null)
+    return BaseScreenWrapper(
+      canPop: false,
+      customBackRoute: '/history',
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: const ClassicAppBar(
+          title: 'Detail Pesanan',
+          customBackRoute: '/history',
+        ),
+        body: isLoading
+            ? TrackingStatesWidget.buildLoadingState(statusColor: statusColor)
+            : errorMessage != null
+            ? TrackingStatesWidget.buildErrorState(
+          errorMessage: errorMessage,
+          statusColor: statusColor,
+          onRetry: _refreshData,
+        )
+            : FadeTransition(
+          opacity: _fadeAnimation,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      // Coffee Animation
                       SlideTransition(
                         position: _slideAnimation,
                         child: Container(
                           width: double.infinity,
                           color: Colors.white,
-                          child: OrderDetailWidget(orderData: orderData!),
+                          child: const CoffeeAnimationWidget(),
                         ),
                       ),
 
-                    // Reservation Section
-                    if (orderData != null && orderData!['reservation'] != null)
+                      // Status Section
                       SlideTransition(
                         position: _slideAnimation,
-                        child: ReservationSectionWidget(orderData: orderData!),
+                        child: Container(
+                          width: double.infinity,
+                          color: Colors.white,
+                          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                          child: StatusSectionWidget(
+                            orderStatus: orderStatus,
+                            statusColor: statusColor,
+                            statusIcon: statusIcon,
+                            pulseAnimation: _pulseAnimation,
+                            orderData: orderData, // Add this line
+                          ),
+                        ),
                       ),
 
-                    // Rating Display
-                    if (existingRating != null)
-                      SlideTransition(
-                        position: _slideAnimation,
-                        child: RatingDisplayWidget(existingRating: existingRating!),
-                      ),
+                      // Order Details
+                      if (orderData != null)
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: Container(
+                            width: double.infinity,
+                            color: Colors.white,
+                            child: OrderDetailWidget(orderData: orderData!),
+                          ),
+                        ),
 
-                    // Rating Loading Indicator
-                    if (isLoadingRating)
-                      TrackingStatesWidget.buildRatingLoadingIndicator(statusColor: statusColor),
-                  ],
+                      // Reservation Section
+                      if (orderData != null && orderData!['reservation'] != null)
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: ReservationSectionWidget(orderData: orderData!),
+                        ),
+
+                      // Rating Display
+                      if (existingRating != null)
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: RatingDisplayWidget(existingRating: existingRating!),
+                        ),
+
+                      // Rating Loading Indicator
+                      if (isLoadingRating)
+                        TrackingStatesWidget.buildRatingLoadingIndicator(statusColor: statusColor),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Action Button - Fixed at bottom
-            ActionButtonWidget(
-              orderData: orderData,
-              existingRating: existingRating,
-              hasPaymentDetails: _hasPaymentDetails,
-              isLoadingRating: isLoadingRating,
-              onNavigateToPayment: _navigateToPaymentDetails,
-              onNavigateToRating: _navigateToRating,
-            ),
-          ],
+              // Action Button - Fixed at bottom
+              ActionButtonWidget(
+                orderData: orderData,
+                existingRating: existingRating,
+                hasPaymentDetails: _hasPaymentDetails,
+                isLoadingRating: isLoadingRating,
+                onNavigateToPayment: _navigateToPaymentDetails,
+                onNavigateToRating: _navigateToRating,
+              ),
+            ],
+          ),
         ),
       ),
     );

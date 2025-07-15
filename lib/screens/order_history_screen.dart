@@ -1,4 +1,5 @@
 import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:baraja_app/widgets/utils/title_app_bar.dart';
 // import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +70,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BaseScreenWrapper(
+        canPop: false,
+        customBackRoute: '/main',
+        child: Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
@@ -135,7 +139,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildOrdersList({required bool isCompleted}) {
