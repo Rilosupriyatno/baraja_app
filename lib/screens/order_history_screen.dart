@@ -74,72 +74,72 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
         canPop: false,
         customBackRoute: '/main',
         child: Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const TitleAppBar(title: 'History'),
-            Material(
-              color: Colors.white,
-              child: TabBar(
-                controller: _tabController,
-                labelColor: Colors.black,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: AppTheme.primaryColor,
-                tabs: const [
-                  Tab(text: 'Process'),
-                  Tab(text: 'Done'),
-                ],
-              ),
+          backgroundColor: Colors.white,
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const TitleAppBar(title: 'History'),
+                Material(
+                  color: Colors.white,
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: Colors.black,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: AppTheme.primaryColor,
+                    tabs: const [
+                      Tab(text: 'Process'),
+                      Tab(text: 'Done'),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: Colors.grey[400],
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage.isNotEmpty
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _fetchOrderHistory,
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _fetchOrderHistory,
-              child: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchOrderHistory,
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            // Tab 1: Process (Ongoing orders)
-            _buildOrdersList(isCompleted: false),
+          )
+              : RefreshIndicator(
+            onRefresh: _fetchOrderHistory,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Process (Ongoing orders)
+                _buildOrdersList(isCompleted: false),
 
-            // Tab 2: Done (Completed orders)
-            _buildOrdersList(isCompleted: true),
-          ],
-        ),
-      ),
-    ));
+                // Tab 2: Done (Completed orders)
+                _buildOrdersList(isCompleted: true),
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildOrdersList({required bool isCompleted}) {
