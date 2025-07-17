@@ -1,6 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/cart_item.dart';
@@ -9,6 +10,7 @@ import '../../models/order_type.dart';
 import '../../models/reservation_data.dart';
 import '../../utils/currency_formatter.dart';
 import '../payment/payment_type_widget.dart';
+import '../payment_detail/components/qr_code_components.dart';
 import 'payment_status_card.dart';
 import 'payment_instructions.dart';
 
@@ -67,6 +69,8 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   bool _apiCallCompleted = false;
   String? _errorMessage;
   Map<String, dynamic>? _paymentData;
+  String? _qrCodeUrl;
+
 
   final ConfirmService _confirmService = ConfirmService();
 
@@ -97,6 +101,19 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
           _apiCallCompleted = true;
           _paymentData = result.data;
           _errorMessage = null;
+
+          final actions = _paymentData?['actions'] as List<dynamic>?;
+          if (actions != null && actions.isNotEmpty) {
+            for (var action in actions) {
+              if (action['name'] == 'generate-qr-code') {
+                _qrCodeUrl = action['url'];
+                break;
+              }
+            }
+          }
+
+          print('Payment data: ${_paymentData.toString()}');
+          print('QR Code URL: $_qrCodeUrl');
         } else {
           _apiCallCompleted = false;
           _errorMessage = result.message;
@@ -117,6 +134,48 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
         _isLoading = false;
         _errorMessage = 'Terjadi kesalahan yang tidak terduga: ${error.toString()}';
       });
+    }
+  }
+
+  /// Convert data URL (base64) to Uint8List
+  Uint8List? _dataUrlToBytes(String dataUrl) {
+    try {
+      final base64Str = dataUrl.split(',').last;
+      return base64Decode(base64Str);
+    } catch (e) {
+      print('Error decoding data URL: $e');
+      return null;
+    }
+  }
+
+  /// Widget to display QR image from either data URL or HTTP URL
+  Widget _buildQRCodeImage(String url) {
+    if (url.startsWith('data:image')) {
+      final bytes = _dataUrlToBytes(url);
+      if (bytes != null) {
+        return Image.memory(
+          bytes,
+          width: 200,
+          height: 200,
+          fit: BoxFit.contain,
+        );
+      } else {
+        return const QRCodeError();
+      }
+    } else {
+      return Image.network(
+        url,
+        width: 200,
+        height: 200,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const QRCodeError();
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const QRCodeLoading();
+        },
+      );
     }
   }
 
@@ -379,13 +438,9 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.withOpacity(0.3)),
             ),
-            child: QrImageView(
-              data: widget.order.id,
-              version: QrVersions.auto,
-              size: 200.0,
-              foregroundColor: Colors.black,
-              backgroundColor: Colors.white,
-            ),
+            child: _qrCodeUrl != null
+                ? _buildQRCodeImage(_qrCodeUrl!)
+                : const QRCodeError(),
           ),
           const SizedBox(height: 16),
           Text(

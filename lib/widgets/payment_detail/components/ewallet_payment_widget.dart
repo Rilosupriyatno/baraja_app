@@ -17,6 +17,7 @@ class EWalletPaymentWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // print('QRString: $qrString');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -41,6 +42,7 @@ class EWalletPaymentWidget extends StatelessWidget {
         if (method?.toLowerCase() == 'qris' && qrString != null) ...[
           _buildQRISSection(qrString!),
         ]
+
         // For other e-wallet methods (non-QRIS)
         else if (qrString != null) ...[
           _buildEWalletQRSection(qrString!),
@@ -99,28 +101,22 @@ class EWalletPaymentWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.qr_code_rounded,
-                    size: 60,
-                    color: Color(0xFF8E8E93),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'QR Code',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF8E8E93),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                qrString,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Center(
+                  child: Icon(Icons.broken_image, size: 48, color: Colors.red),
+                ),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
               ),
             ),
           ),
+
 
           const SizedBox(height: 16),
 

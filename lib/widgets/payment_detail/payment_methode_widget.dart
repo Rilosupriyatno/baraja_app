@@ -5,11 +5,11 @@ import 'components/cash_payment_widget.dart';
 import 'components/ewallet_payment_widget.dart';
 import 'components/generic_payment_widget.dart';
 
-class PaymentMethodWidget extends StatelessWidget {
+class PaymentMethodDetail extends StatelessWidget {
   final Map<String, dynamic> paymentData;
   final Function(String, String) onCopyToClipboard;
 
-  const PaymentMethodWidget({
+  const PaymentMethodDetail({
     super.key,
     required this.paymentData,
     required this.onCopyToClipboard,
@@ -18,7 +18,6 @@ class PaymentMethodWidget extends StatelessWidget {
   Widget _buildPaymentMethodCard() {
     final method = paymentData['method'];
     final vaNumbers = paymentData['va_numbers'] as List<dynamic>?;
-    final qrString = paymentData['qr_string'] ?? paymentData['raw_response']?['qr_string'];
     final deeplinkUrl = paymentData['deeplink_redirect_url'];
 
     // Get QR code URL from actions
@@ -32,6 +31,7 @@ class PaymentMethodWidget extends StatelessWidget {
         }
       }
     }
+    // print('QR Code URL: $qrCodeUrl');
 
     return Container(
       width: double.infinity,
@@ -111,7 +111,6 @@ class PaymentMethodWidget extends StatelessWidget {
             _buildPaymentMethodContent(
               method,
               vaNumbers,
-              qrString,
               deeplinkUrl,
               qrCodeUrl,
             ),
@@ -124,7 +123,6 @@ class PaymentMethodWidget extends StatelessWidget {
   Widget _buildPaymentMethodContent(
       String? method,
       List<dynamic>? vaNumbers,
-      String? qrString,
       String? deeplinkUrl,
       String? qrCodeUrl,
       ) {
@@ -151,10 +149,10 @@ class PaymentMethodWidget extends StatelessWidget {
       );
     }
     // E-wallet or QRIS Section
-    else if (qrString != null || deeplinkUrl != null) {
+    else if (qrCodeUrl != null || deeplinkUrl != null) {
       return EWalletPaymentWidget(
         method: method,
-        qrString: qrString,
+        qrString: qrCodeUrl,
         deeplinkUrl: deeplinkUrl,
         onCopyToClipboard: onCopyToClipboard,
       );
