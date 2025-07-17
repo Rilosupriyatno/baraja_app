@@ -177,61 +177,61 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                         ),
 
                         // Info section untuk toppings dan addons
-                        if (product.toppings != null && product.toppings!.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Icon(Icons.add_circle_outline,
-                                  color: primaryColor,
-                                  size: 20
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Tambahan Topping Tersedia',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${product.toppings!.length} pilihan topping tersedia',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-
-                        if (product.addons != null && product.addons!.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Icon(Icons.tune,
-                                  color: primaryColor,
-                                  size: 20
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Opsi Tambahan Tersedia',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${product.addons!.length} kategori tambahan tersedia',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                        // if (product.toppings != null && product.toppings!.isNotEmpty) ...[
+                        //   const SizedBox(height: 24),
+                        //   Row(
+                        //     children: [
+                        //       Icon(Icons.add_circle_outline,
+                        //           color: primaryColor,
+                        //           size: 20
+                        //       ),
+                        //       const SizedBox(width: 8),
+                        //       const Text(
+                        //         'Tambahan Topping Tersedia',
+                        //         style: TextStyle(
+                        //           fontSize: 14,
+                        //           fontWeight: FontWeight.w500,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        //   const SizedBox(height: 4),
+                        //   Text(
+                        //     '${product.toppings!.length} pilihan topping tersedia',
+                        //     style: TextStyle(
+                        //       fontSize: 12,
+                        //       color: Colors.grey[600],
+                        //     ),
+                        //   ),
+                        // ],
+                        //
+                        // if (product.addons != null && product.addons!.isNotEmpty) ...[
+                        //   const SizedBox(height: 16),
+                        //   Row(
+                        //     children: [
+                        //       Icon(Icons.tune,
+                        //           color: primaryColor,
+                        //           size: 20
+                        //       ),
+                        //       const SizedBox(width: 8),
+                        //       const Text(
+                        //         'Opsi Tambahan Tersedia',
+                        //         style: TextStyle(
+                        //           fontSize: 14,
+                        //           fontWeight: FontWeight.w500,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        //   const SizedBox(height: 4),
+                        //   Text(
+                        //     '${product.addons!.length} kategori tambahan tersedia',
+                        //     style: TextStyle(
+                        //       fontSize: 12,
+                        //       color: Colors.grey[600],
+                        //     ),
+                        //   ),
+                        // ],
                       ],
                     ),
                   ),
