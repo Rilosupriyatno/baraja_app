@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'qr_code_components.dart';
 
@@ -13,8 +15,51 @@ class CashPaymentWidget extends StatelessWidget {
     required this.onCopyToClipboard,
   });
 
+  /// Convert data URL (base64) to Uint8List
+  Uint8List? _dataUrlToBytes(String dataUrl) {
+    try {
+      final base64Str = dataUrl.split(',').last;
+      return base64Decode(base64Str);
+    } catch (e) {
+      print('Error decoding data URL: $e');
+      return null;
+    }
+  }
+
+  /// Widget to display QR image from either data URL or HTTP URL
+  Widget _buildQRCodeImage(String url) {
+    if (url.startsWith('data:image')) {
+      final bytes = _dataUrlToBytes(url);
+      if (bytes != null) {
+        return Image.memory(
+          bytes,
+          width: 200,
+          height: 200,
+          fit: BoxFit.contain,
+        );
+      } else {
+        return const QRCodeError();
+      }
+    } else {
+      return Image.network(
+        url,
+        width: 200,
+        height: 200,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const QRCodeError();
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const QRCodeLoading();
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('QR Code URL: $qrCodeUrl');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -85,19 +130,7 @@ class CashPaymentWidget extends StatelessWidget {
                   ],
                 ),
                 child: qrCodeUrl != null
-                    ? Image.network(
-                  qrCodeUrl!,
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const QRCodeError();
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const QRCodeLoading();
-                  },
-                )
+                    ? _buildQRCodeImage(qrCodeUrl!)
                     : const QRCodeError(),
               ),
 
@@ -105,7 +138,8 @@ class CashPaymentWidget extends StatelessWidget {
 
               // Order ID display
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFF007AFF).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -139,7 +173,8 @@ class CashPaymentWidget extends StatelessWidget {
                 onTap: () => onCopyToClipboard(orderId, 'ID Pesanan'),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: const Color(0xFF007AFF).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -168,7 +203,6 @@ class CashPaymentWidget extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(height: 12),
 
         // Instructions
