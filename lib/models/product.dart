@@ -5,6 +5,7 @@ class Product {
   final String name;
   final dynamic category;
   final String mainCategory; // Makanan atau Minuman
+  final String? subCategory; // Optional, bisa null jika tidak ada sub-kategori
   final String imageUrl;
   final double? originalPrice;
   final double? discountPrice;
@@ -21,6 +22,7 @@ class Product {
     required this.name,
     required this.category,
     required this.mainCategory,
+    this.subCategory,
     required this.imageUrl,
     required this.originalPrice,
     required this.discountPrice,

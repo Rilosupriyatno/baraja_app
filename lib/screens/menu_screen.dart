@@ -97,7 +97,51 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // Membuat map kategori dari produk berdasarkan mainCategory dan subCategory
+  // SOLUSI 1: Ubah fungsi _determineMainCategory untuk menerima Product object
+  String _determineMainCategory(Product product) {
+    // Prioritas 1: Gunakan mainCategory dari JSON jika ada
+    if (product.mainCategory.isNotEmpty) {
+      String mainCat = product.mainCategory.toLowerCase();
+      if (mainCat == 'minuman' || mainCat == 'minuman dingin' ||
+          mainCat.contains('drink') || mainCat.contains('coffee') ||
+          mainCat.contains('tea')) {
+        return 'Minuman';
+      } else if (mainCat == 'makanan' || mainCat.contains('food')) {
+        return 'Makanan';
+      }
+    }
+
+    // Prioritas 2: Gunakan category field jika mainCategory tidak membantu
+    String categoryName = '';
+    if (product.category is Map && product.category['name'] != null) {
+      categoryName = product.category['name'].toString();
+    } else if (product.category is String) {
+      categoryName = product.category;
+    }
+
+    // Klasifikasi berdasarkan nama kategori
+    if (categoryName.toLowerCase().contains('minuman') ||
+        categoryName.toLowerCase().contains('drink') ||
+        categoryName.toLowerCase().contains('coffee') ||
+        categoryName.toLowerCase().contains('tea')) {
+      return 'Minuman';
+    } else if (categoryName.toLowerCase().contains('makanan') ||
+        categoryName.toLowerCase().contains('food')) {
+      return 'Makanan';
+    }
+
+    // Prioritas 3: Klasifikasi berdasarkan nama produk
+    String productName = product.name.toLowerCase();
+    if (productName.contains('es ') || productName.contains('teh ') ||
+        productName.contains('kopi ') || productName.contains('jus ') ||
+        productName.contains('minuman')) {
+      return 'Minuman';
+    }
+
+    return 'Makanan'; // Default fallback
+  }
+
+// UPDATE: Fungsi _generateCategoriesMap menggunakan SOLUSI 1
   void _generateCategoriesMap(List<Product> products) {
     try {
       // Temporary map untuk menyimpan kategori yang unik
@@ -105,8 +149,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
       // Kumpulkan semua subCategory berdasarkan mainCategory
       for (var product in products) {
-        // Tentukan mainCategory berdasarkan category dari backend
-        String mainCategory = _determineMainCategory(product.category);
+        // Gunakan fungsi yang sudah diperbaiki - langsung pass product object
+        String mainCategory = _determineMainCategory(product);
 
         // Ambil subCategory dari product service response
         String subCategory = _extractSubCategory(product);
@@ -138,25 +182,26 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // Menentukan mainCategory berdasarkan category dari backend
-  String _determineMainCategory(dynamic category) {
-    String categoryName = '';
+// UPDATE: Fungsi _getFilteredProducts juga menggunakan product object
+  List<Product> _getFilteredProducts() {
+    return _allProducts.where((product) {
+      // Gunakan fungsi yang sudah diperbaiki
+      String productMainCategory = _determineMainCategory(product);
 
-    if (category is Map && category['name'] != null) {
-      categoryName = category['name'].toString();
-    } else if (category is String) {
-      categoryName = category;
-    }
+      // Cek main category
+      if (productMainCategory != selectedMenu) {
+        return false;
+      }
 
-    // Klasifikasi berdasarkan nama kategori
-    if (categoryName.toLowerCase().contains('minuman') ||
-        categoryName.toLowerCase().contains('drink') ||
-        categoryName.toLowerCase().contains('coffee') ||
-        categoryName.toLowerCase().contains('tea')) {
-      return 'Minuman';
-    } else {
-      return 'Makanan';
-    }
+      // Jika selectedSubMenu kosong, tampilkan semua produk dari mainCategory
+      if (selectedSubMenu.isEmpty) {
+        return true;
+      }
+
+      // Cek sub category
+      String productSubCategory = _extractSubCategory(product);
+      return productSubCategory == selectedSubMenu;
+    }).toList();
   }
 
   // Ekstrak subCategory dari product
@@ -196,27 +241,6 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // Filter produk berdasarkan kategori yang dipilih
-  List<Product> _getFilteredProducts() {
-    return _allProducts.where((product) {
-      // Tentukan mainCategory produk
-      String productMainCategory = _determineMainCategory(product.category);
-
-      // Cek main category
-      if (productMainCategory != selectedMenu) {
-        return false;
-      }
-
-      // Jika selectedSubMenu kosong, tampilkan semua produk dari mainCategory
-      if (selectedSubMenu.isEmpty) {
-        return true;
-      }
-
-      // Cek sub category
-      String productSubCategory = _extractSubCategory(product);
-      return productSubCategory == selectedSubMenu;
-    }).toList();
-  }
 
   Widget _buildReservationInfo() {
     if (!widget.isReservation || widget.reservationData == null) {
