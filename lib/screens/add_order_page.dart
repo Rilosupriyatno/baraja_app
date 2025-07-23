@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
@@ -153,7 +152,7 @@ class AddOrderPageState extends State<AddOrderPage> {
     final Product product = widget.product;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Tambah Pesanan'),
         backgroundColor: Colors.white,
@@ -163,319 +162,259 @@ class AddOrderPageState extends State<AddOrderPage> {
       ),
       body: Column(
         children: [
-          // Product summary card
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Product image
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: product.imageColor ?? Colors.grey.shade300,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: product.imageUrl.isNotEmpty
-                      ? Image.network(
-                    product.imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/product_default_image.jpeg',
-                        fit: BoxFit.cover,
-                      );
-                    },
-                  )
-                      : Image.asset(
-                    'assets/images/product_default_image.jpeg',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        formatCurrency((product.discountPrice ??
-                            product.originalPrice ??
-                            0)
-                            .toInt()),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Content
+          // Scrollable content
           Expanded(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Quantity section
+                  // Product image and basic info
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
                       children: [
-                        const Text(
-                          'Jumlah',
+                        // Product image
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: product.imageColor ?? Colors.grey.shade300,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: product.imageUrl.isNotEmpty
+                              ? Image.network(
+                            product.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/product_default_image.jpeg',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                              : Image.asset(
+                            'assets/images/product_default_image.jpeg',
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Product name and price
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          formatCurrency((product.discountPrice ??
+                              product.originalPrice ??
+                              0)
+                              .toInt()),
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
+                            color: primaryColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                onPressed: quantity > 1
-                                    ? () => updateQuantity(quantity - 1)
-                                    : null,
-                                icon: const Icon(Icons.remove),
-                                iconSize: 18,
-                                color: quantity > 1 ? primaryColor : Colors.grey,
+
+                        // Rating (if available)
+                        const SizedBox(height: 8),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.star, color: Colors.orange, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              '4.8 (21) • 3 ratings and reviews',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
                               ),
-                              Container(
-                                width: 60,
-                                height: 40,
-                                alignment: Alignment.center,
-                                child: TextField(
-                                  controller: quantityController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(3),
-                                  ],
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                  onChanged: updateQuantityFromInput,
-                                  onSubmitted: (value) {
-                                    updateQuantityFromInput(value);
-                                    // Remove focus after submitting
-                                    FocusScope.of(context).unfocus();
-                                  },
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => updateQuantity(quantity + 1),
-                                icon: const Icon(Icons.add),
-                                iconSize: 18,
-                                color: primaryColor,
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
 
-                  // Toppings section
-                  if (product.toppings != null && product.toppings!.isNotEmpty) ...[
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.add_circle_outline,
-                                  color: primaryColor,
-                                  size: 20
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Tambah Topping (Opsional)',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ...product.toppings!.map((topping) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: CheckboxListTile(
-                              title: Text(topping.name),
-                              subtitle: Text(
-                                formatCurrency(topping.price.toInt()),
-                                style: TextStyle(color: primaryColor),
-                              ),
-                              value: selectedToppings.contains(topping),
-                              activeColor: primaryColor,
-                              controlAffinity: ListTileControlAffinity.leading,
-                              contentPadding: EdgeInsets.zero,
-                              onChanged: (_) => toggleTopping(topping),
-                            ),
-                          )),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Addons section
-                  if (product.addons != null && product.addons!.isNotEmpty) ...[
-                    ...product.addons!.map((addon) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.tune,
-                                  color: primaryColor,
-                                  size: 20
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                addon.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ...addon.options.map((option) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: RadioListTile<AddonOption>(
-                              title: Text(option.label),
-                              subtitle: Text(
-                                formatCurrency(option.price.toInt()),
-                                style: TextStyle(color: primaryColor),
-                              ),
-                              value: option,
-                              groupValue: selectedAddonOptions[addon.id],
-                              activeColor: primaryColor,
-                              contentPadding: EdgeInsets.zero,
-                              onChanged: (value) =>
-                                  selectAddonOption(addon.id, value),
-                            ),
-                          )),
-                        ],
-                      ),
-                    )),
-                  ],
-
-                  // Notes section
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+                  // Content with padding
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Divider(),
+                        const SizedBox(height: 16),
+
+                        // Quantity selector - moved here
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(Icons.note_alt_outlined,
-                                color: primaryColor,
-                                size: 20
-                            ),
-                            const SizedBox(width: 8),
                             const Text(
-                              'Catatan (Opsional)',
+                              'Jumlah Pesanan',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: quantity > 1
+                                        ? () => updateQuantity(quantity - 1)
+                                        : null,
+                                    icon: const Icon(Icons.remove),
+                                    iconSize: 18,
+                                    color: quantity > 1 ? primaryColor : Colors.grey,
+                                  ),
+                                  Container(
+                                    width: 50,
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      quantity.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => updateQuantity(quantity + 1),
+                                    icon: const Icon(Icons.add),
+                                    iconSize: 18,
+                                    color: primaryColor,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Customize section
+                        // const Text(
+                        //   'Customize',
+                        //   style: TextStyle(
+                        //     fontSize: 18,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 16),
+
+                        // Addons section
+                        if (product.addons != null && product.addons!.isNotEmpty) ...[
+                          ...product.addons!.map((addon) => Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  addon.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: addon.options.map((option) {
+                                    bool isSelected = selectedAddonOptions[addon.id] == option;
+                                    return GestureDetector(
+                                      onTap: () => selectAddonOption(addon.id, option),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? primaryColor : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: isSelected ? primaryColor : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          option.label,
+                                          style: TextStyle(
+                                            color: isSelected ? Colors.white : Colors.black,
+                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+
+                        // Toppings section
+                        if (product.toppings != null && product.toppings!.isNotEmpty) ...[
+                          const Text(
+                            'Extra Toppings',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...product.toppings!.map((topping) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: selectedToppings.contains(topping),
+                                  onChanged: (_) => toggleTopping(topping),
+                                  activeColor: primaryColor,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    topping.name,
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                                Text(
+                                  formatCurrency(topping.price.toInt()),
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // Notes section
+                        const Text(
+                          'Catatan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: notesController,
                           decoration: InputDecoration(
-                            hintText: 'Tambahkan catatan khusus untuk pesanan ini...',
+                            hintText: 'Tambahkan catatan...',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -484,10 +423,7 @@ class AddOrderPageState extends State<AddOrderPage> {
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(color: primaryColor),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
+                            contentPadding: const EdgeInsets.all(12),
                           ),
                           maxLines: 3,
                           textInputAction: TextInputAction.done,
@@ -495,8 +431,6 @@ class AddOrderPageState extends State<AddOrderPage> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 100), // Space for bottom button
                 ],
               ),
             ),
@@ -504,9 +438,9 @@ class AddOrderPageState extends State<AddOrderPage> {
         ],
       ),
 
-      // Bottom button
+      // Bottom section - simplified, only total and button
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -519,48 +453,48 @@ class AddOrderPageState extends State<AddOrderPage> {
           ],
         ),
         child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Total Pesanan:',
+                    'Total',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: Colors.grey,
                     ),
                   ),
                   Text(
                     formatCurrency(calculateTotal().toInt()),
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: primaryColor,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
                   ),
-                  onPressed: addToCart,
-                  child: Text(
-                    'Tambah ke Keranjang • ${formatCurrency(calculateTotal().toInt())}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                onPressed: addToCart,
+                child: const Text(
+                  'Tambah Order',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

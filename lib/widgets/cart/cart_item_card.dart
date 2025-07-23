@@ -172,7 +172,7 @@ class CartItemCard extends StatelessWidget {
               if (item.addons.isNotEmpty) ...[
                 const Row(
                   children: [
-                    Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
+                    // Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
                     SizedBox(width: 4),
                     Text(
                       'Tambahan:',
@@ -234,7 +234,7 @@ class CartItemCard extends StatelessWidget {
                   (item.toppings is List && (item.toppings as List).isNotEmpty)) ...[
                 const Row(
                   children: [
-                    Icon(Icons.cake, size: 16, color: Colors.deepOrange),
+                    // Icon(Icons.cake, size: 16, color: Colors.deepOrange),
                     SizedBox(width: 4),
                     Text(
                       'Topping:',
