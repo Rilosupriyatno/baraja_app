@@ -205,10 +205,11 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   // Ekstrak subCategory dari product
+  // Ekstrak subCategory dari product
   String _extractSubCategory(Product product) {
-    // Prioritas: gunakan subCategory dari backend response jika ada
-    if (product.mainCategory.isNotEmpty && product.mainCategory != 'Makanan' && product.mainCategory != 'Minuman') {
-      return product.mainCategory; // mainCategory sudah diisi dengan subCategory di service
+    // ✅ FIXED: Prioritas pertama gunakan subCategory yang sudah diset di service
+    if (product.subCategory != null && product.subCategory!.isNotEmpty) {
+      return product.subCategory!;
     }
 
     // Fallback: gunakan category name

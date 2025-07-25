@@ -106,14 +106,33 @@ class ProductService {
               }
             }
 
-            // Determine mainCategory berdasarkan category
-            String mainCategory = 'Makanan';
+            // ✅ FIXED: Determine mainCategory berdasarkan category, JANGAN override dengan subCategory
+            String mainCategory = 'Makanan'; // Default
             if (rawCategory is Map && rawCategory['name'] != null) {
-              String categoryName = rawCategory['name'];
-              if (categoryName.toLowerCase().contains('minuman') ||
-                  categoryName.toLowerCase().contains('drink') ||
-                  categoryName.toLowerCase().contains('coffee') ||
-                  categoryName.toLowerCase().contains('tea')) {
+              String categoryName = rawCategory['name'].toLowerCase();
+              if (categoryName.contains('minuman') ||
+                  categoryName.contains('drink') ||
+                  categoryName.contains('coffee') ||
+                  categoryName.contains('tea') ||
+                  categoryName.contains('beverage')) {
+                mainCategory = 'Minuman';
+              } else if (categoryName.contains('makanan') ||
+                  categoryName.contains('food') ||
+                  categoryName.contains('meal')) {
+                mainCategory = 'Makanan';
+              }
+            }
+
+            // Jika masih default, coba cek dari subCategory
+            if (mainCategory == 'Makanan' && subCategoryName.isNotEmpty) {
+              String subCatLower = subCategoryName.toLowerCase();
+              if (subCatLower.contains('minuman') ||
+                  subCatLower.contains('drink') ||
+                  subCatLower.contains('coffee') ||
+                  subCatLower.contains('tea') ||
+                  subCatLower.contains('espresso') ||
+                  subCatLower.contains('latte') ||
+                  subCatLower.contains('cappuccino')) {
                 mainCategory = 'Minuman';
               }
             }
@@ -122,7 +141,8 @@ class ProductService {
               id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
               category: rawCategory, // Pass the full category object
-              mainCategory: subCategoryName, // Use subCategory as mainCategory for filtering
+              mainCategory: mainCategory, // ✅ FIXED: Gunakan mainCategory yang benar
+              subCategory: subCategoryName, // Set subCategory secara terpisah
               imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
