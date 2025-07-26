@@ -1,5 +1,5 @@
 import 'package:baraja_app/theme/app_theme.dart';
-import 'package:baraja_app/widgets/payment/payment_type_widget.dart';
+import 'package:baraja_app/widgets/checkout/payment_type_widget.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
 

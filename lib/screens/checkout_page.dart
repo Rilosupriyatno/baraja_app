@@ -9,12 +9,12 @@ import '../models/order_type.dart';
 import '../models/reservation_data.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
-import '../widgets/payment/cart_item_widget.dart';
-import '../widgets/payment/checkout_summary.dart';
-import '../widgets/payment/order_type_selector.dart';
-import '../widgets/payment/payment_method_widget.dart';
-import '../widgets/payment/payment_type_widget.dart';
-import '../widgets/payment/voucher_widget.dart';
+import '../widgets/checkout/cart_item_widget.dart';
+import '../widgets/checkout/checkout_summary.dart';
+import '../widgets/checkout/order_type_selector.dart';
+import '../widgets/checkout/payment_method_widget.dart';
+import '../widgets/checkout/payment_type_widget.dart';
+import '../widgets/checkout/voucher_widget.dart';
 
 // Enum untuk tipe reservasi
 enum ReservationType { nonBlocking, blocking }
@@ -87,6 +87,170 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
   }
 
+  // Method untuk validasi dan menampilkan peringatan
+  void _showValidationWarning(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange.shade700,
+                size: 28,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Peringatan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.orange.shade700,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              ),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Method untuk validasi komprehensif
+  // Method untuk validasi komprehensif - Updated dengan validasi waktu pickup
+  Map<String, dynamic> _validateForm(CartProvider cartProvider) {
+    List<String> errors = [];
+
+    // Validasi keranjang kosong
+    if (cartProvider.items.isEmpty) {
+      errors.add('Keranjang belanja masih kosong');
+    }
+
+    // Skip validation untuk reservasi dan dine-in karena sudah pre-configured
+    if (!cartProvider.isReservation && !cartProvider.isDineIn) {
+      // Validasi berdasarkan tipe pesanan
+      switch (selectedOrderType) {
+        case OrderType.delivery:
+          if (deliveryAddress.trim().isEmpty) {
+            errors.add('Alamat pengantaran harus diisi');
+          } else if (deliveryAddress.trim().length < 10) {
+            errors.add('Alamat pengantaran terlalu singkat (minimal 10 karakter)');
+          }
+          break;
+
+        case OrderType.pickup:
+          if (pickupTime == null) {
+            errors.add('Waktu pengambilan harus dipilih');
+          } else {
+            // Validasi waktu pickup minimal 5 menit dari sekarang
+            if (!_isValidPickupTime(pickupTime!)) {
+              final minimumTime = _getMinimumPickupTime();
+              errors.add('Waktu pickup minimal ${_formatTime(minimumTime)} (5 menit dari sekarang)');
+            }
+          }
+          break;
+
+        case OrderType.dineIn:
+          if (tableNumber.trim().isEmpty) {
+            errors.add('Nomor meja harus diisi');
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+
+    // Validasi metode pembayaran
+    if (selectedPaymentMethod == null || selectedPaymentMethodName == null) {
+      errors.add('Metode pembayaran harus dipilih');
+    }
+
+    // Validasi khusus untuk reservasi
+    if (cartProvider.isReservation && cartProvider.reservationData != null) {
+      final reservationData = cartProvider.reservationData!;
+
+      // Validasi tipe reservasi untuk area A dan B
+      if (_shouldShowReservationType(reservationData.areaCode)) {
+        final int finalTotal = cartProvider.totalPrice - calculateDiscount(cartProvider.totalPrice);
+
+        // Jika memilih blocking tapi tidak memenuhi minimum
+        if (selectedReservationType == ReservationType.blocking &&
+            !_canSelectBlocking(reservationData.areaCode, finalTotal)) {
+          final minAmount = _getMinimumAmountForBlocking(reservationData.areaCode);
+          errors.add('Minimum pembelian Rp${_formatCurrency(minAmount)} untuk reservasi blocking di area ${reservationData.areaCode}');
+        }
+      }
+    }
+
+    return {
+      'isValid': errors.isEmpty,
+      'errors': errors,
+      'firstError': errors.isNotEmpty ? errors.first : null,
+    };
+  }
+
+// Helper method untuk mendapatkan waktu minimum pickup (5 menit dari sekarang)
+  TimeOfDay _getMinimumPickupTime() {
+    final now = DateTime.now();
+    final minimumTime = now.add(const Duration(minutes: 5));
+    return TimeOfDay.fromDateTime(minimumTime);
+  }
+
+// Helper method untuk mengecek apakah waktu pickup valid
+  bool _isValidPickupTime(TimeOfDay selectedTime) {
+    final now = DateTime.now();
+    final minimumTime = now.add(const Duration(minutes: 5));
+
+    // Convert TimeOfDay to DateTime untuk perbandingan
+    final selectedDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+
+    return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
+  }
+
+// Helper method untuk format waktu
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  // Helper method untuk format currency
+  String _formatCurrency(int amount) {
+    return amount.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]}.'
+    );
+  }
+
   // Calculate the discount amount based on the selected voucher
   int calculateDiscount(int subtotal) {
     if (selectedVoucherCode == null) return 0;
@@ -142,6 +306,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
     return selectedPaymentMethodName!;
   }
+
 
   // Widget untuk menampilkan info reservasi
   Widget _buildReservationInfo(ReservationData data) {
@@ -367,7 +532,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         Text(
                           canSelectBlocking
                               ? 'Meja tidak bisa digunakan customer lain sampai Anda datang'
-                              : 'Minimum pembelian Rp${minAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} untuk area ${data.areaCode}',
+                              : 'Minimum pembelian Rp${_formatCurrency(minAmount)} untuk area ${data.areaCode}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -396,7 +561,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tambahkan Rp${(minAmount - finalTotal).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} lagi untuk mengaktifkan opsi Blocking',
+                      'Tambahkan Rp${_formatCurrency(minAmount - finalTotal)} lagi untuk mengaktifkan opsi Blocking',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.orange.shade700,
@@ -520,6 +685,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+
                           // Reservation info at the top
                           if (cartProvider.isReservation && cartProvider.reservationData != null)
                             _buildReservationInfo(cartProvider.reservationData!),
@@ -654,7 +820,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             const SizedBox(height: 24),
                           ],
 
-                          // Metode Pembayaran
+                          // Metode Pembayaran dengan indikator
                           PaymentMethodWidget(
                             selectedMethod: displayedPaymentMethod,
                             onTap: () async {
@@ -716,30 +882,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   isReservation: cartProvider.isReservation,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   onCheckoutPressed: () async {
-                    // Validasi input berdasarkan tipe pesanan
-                    bool isValid = true;
-                    String errorMessage = '';
+                    // Validasi komprehensif menggunakan method baru
+                    final validationResult = _validateForm(cartProvider);
 
-                    // Skip validation untuk reservasi dan dine-in karena sudah pre-configured
-                    if (!cartProvider.isReservation && !cartProvider.isDineIn) {
-                      if (selectedOrderType == OrderType.delivery &&
-                          deliveryAddress.isEmpty) {
-                        isValid = false;
-                        errorMessage = 'Silakan masukkan alamat pengantaran';
-                      } else if (selectedOrderType == OrderType.pickup &&
-                          pickupTime == null) {
-                        isValid = false;
-                        errorMessage = 'Silakan pilih waktu pengambilan';
-                      }
-                    }
-
-                    if (selectedPaymentMethod == null) {
-                      isValid = false;
-                      errorMessage = 'Silakan pilih metode pembayaran';
-                    }
-
-                    if (!isValid) {
-                      print(errorMessage);
+                    if (!validationResult['isValid']) {
+                      _showValidationWarning(validationResult['firstError']);
                       return;
                     }
 
@@ -750,6 +897,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
                       amountToPay = downPaymentAmount;
                     }
+
                     // Tampilkan loading indicator
                     showDialog(
                       context: context,
