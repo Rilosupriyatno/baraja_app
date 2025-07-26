@@ -9,7 +9,7 @@ import '../../models/order.dart';
 import '../../models/order_type.dart';
 import '../../models/reservation_data.dart';
 import '../../utils/currency_formatter.dart';
-import '../payment/payment_type_widget.dart';
+import '../checkout/payment_type_widget.dart';
 import '../payment_detail/components/qr_code_components.dart';
 import 'payment_status_card.dart';
 import 'payment_instructions.dart';

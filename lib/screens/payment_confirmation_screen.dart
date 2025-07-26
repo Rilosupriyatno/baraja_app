@@ -8,7 +8,7 @@ import '../models/order_type.dart';
 import '../models/reservation_data.dart';
 import '../providers/order_provider.dart';
 import '../services/confirm_service.dart';
-import '../widgets/payment/payment_type_widget.dart';
+import '../widgets/checkout/payment_type_widget.dart';
 import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
 import '../widgets/payment_confirm/unified_payment_view.dart';

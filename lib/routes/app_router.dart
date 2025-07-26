@@ -22,7 +22,7 @@ import '../screens/register_screen.dart';
 import '../screens/tracking_detail_order_screen.dart';
 import '../screens/voucher_screen.dart';
 import '../services/product_service.dart';
-import '../widgets/payment/payment_type_widget.dart';
+import '../widgets/checkout/payment_type_widget.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
