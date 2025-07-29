@@ -4,16 +4,64 @@ class TimeSelector extends StatelessWidget {
   final TimeOfDay selectedTime;
   final Function(TimeOfDay) onTimeChanged;
   final VoidCallback selectTime;
+  final DateTime selectedDate; // Tambahkan parameter selectedDate
 
   const TimeSelector({
     super.key,
     required this.selectedTime,
     required this.onTimeChanged,
     required this.selectTime,
+    required this.selectedDate, // Required parameter
   });
+
+  // Method untuk mengecek apakah waktu yang dipilih valid (minimal 5 menit dari sekarang)
+  bool _isValidTime(TimeOfDay time, DateTime date) {
+    final DateTime now = DateTime.now();
+    final DateTime selectedDateTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    // Jika tanggal bukan hari ini, maka waktu apapun valid
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime selectedDateOnly = DateTime(date.year, date.month, date.day);
+
+    if (selectedDateOnly.isAfter(today)) {
+      return true;
+    }
+
+    // Jika tanggal adalah hari ini, cek apakah waktu minimal 5 menit dari sekarang
+    if (selectedDateOnly.isAtSameMomentAs(today)) {
+      final DateTime minimumTime = now.add(const Duration(minutes: 5));
+      return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
+    }
+
+    // Jika tanggal sudah lewat, tidak valid
+    return false;
+  }
+
+  // Method untuk mendapatkan waktu minimum yang bisa dipilih
+  String _getMinimumTimeText() {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime selectedDateOnly = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    if (selectedDateOnly.isAtSameMomentAs(today)) {
+      final DateTime minimumTime = now.add(const Duration(minutes: 5));
+      return '${minimumTime.hour.toString().padLeft(2, '0')}:${minimumTime.minute.toString().padLeft(2, '0')}';
+    }
+
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isTimeValid = _isValidTime(selectedTime, selectedDate);
+    final String minimumTimeText = _getMinimumTimeText();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -37,6 +85,20 @@ class TimeSelector extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+
+          // Tampilkan informasi waktu minimum jika diperlukan
+          if (minimumTimeText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Minimal jam $minimumTimeText (5 menit dari sekarang)',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.orange.shade700,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+
           const SizedBox(height: 16),
 
           // Time selector
@@ -44,9 +106,8 @@ class TimeSelector extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: isTimeValid ? Colors.black : Colors.grey.shade400,
                 borderRadius: BorderRadius.circular(8),
-
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -56,25 +117,23 @@ class TimeSelector extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // const Icon(Icons.keyboard_arrow_up, color: Colors.white),
                         Text(
                           selectedTime.hour.toString().padLeft(2, '0'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: isTimeValid ? Colors.white : Colors.white70,
                           ),
                         ),
-                        // const Icon(Icons.keyboard_arrow_down, color: Colors.white),
                       ],
                     ),
                   ),
-                  const Text(
+                  Text(
                     ' : ',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: isTimeValid ? Colors.white : Colors.white70,
                     ),
                   ),
                   InkWell(
@@ -82,16 +141,14 @@ class TimeSelector extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // const Icon(Icons.keyboard_arrow_up, color: Colors.white),
                         Text(
                           selectedTime.minute.toString().padLeft(2, '0'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: isTimeValid ? Colors.white : Colors.white70,
                           ),
                         ),
-                        // const Icon(Icons.keyboard_arrow_down, color: Colors.white),
                       ],
                     ),
                   ),
@@ -99,6 +156,42 @@ class TimeSelector extends StatelessWidget {
               ),
             ),
           ),
+
+          // Tampilkan peringatan jika waktu tidak valid
+          if (!isTimeValid) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.red.shade600,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      minimumTimeText.isNotEmpty
+                          ? 'Waktu harus minimal $minimumTimeText'
+                          : 'Waktu yang dipilih sudah terlewat',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 16),
         ],

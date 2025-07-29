@@ -37,6 +37,14 @@ class _DateSelectorState extends State<DateSelector> {
     });
   }
 
+  // Helper method to check if a date is in the past
+  bool _isPastDate(DateTime date) {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime compareDate = DateTime(date.year, date.month, date.day);
+    return compareDate.isBefore(today);
+  }
+
   // Menghasilkan daftar hari dalam bulan
   List<Widget> _generateDaysInMonth() {
     final DateTime firstDayOfMonth = DateTime(_displayedMonth.year, _displayedMonth.month, 1);
@@ -67,10 +75,11 @@ class _DateSelectorState extends State<DateSelector> {
       final bool isSelected = date.year == widget.selectedDate.year &&
           date.month == widget.selectedDate.month &&
           date.day == widget.selectedDate.day;
+      final bool isPast = _isPastDate(date);
 
       dayWidgets.add(
         GestureDetector(
-          onTap: () {
+          onTap: isPast ? null : () {
             widget.onDateChanged(date);
           },
           child: Container(
@@ -78,15 +87,25 @@ class _DateSelectorState extends State<DateSelector> {
             height: 36,
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.barajaPrimary.primaryColor : (isToday ? AppTheme.barajaPrimary.primaryColor.withOpacity(0.2) : null),
+              color: isPast
+                  ? Colors.grey.withOpacity(0.2)
+                  : isSelected
+                  ? AppTheme.barajaPrimary.primaryColor
+                  : (isToday ? AppTheme.barajaPrimary.primaryColor.withOpacity(0.2) : null),
               shape: BoxShape.circle,
-              border: isToday && !isSelected ? Border.all(color: AppTheme.barajaPrimary.primaryColor) : null,
+              border: isToday && !isSelected && !isPast
+                  ? Border.all(color: AppTheme.barajaPrimary.primaryColor)
+                  : null,
             ),
             child: Center(
               child: Text(
                 day.toString(),
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
+                  color: isPast
+                      ? Colors.grey.withOpacity(0.5)
+                      : isSelected
+                      ? Colors.white
+                      : Colors.black,
                   fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
                 ),
               ),

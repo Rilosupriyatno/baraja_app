@@ -35,10 +35,96 @@ class _ReservationScreenState extends State<ReservationScreen> {
   bool isCheckingAvailability = false;
   Map<String, dynamic>? availabilityResult;
 
+// Tambahkan method ini di dalam class _ReservationScreenState
+
   @override
   void initState() {
     super.initState();
     _loadAreas();
+
+    // Validasi tanggal yang dipilih
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime currentSelectedDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    if (currentSelectedDate.isBefore(today)) {
+      selectedDate = now;
+    }
+
+    // Validasi waktu yang dipilih untuk hari ini
+    if (currentSelectedDate.isAtSameMomentAs(today) && !_isValidTime(selectedTime, selectedDate)) {
+      final DateTime minimumTime = now.add(const Duration(minutes: 5));
+      selectedTime = TimeOfDay(hour: minimumTime.hour, minute: minimumTime.minute);
+    }
+  }
+
+// Method untuk validasi tanggal
+  bool _isValidReservationDate() {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime selectedDateOnly = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    return selectedDateOnly.isAfter(today) || selectedDateOnly.isAtSameMomentAs(today);
+  }
+
+// Update method _canMakeReservation untuk menambahkan validasi tanggal
+  bool get _canMakeReservation {
+    return selectedArea != null &&
+        selectedTableIds.isNotEmpty &&
+        _isTableSelectionValid() &&
+        _isValidReservationDate() &&
+        _isValidTime(selectedTime, selectedDate) &&
+        !isCheckingAvailability;
+  }
+
+// Update method _buildReservationButton untuk menampilkan pesan error tanggal
+  Widget _buildReservationButton() {
+    String buttonText = 'Cek Ketersediaan & Lanjut';
+
+    if (!_isValidReservationDate()) {
+      buttonText = 'Tanggal Tidak Valid (Pilih Tanggal Hari Ini atau Sesudahnya)';
+    } else if (!_isValidTime(selectedTime, selectedDate)) {
+      buttonText = 'Waktu Tidak Valid (Minimal 5 Menit dari Sekarang)';
+    } else if (selectedArea == null) {
+      buttonText = 'Pilih Area Terlebih Dahulu';
+    } else if (selectedTableIds.isEmpty) {
+      buttonText = 'Pilih Meja Terlebih Dahulu';
+    } else if (!_isTableSelectionValid()) {
+      buttonText = 'Kapasitas Meja Tidak Mencukupi';
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _canMakeReservation ? _checkAvailability : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _canMakeReservation
+              ? AppTheme.barajaPrimary.primaryColor
+              : Colors.grey.shade300,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: isCheckingAvailability
+            ? const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            strokeWidth: 2,
+          ),
+        )
+            : Text(
+          buttonText,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: _canMakeReservation ? Colors.white : Colors.grey.shade600,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadAreas() async {
@@ -54,6 +140,77 @@ class _ReservationScreenState extends State<ReservationScreen> {
       });
       _showErrorDialog('Gagal memuat data area: $e');
     }
+  }
+
+  void _showTimeValidationDialog(TimeOfDay attemptedTime) {
+    final DateTime now = DateTime.now();
+    final DateTime minimumTime = now.add(const Duration(minutes: 5));
+    final String minimumTimeText = '${minimumTime.hour.toString().padLeft(2, '0')}:${minimumTime.minute.toString().padLeft(2, '0')}';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Waktu Tidak Valid'),
+            ],
+          ),
+          content: Text(
+            'Waktu ${attemptedTime.hour.toString().padLeft(2, '0')}:${attemptedTime.minute.toString().padLeft(2, '0')} tidak dapat dipilih.\n\n'
+                'Untuk reservasi hari ini, minimal waktu yang dapat dipilih adalah $minimumTimeText (5 menit dari sekarang).',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  selectedTime = TimeOfDay(
+                    hour: minimumTime.hour,
+                    minute: minimumTime.minute,
+                  );
+                });
+              },
+              child: const Text('Gunakan Waktu Minimum'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  bool _isValidTime(TimeOfDay time, DateTime date) {
+    final DateTime now = DateTime.now();
+    final DateTime selectedDateTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    // Jika tanggal bukan hari ini, maka waktu apapun valid
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime selectedDateOnly = DateTime(date.year, date.month, date.day);
+
+    if (selectedDateOnly.isAfter(today)) {
+      return true;
+    }
+
+    // Jika tanggal adalah hari ini, cek apakah waktu minimal 5 menit dari sekarang
+    if (selectedDateOnly.isAtSameMomentAs(today)) {
+      final DateTime minimumTime = now.add(const Duration(minutes: 5));
+      return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
+    }
+
+    // Jika tanggal sudah lewat, tidak valid
+    return false;
   }
 
   Future<void> _loadTablesForArea(String areaId) async {
@@ -314,68 +471,24 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  bool get _canMakeReservation {
-    return selectedArea != null &&
-        selectedTableIds.isNotEmpty &&
-        _isTableSelectionValid() &&
-        !isCheckingAvailability;
-  }
 
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
     );
+
     if (picked != null && picked != selectedTime) {
-      setState(() {
-        selectedTime = picked;
-      });
+      // Validasi waktu sebelum menyimpan
+      if (_isValidTime(picked, selectedDate)) {
+        setState(() {
+          selectedTime = picked;
+        });
+      } else {
+        // Tampilkan dialog peringatan jika waktu tidak valid
+        _showTimeValidationDialog(picked);
+      }
     }
-  }
-
-  Widget _buildReservationButton() {
-    String buttonText = 'Cek Ketersediaan & Lanjut';
-
-    if (selectedArea == null) {
-      buttonText = 'Pilih Area Terlebih Dahulu';
-    } else if (selectedTableIds.isEmpty) {
-      buttonText = 'Pilih Meja Terlebih Dahulu';
-    } else if (!_isTableSelectionValid()) {
-      buttonText = 'Kapasitas Meja Tidak Mencukupi';
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _canMakeReservation ? _checkAvailability : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _canMakeReservation
-              ? AppTheme.barajaPrimary.primaryColor
-              : Colors.grey.shade300,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        child: isCheckingAvailability
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            strokeWidth: 2,
-          ),
-        )
-            : Text(
-          buttonText,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: _canMakeReservation ? Colors.white : Colors.grey.shade600,
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildTableList() {
@@ -601,10 +714,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   // Time selection
                   TimeSelector(
                     selectedTime: selectedTime,
+                    selectedDate: selectedDate, // Tambahkan parameter ini
                     onTimeChanged: (time) {
-                      setState(() {
-                        selectedTime = time;
-                      });
+                      if (_isValidTime(time, selectedDate)) {
+                        setState(() {
+                          selectedTime = time;
+                        });
+                      }
                     },
                     selectTime: () => _selectTime(context),
                   ),
