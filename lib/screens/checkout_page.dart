@@ -60,6 +60,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // Tambahan untuk reservation type
   ReservationType selectedReservationType = ReservationType.nonBlocking;
 
+  // Validation state variables
+  Map<String, String> validationErrors = {};
+  bool hasAttemptedSubmit = false;
+
+  // Scroll controller untuk auto scroll ke error
+  final ScrollController _scrollController = ScrollController();
+
+  // Global keys untuk setiap field yang perlu validasi
+  final GlobalKey _deliveryAddressKey = GlobalKey();
+  final GlobalKey _pickupTimeKey = GlobalKey();
+  final GlobalKey _tableNumberKey = GlobalKey();
+  final GlobalKey _paymentMethodKey = GlobalKey();
+  final GlobalKey _reservationTypeKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -87,65 +101,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
   }
 
-  // Method untuk validasi dan menampilkan peringatan
-  void _showValidationWarning(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.orange.shade700,
-                size: 28,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Peringatan',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.orange.shade700,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              ),
-              child: const Text(
-                'OK',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  // Method untuk validasi komprehensif
-  // Method untuk validasi komprehensif - Updated dengan validasi waktu pickup
+  // Method untuk validasi komprehensif dengan inline errors
   Map<String, dynamic> _validateForm(CartProvider cartProvider) {
-    List<String> errors = [];
+    Map<String, String> errors = {};
+    String? firstErrorKey;
 
     // Validasi keranjang kosong
     if (cartProvider.items.isEmpty) {
-      errors.add('Keranjang belanja masih kosong');
+      // This would be handled at a higher level, not field-specific
+      return {
+        'isValid': false,
+        'errors': {'general': 'Keranjang belanja masih kosong'},
+        'firstErrorKey': 'general',
+      };
     }
 
     // Skip validation untuk reservasi dan dine-in karena sudah pre-configured
@@ -154,27 +128,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
       switch (selectedOrderType) {
         case OrderType.delivery:
           if (deliveryAddress.trim().isEmpty) {
-            errors.add('Alamat pengantaran harus diisi');
+            errors['deliveryAddress'] = 'Alamat pengantaran harus diisi';
+            firstErrorKey ??= 'deliveryAddress';
           } else if (deliveryAddress.trim().length < 10) {
-            errors.add('Alamat pengantaran terlalu singkat (minimal 10 karakter)');
+            errors['deliveryAddress'] = 'Alamat pengantaran terlalu singkat (minimal 10 karakter)';
+            firstErrorKey ??= 'deliveryAddress';
           }
           break;
 
         case OrderType.pickup:
           if (pickupTime == null) {
-            errors.add('Waktu pengambilan harus dipilih');
+            errors['pickupTime'] = 'Waktu pengambilan harus dipilih';
+            firstErrorKey ??= 'pickupTime';
           } else {
             // Validasi waktu pickup minimal 5 menit dari sekarang
             if (!_isValidPickupTime(pickupTime!)) {
               final minimumTime = _getMinimumPickupTime();
-              errors.add('Waktu pickup minimal ${_formatTime(minimumTime)} (5 menit dari sekarang)');
+              errors['pickupTime'] = 'Waktu pickup minimal ${_formatTime(minimumTime)} (5 menit dari sekarang)';
+              firstErrorKey ??= 'pickupTime';
             }
           }
           break;
 
         case OrderType.dineIn:
           if (tableNumber.trim().isEmpty) {
-            errors.add('Nomor meja harus diisi');
+            errors['tableNumber'] = 'Nomor meja harus diisi';
+            firstErrorKey ??= 'tableNumber';
           }
           break;
 
@@ -185,7 +164,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     // Validasi metode pembayaran
     if (selectedPaymentMethod == null || selectedPaymentMethodName == null) {
-      errors.add('Metode pembayaran harus dipilih');
+      errors['paymentMethod'] = 'Metode pembayaran harus dipilih';
+      firstErrorKey ??= 'paymentMethod';
     }
 
     // Validasi khusus untuk reservasi
@@ -200,7 +180,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (selectedReservationType == ReservationType.blocking &&
             !_canSelectBlocking(reservationData.areaCode, finalTotal)) {
           final minAmount = _getMinimumAmountForBlocking(reservationData.areaCode);
-          errors.add('Minimum pembelian Rp${_formatCurrency(minAmount)} untuk reservasi blocking di area ${reservationData.areaCode}');
+          errors['reservationType'] = 'Minimum pembelian Rp${_formatCurrency(minAmount)} untuk reservasi blocking di area ${reservationData.areaCode}';
+          firstErrorKey ??= 'reservationType';
         }
       }
     }
@@ -208,18 +189,89 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return {
       'isValid': errors.isEmpty,
       'errors': errors,
-      'firstError': errors.isNotEmpty ? errors.first : null,
+      'firstErrorKey': firstErrorKey,
     };
   }
 
-// Helper method untuk mendapatkan waktu minimum pickup (5 menit dari sekarang)
+  // Method untuk scroll ke field yang error
+  void _scrollToError(String errorKey) {
+    GlobalKey? targetKey;
+
+    switch (errorKey) {
+      case 'deliveryAddress':
+        targetKey = _deliveryAddressKey;
+        break;
+      case 'pickupTime':
+        targetKey = _pickupTimeKey;
+        break;
+      case 'tableNumber':
+        targetKey = _tableNumberKey;
+        break;
+      case 'paymentMethod':
+        targetKey = _paymentMethodKey;
+        break;
+      case 'reservationType':
+        targetKey = _reservationTypeKey;
+        break;
+    }
+
+    if (targetKey?.currentContext != null) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        Scrollable.ensureVisible(
+          targetKey!.currentContext!,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          alignment: 0.1, // Scroll sedikit ke atas dari field
+        );
+      });
+    }
+  }
+
+  // Widget untuk menampilkan error message
+  Widget _buildErrorMessage(String? errorMessage) {
+    if (errorMessage == null || errorMessage.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 16,
+            color: Colors.red.shade700,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              errorMessage,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.red.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method untuk mendapatkan waktu minimum pickup (5 menit dari sekarang)
   TimeOfDay _getMinimumPickupTime() {
     final now = DateTime.now();
     final minimumTime = now.add(const Duration(minutes: 5));
     return TimeOfDay.fromDateTime(minimumTime);
   }
 
-// Helper method untuk mengecek apakah waktu pickup valid
+  // Helper method untuk mengecek apakah waktu pickup valid
   bool _isValidPickupTime(TimeOfDay selectedTime) {
     final now = DateTime.now();
     final minimumTime = now.add(const Duration(minutes: 5));
@@ -236,7 +288,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
   }
 
-// Helper method untuk format waktu
+  // Helper method untuk format waktu
   String _formatTime(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
@@ -306,7 +358,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
     return selectedPaymentMethodName!;
   }
-
 
   // Widget untuk menampilkan info reservasi
   Widget _buildReservationInfo(ReservationData data) {
@@ -397,14 +448,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     final bool canSelectBlocking = _canSelectBlocking(data.areaCode, finalTotal);
     final int minAmount = _getMinimumAmountForBlocking(data.areaCode);
+    final String? errorMessage = hasAttemptedSubmit ? validationErrors['reservationType'] : null;
 
     return Container(
+      key: _reservationTypeKey,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.purple.shade50,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.purple.shade200),
+        border: Border.all(
+          color: errorMessage != null ? Colors.red.shade300 : Colors.purple.shade200,
+          width: errorMessage != null ? 2 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,6 +486,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
             onTap: () {
               setState(() {
                 selectedReservationType = ReservationType.nonBlocking;
+                // Clear error when user makes a selection
+                if (hasAttemptedSubmit) {
+                  validationErrors.remove('reservationType');
+                }
               });
             },
             child: Container(
@@ -488,6 +548,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
             onTap: canSelectBlocking ? () {
               setState(() {
                 selectedReservationType = ReservationType.blocking;
+                // Clear error when user makes a selection
+                if (hasAttemptedSubmit) {
+                  validationErrors.remove('reservationType');
+                }
               });
             } : null,
             child: Container(
@@ -572,6 +636,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
           ],
+
+          // Error message
+          _buildErrorMessage(errorMessage),
         ],
       ),
     );
@@ -640,6 +707,126 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  // Enhanced OrderTypeSelector with validation
+  Widget _buildOrderTypeSelector() {
+    return Column(
+      children: [
+        OrderTypeSelector(
+          selectedType: selectedOrderType,
+          onChanged: (type) {
+            setState(() {
+              selectedOrderType = type;
+              // Clear relevant errors when changing order type
+              if (hasAttemptedSubmit) {
+                validationErrors.remove('deliveryAddress');
+                validationErrors.remove('pickupTime');
+                validationErrors.remove('tableNumber');
+              }
+            });
+          },
+          tableNumber: tableNumber,
+          onTableNumberChanged: (value) {
+            setState(() {
+              tableNumber = value;
+              // Clear error when user starts typing
+              if (hasAttemptedSubmit && value.trim().isNotEmpty) {
+                validationErrors.remove('tableNumber');
+              }
+            });
+          },
+          deliveryAddress: deliveryAddress,
+          onDeliveryAddressChanged: (value) {
+            setState(() {
+              deliveryAddress = value;
+              // Clear error when user starts typing
+              if (hasAttemptedSubmit && value.trim().length >= 10) {
+                validationErrors.remove('deliveryAddress');
+              }
+            });
+          },
+          pickupTime: pickupTime,
+          onPickupTimeChanged: (time) {
+            setState(() {
+              pickupTime = time;
+              // Clear error when user selects time
+              if (hasAttemptedSubmit && time != null) {
+                validationErrors.remove('pickupTime');
+              }
+            });
+          },
+          // Parameter baru untuk menyembunyikan opsi dine-in
+          hideDineInOption: true,
+        ),
+
+        // Error messages for each field
+        if (selectedOrderType == OrderType.delivery)
+          Container(
+            key: _deliveryAddressKey,
+            child: _buildErrorMessage(hasAttemptedSubmit ? validationErrors['deliveryAddress'] : null),
+          ),
+        if (selectedOrderType == OrderType.pickup)
+          Container(
+            key: _pickupTimeKey,
+            child: _buildErrorMessage(hasAttemptedSubmit ? validationErrors['pickupTime'] : null),
+          ),
+        if (selectedOrderType == OrderType.dineIn)
+          Container(
+            key: _tableNumberKey,
+            child: _buildErrorMessage(hasAttemptedSubmit ? validationErrors['tableNumber'] : null),
+          ),
+      ],
+    );
+  }
+
+  // Enhanced PaymentMethodWidget with validation
+  Widget _buildPaymentMethodWidget() {
+    final String? errorMessage = hasAttemptedSubmit ? validationErrors['paymentMethod'] : null;
+
+    return Column(
+      key: _paymentMethodKey,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: errorMessage != null
+                ? Border.all(color: Colors.red.shade300, width: 2)
+                : null,
+          ),
+          child: PaymentMethodWidget(
+            selectedMethod: displayedPaymentMethod,
+            onTap: () async {
+              final result = await context
+                  .push<Map<String, dynamic>>('/paymentMethod');
+              if (result != null) {
+                setState(() {
+                  selectedPaymentMethod = result['payment_method'];
+                  selectedPaymentMethodName =
+                  result['payment_method_name'];
+                  if (result.containsKey('name')) {
+                    selectedBankName = result['name'];
+                  } else {
+                    selectedBankName = null;
+                  }
+                  if (result.containsKey('bank_code')) {
+                    selectedBankCode = result['bank_code'];
+                  } else {
+                    selectedBankCode = null;
+                  }
+
+                  // Clear error when user selects payment method
+                  if (hasAttemptedSubmit) {
+                    validationErrors.remove('paymentMethod');
+                  }
+                });
+              }
+            },
+          ),
+        ),
+        _buildErrorMessage(errorMessage),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<CartProvider>(
@@ -680,6 +867,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 // Konten utama dengan scroll
                 Expanded(
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -742,35 +930,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Custom Order Type Selector - Hanya tampilkan Delivery dan Pickup
-                            OrderTypeSelector(
-                              selectedType: selectedOrderType,
-                              onChanged: (type) {
-                                setState(() {
-                                  selectedOrderType = type;
-                                });
-                              },
-                              tableNumber: tableNumber,
-                              onTableNumberChanged: (value) {
-                                setState(() {
-                                  tableNumber = value;
-                                });
-                              },
-                              deliveryAddress: deliveryAddress,
-                              onDeliveryAddressChanged: (value) {
-                                setState(() {
-                                  deliveryAddress = value;
-                                });
-                              },
-                              pickupTime: pickupTime,
-                              onPickupTimeChanged: (time) {
-                                setState(() {
-                                  pickupTime = time;
-                                });
-                              },
-                              // Parameter baru untuk menyembunyikan opsi dine-in
-                              hideDineInOption: true,
-                            ),
+                            // Enhanced Order Type Selector with inline validation
+                            _buildOrderTypeSelector(),
                           ] else ...[
                             // Show fixed order type info untuk reservasi/dine-in
                             Container(
@@ -820,31 +981,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             const SizedBox(height: 24),
                           ],
 
-                          // Metode Pembayaran dengan indikator
-                          PaymentMethodWidget(
-                            selectedMethod: displayedPaymentMethod,
-                            onTap: () async {
-                              final result = await context
-                                  .push<Map<String, dynamic>>('/paymentMethod');
-                              if (result != null) {
-                                setState(() {
-                                  selectedPaymentMethod = result['payment_method'];
-                                  selectedPaymentMethodName =
-                                  result['payment_method_name'];
-                                  if (result.containsKey('name')) {
-                                    selectedBankName = result['name'];
-                                  } else {
-                                    selectedBankName = null;
-                                  }
-                                  if (result.containsKey('bank_code')) {
-                                    selectedBankCode = result['bank_code'];
-                                  } else {
-                                    selectedBankCode = null;
-                                  }
-                                });
-                              }
-                            },
-                          ),
+                          // Enhanced Payment Method Widget with inline validation
+                          _buildPaymentMethodWidget(),
                           const SizedBox(height: 16),
 
                           VoucherWidget(
@@ -882,11 +1020,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   isReservation: cartProvider.isReservation,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   onCheckoutPressed: () async {
+                    // Set flag bahwa user sudah mencoba submit
+                    setState(() {
+                      hasAttemptedSubmit = true;
+                    });
+
                     // Validasi komprehensif menggunakan method baru
                     final validationResult = _validateForm(cartProvider);
 
                     if (!validationResult['isValid']) {
-                      _showValidationWarning(validationResult['firstError']);
+                      setState(() {
+                        validationErrors = Map<String, String>.from(validationResult['errors']);
+                      });
+
+                      // Show general error snackbar jika ada error umum
+                      if (validationErrors.containsKey('general')) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(validationErrors['general']!),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Scroll ke field pertama yang error
+                      if (validationResult['firstErrorKey'] != null) {
+                        _scrollToError(validationResult['firstErrorKey']);
+                      }
+
                       return;
                     }
 
