@@ -1,4 +1,4 @@
-// widgets/reservation/area_selector.dart
+// widgets/reservation/area_selector.dart - Updated with real-time availability
 import 'package:flutter/material.dart';
 import '../../models/area.dart';
 import '../../theme/app_theme.dart';
@@ -61,7 +61,7 @@ class AreaSelector extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.0,
+                childAspectRatio: 0.9,
               ),
               itemCount: areas.length,
               itemBuilder: (context, index) {
@@ -76,22 +76,53 @@ class AreaSelector extends StatelessWidget {
 
   Widget _buildAreaOption(Area area) {
     final isSelected = selectedAreaId == area.id;
+    final hasAvailability = area.hasAvailability;
+    final isFullyBooked = area.isFullyBooked;
+
+    // Determine colors based on availability
+    Color borderColor;
+    Color backgroundColor;
+    Color circleColor;
+    Color textColor;
+
+    if (isSelected) {
+      borderColor = AppTheme.barajaPrimary.primaryColor;
+      backgroundColor = Colors.white;
+      circleColor = AppTheme.barajaPrimary.primaryColor;
+      textColor = AppTheme.barajaPrimary.primaryColor;
+    } else if (!area.isActive) {
+      borderColor = Colors.grey.shade200;
+      backgroundColor = Colors.grey.shade50;
+      circleColor = Colors.grey.shade200;
+      textColor = Colors.grey;
+    } else if (isFullyBooked) {
+      borderColor = Colors.red.shade200;
+      backgroundColor = Colors.red.shade50;
+      circleColor = Colors.red.shade200;
+      textColor = Colors.red.shade700;
+    } else if (!hasAvailability) {
+      borderColor = Colors.orange.shade200;
+      backgroundColor = Colors.orange.shade50;
+      circleColor = Colors.orange.shade200;
+      textColor = Colors.orange.shade700;
+    } else {
+      borderColor = Colors.grey.shade300;
+      backgroundColor = Colors.white;
+      circleColor = Colors.grey.shade300;
+      textColor = Colors.black87;
+    }
 
     return InkWell(
-      onTap: area.isActive ? () => onAreaChanged(area) : null,
+      onTap: area.isActive && hasAvailability ? () => onAreaChanged(area) : null,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected
-                ? AppTheme.barajaPrimary.primaryColor
-                : area.isActive
-                ? Colors.grey.shade300
-                : Colors.grey.shade200,
+            color: borderColor,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(8),
-          color: area.isActive ? Colors.white : Colors.grey.shade50,
+          color: backgroundColor,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -102,11 +133,7 @@ class AreaSelector extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected
-                    ? AppTheme.barajaPrimary.primaryColor
-                    : area.isActive
-                    ? Colors.grey.shade300
-                    : Colors.grey.shade200,
+                color: circleColor,
               ),
               child: Center(
                 child: Text(
@@ -125,11 +152,7 @@ class AreaSelector extends StatelessWidget {
             Text(
               area.areaName,
               style: TextStyle(
-                color: isSelected
-                    ? AppTheme.barajaPrimary.primaryColor
-                    : area.isActive
-                    ? Colors.black87
-                    : Colors.grey,
+                color: textColor,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 12,
               ),
@@ -139,16 +162,16 @@ class AreaSelector extends StatelessWidget {
             ),
             const SizedBox(height: 4),
 
-            // Capacity and Tables Info
+            // Capacity Info
             Text(
-              '${area.capacity} kursi',
+              '${area.availableCapacity}/${area.capacity} kursi',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 10,
               ),
             ),
 
-            // Show table availability if tables data is available
+            // Tables Info
             if (area.totalTables > 0) ...[
               const SizedBox(height: 2),
               Row(
@@ -171,39 +194,85 @@ class AreaSelector extends StatelessWidget {
               ),
             ],
 
-            // Availability indicator
-            if (area.totalTables > 0)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: area.availableTables > 0
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      area.availableTables > 0 ? 'Tersedia' : 'Penuh',
-                      style: TextStyle(
-                        color: area.availableTables > 0
-                            ? Colors.green
-                            : Colors.red,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 4),
+
+            // Availability Status
+            _buildAvailabilityStatus(area),
+
+            // Occupancy Rate (if area has reservations)
+            if (area.totalReservedGuests > 0) ...[
+              const SizedBox(height: 2),
+              LinearProgressIndicator(
+                value: area.capacityUsage,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  area.capacityUsage > 0.8
+                      ? Colors.red
+                      : area.capacityUsage > 0.6
+                      ? Colors.orange
+                      : Colors.green,
                 ),
               ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityStatus(Area area) {
+    String statusText;
+    Color statusColor;
+    IconData statusIcon;
+
+    if (!area.isActive) {
+      statusText = 'Tidak Aktif';
+      statusColor = Colors.grey;
+      statusIcon = Icons.block;
+    } else if (area.isFullyBooked) {
+      statusText = 'Penuh';
+      statusColor = Colors.red;
+      statusIcon = Icons.cancel;
+    } else if (area.availableTables == 0) {
+      statusText = 'Meja Habis';
+      statusColor = Colors.orange;
+      statusIcon = Icons.warning;
+    } else if (area.availableCapacity <= 0) {
+      statusText = 'Kapasitas Penuh';
+      statusColor = Colors.orange;
+      statusIcon = Icons.people;
+    } else {
+      statusText = 'Tersedia';
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            statusIcon,
+            size: 8,
+            color: statusColor,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 8,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

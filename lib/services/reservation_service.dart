@@ -9,11 +9,17 @@ import '../models/table.dart';
 class ReservationService {
   static String? baseUrl = dotenv.env['BASE_URL'];
 
-  // Get all areas with tables
-  static Future<List<Area>> getAreas() async {
+  // Get all areas with real-time availability
+  static Future<List<Area>> getAreas({String? date, String? time}) async {
     try {
+      // Build URL with optional date and time parameters
+      String url = '$baseUrl/api/areas';
+      if (date != null && time != null) {
+        url += '?date=$date&time=$time';
+      }
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/areas'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -35,11 +41,21 @@ class ReservationService {
     }
   }
 
-  // Get tables for specific area
-  static Future<Map<String, dynamic>> getAreaTables(String areaId) async {
+  // Get tables for specific area with real-time availability
+  static Future<Map<String, dynamic>> getAreaTables(
+      String areaId, {
+        String? date,
+        String? time,
+      }) async {
     try {
+      // Build URL with optional date and time parameters
+      String url = '$baseUrl/api/areas/$areaId/tables';
+      if (date != null && time != null) {
+        url += '?date=$date&time=$time';
+      }
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/areas/$areaId/tables'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -53,6 +69,7 @@ class ReservationService {
             'tables': (data['tables'] as List)
                 .map((table) => TableModel.fromJson(table))
                 .toList(),
+            'availability_info': data['availability_info'],
           };
         } else {
           throw Exception(responseData['message'] ?? 'Failed to load tables');
@@ -72,7 +89,7 @@ class ReservationService {
     required String time,
     required String areaId,
     required int guestCount,
-    List<String>? tableIds, // Optional table IDs parameter
+    List<String>? tableIds,
   }) async {
     try {
       final Map<String, String> queryParameters = {
@@ -87,7 +104,7 @@ class ReservationService {
         queryParameters['table_ids'] = tableIds.join(',');
       }
 
-      final Uri url = Uri.parse('$baseUrl/api/areas/availability').replace(
+      final Uri url = Uri.parse('$baseUrl/api/reservations/availability').replace(
         queryParameters: queryParameters,
       );
 
@@ -104,6 +121,7 @@ class ReservationService {
           'message': responseData['message'] ?? '',
           'data': responseData['data'],
           'reason': responseData['reason'],
+          'conflicting_tables': responseData['conflicting_tables'],
         };
       } else {
         final Map<String, dynamic> errorData = json.decode(response.body);
@@ -138,8 +156,8 @@ class ReservationService {
   }) async {
     try {
       final Map<String, dynamic> requestBody = {
-        'date': date,
-        'time': time,
+        'reservation_date': date, // Changed to match backend schema
+        'reservation_time': time, // Changed to match backend schema
         'area_id': areaId,
         'guest_count': guestCount,
         'table_ids': tableIds,
@@ -185,5 +203,22 @@ class ReservationService {
       print('Error fetching area stats: $e');
       throw Exception('Error fetching area stats: $e');
     }
+  }
+
+  // Refresh area availability - utility method
+  static Future<List<Area>> refreshAreaAvailability({
+    required String date,
+    required String time,
+  }) async {
+    return await getAreas(date: date, time: time);
+  }
+
+  // Refresh table availability - utility method
+  static Future<Map<String, dynamic>> refreshTableAvailability({
+    required String areaId,
+    required String date,
+    required String time,
+  }) async {
+    return await getAreaTables(areaId, date: date, time: time);
   }
 }
