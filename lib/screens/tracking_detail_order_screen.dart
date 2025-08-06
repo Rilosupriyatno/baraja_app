@@ -50,6 +50,9 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   bool isLoadingRating = false;
   String? errorMessage;
 
+  // ✅ TAMBAHAN: Variable untuk menyimpan orderId
+  String? orderId;
+
   final OrderService _orderService = OrderService();
   final SocketService _socketService = SocketService();
 
@@ -79,42 +82,13 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   Future<void> _initializeData() async {
-    await _checkPaymentDetails();
+    // ✅ PERBAIKAN: Fetch order data dulu untuk mendapatkan orderId
     await _fetchOrderData();
+    await _checkPaymentDetails();
     _setupSocketConnection();
   }
 
-  Future<void> _checkPaymentDetails() async {
-    try {
-      final result = await ConfirmService().getPayment(widget.id);
-      print('ini adalah widget.id: ${widget.id}');
-      print('Result: $result');
-
-      if (result.success && result.data != null) {
-        final paymentStatus = result.data!['status'];
-
-        // Update logic to handle all payment statuses properly
-        _hasPaymentDetails = paymentStatus == 'pending' ||
-            paymentStatus == 'settlement' ||
-            paymentStatus == 'expire' ||
-            paymentStatus == 'cancel' ||
-            paymentStatus == 'capture';
-
-        print('Payment status: $paymentStatus');
-        print('Has payment details: $_hasPaymentDetails');
-      } else {
-        _hasPaymentDetails = false;
-      }
-
-      if (mounted) setState(() {});
-    } catch (e) {
-      print('Error saat mengecek payment: $e');
-      _hasPaymentDetails = false;
-      if (mounted) setState(() {});
-    }
-  }
-
-
+  // ✅ MODIFIKASI: _fetchOrderData untuk menyimpan orderId
   Future<void> _fetchOrderData() async {
     setState(() {
       isLoading = true;
@@ -122,11 +96,30 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     });
 
     try {
+      print('=== FETCH ORDER DATA ===');
+      print('🔍 Request ID: ${widget.id}');
+
       final result = await _orderService.getOrderForTracking(widget.id);
 
+      print('📦 API Result: $result');
+
       if (result['success']) {
+        final data = result['data'];
+
+        // ✅ EXTRACT dan SIMPAN orderId dari berbagai kemungkinan field
+        orderId =
+            data['orderId']?.toString() ??
+            data['order_id']?.toString() ??
+            widget.id; // fallback ke widget.id
+
+        print('=== ORDER DATA EXTRACTED ===');
+        print('📄 Raw Data: $data');
+        print('🆔 Extracted orderId: $orderId');
+        print('📊 Payment Status: ${data['paymentStatus']}');
+        print('📋 Order Status: ${data['orderStatus']}');
+
         setState(() {
-          orderData = result['data'];
+          orderData = data;
           isLoading = false;
           _updateOrderStatus();
         });
@@ -141,11 +134,57 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
         });
       }
     } catch (e) {
+      print('❌ Error in _fetchOrderData: $e');
       setState(() {
         isLoading = false;
         errorMessage = 'Terjadi kesalahan: ${e.toString()}';
       });
     }
+  }
+
+  // ✅ MODIFIKASI: _checkPaymentDetails menggunakan orderId yang sudah disimpan
+  Future<void> _checkPaymentDetails() async {
+    // ✅ Skip jika orderId belum tersedia
+    if (orderId == null) {
+      print('⚠️ orderId is null, skipping payment check');
+      _hasPaymentDetails = false;
+      return;
+    }
+
+    try {
+      print('=== DEBUG PAYMENT CHECK ===');
+      print('🔍 Using orderId: $orderId');
+      print('🔍 Original widget.id: ${widget.id}');
+
+      // ✅ GUNAKAN orderId yang sudah disimpan
+      final result = await ConfirmService().getPayment(orderId!);
+
+      print('API Result success: ${result.success}');
+      print('API Result data: ${result.data}');
+
+      if (result.success && result.data != null) {
+        final paymentStatus = result.data!['status'];
+        print('Payment Status from API: $paymentStatus');
+
+        _hasPaymentDetails = paymentStatus == 'pending' ||
+            paymentStatus == 'settlement' ||
+            paymentStatus == 'expire' ||
+            paymentStatus == 'cancel' ||
+            paymentStatus == 'capture';
+
+        print('_hasPaymentDetails set to: $_hasPaymentDetails');
+      } else {
+        print('API call failed or data is null');
+        print('Error: ${result.error}');
+        _hasPaymentDetails = false;
+      }
+    } catch (e) {
+      print('Error in _checkPaymentDetails: $e');
+      _hasPaymentDetails = false;
+    }
+
+    // ✅ Update state setelah payment check selesai
+    if (mounted) setState(() {});
   }
 
   Future<void> _checkExistingRating() async {
@@ -159,14 +198,13 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
           firstItem['id']?.toString() ??
           firstItem['menu_item_id']?.toString();
 
-      final orderId = orderData!['_id']?.toString() ??
-          orderData!['id']?.toString() ??
-          widget.id;
+      // ✅ GUNAKAN orderId yang sudah disimpan
+      final orderIdForRating = orderId ?? widget.id;
 
       if (menuItemId != null) {
         final rating = await RatingService.getExistingRating(
           menuItemId: menuItemId,
-          id: orderId,
+          id: orderIdForRating,
         );
 
         if (mounted) {
@@ -185,12 +223,15 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     if (_isListeningForPayment) return;
 
     _isListeningForPayment = true;
-    _socketService.connectToSocket(id: widget.id, onPaymentUpdate: _handlePaymentUpdate);
-    Future.delayed(const Duration(seconds: 3), () => _socketService.joinOrderRoom(widget.id));
+    // ✅ GUNAKAN orderId jika tersedia, fallback ke widget.id
+    final socketId = orderId ?? widget.id;
+    _socketService.connectToSocket(id: socketId, onPaymentUpdate: _handlePaymentUpdate);
+    Future.delayed(const Duration(seconds: 3), () => _socketService.joinOrderRoom(socketId));
   }
 
   void _handlePaymentUpdate(Map<String, dynamic> data) {
-    if (data['order_id'] != widget.id || !mounted) return;
+    final targetOrderId = orderId ?? widget.id;
+    if (data['order_id'] != targetOrderId || !mounted) return;
 
     setState(() {
       if (orderData != null) {
@@ -202,7 +243,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
     if (['settlement', 'capture'].contains(data['transaction_status'])) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
+      orderProvider.updateOrderStatus(targetOrderId, OrderStatus.pending);
     }
   }
 
@@ -310,26 +351,37 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   void _navigateToPaymentDetails() {
+    // ✅ GUNAKAN orderId jika tersedia
+    final paymentId = orderId ?? widget.id;
+    print('🔗 Navigating to payment with ID: $paymentId');
+
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PaymentDetailsScreen(id: widget.id)),
+      MaterialPageRoute(builder: (context) => PaymentDetailsScreen(id: paymentId)),
     );
   }
 
   void _navigateToRating() async {
     final firstItem = orderData?['items']?[0];
+    final ratingId = orderId ?? widget.id;
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MenuRatingPage(
           orderData: orderData,
           menuItemId: firstItem?['menuItemId'] ?? firstItem?['id'],
-          id: orderData?['_id'] ?? orderData?['id'],
+          id: ratingId, // ✅ GUNAKAN orderId
         ),
       ),
     );
 
     if (result == true) _refreshData();
+  }
+
+  // ✅ HELPER METHOD: Mendapatkan orderId dengan fallback
+  String getOrderId() {
+    return orderId ?? widget.id;
   }
 
   @override
@@ -390,7 +442,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                             statusColor: statusColor,
                             statusIcon: statusIcon,
                             pulseAnimation: _pulseAnimation,
-                            orderData: orderData, // Add this line
+                            orderData: orderData,
                           ),
                         ),
                       ),

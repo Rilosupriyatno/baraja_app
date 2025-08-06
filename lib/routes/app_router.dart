@@ -14,7 +14,6 @@ import '../pages/notification_page.dart';
 import '../screens/cart_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
-import '../screens/order_history_screen.dart';
 import '../screens/payment_confirmation_screen.dart';
 import '../screens/payment_method_screen.dart';
 import '../screens/product_detail_screen.dart';
@@ -47,11 +46,77 @@ class AppRouter {
           builder: (context, state) => const RegisterScreen(),
         ),
 
-        // Main navigation route
+        // ✅ PERBAIKAN: Main navigation route dengan support untuk initialTab
         GoRoute(
           path: '/main',
-          builder: (context, state) => const MainNavigationBar(),
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
         ),
+
+        // ✅ HAPUS: Route /history karena history screen sudah menjadi bagian dari navigation bar
+        // Order history sekarang diakses melalui /main dengan initialTab: 3
+
+        // Route force NavigationBarMenu
+        GoRoute(
+          path: '/home',
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
+        ),
+        GoRoute(
+          path: '/events',
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
+        ),
+        GoRoute(
+          path: '/qrscanner',
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
+        ),
+        GoRoute(
+          path: '/history',
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
+        ),
+
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) {
+            // Ambil parameter initialTab dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final initialTab = extra?['initialTab'] as int?;
+
+            return NavigationBarMenu(initialTab: initialTab);
+          },
+        ),
+
+        // End route force NavigationBarMenu
+
+
 
         // Other routes that should have proper back navigation
         GoRoute(
@@ -209,13 +274,6 @@ class AppRouter {
             final id = state.extra as String;
             return TrackingDetailOrderScreen(id: id);
           },
-        ),
-
-        // Order history page
-        GoRoute(
-          path: '/history',
-          parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const OrderHistoryScreen(),
         ),
 
         // Reservation

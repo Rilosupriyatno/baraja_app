@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
 class BaseScreenWrapper extends StatelessWidget {
@@ -15,18 +15,26 @@ class BaseScreenWrapper extends StatelessWidget {
     this.onBackPressed,
   });
 
+  static BaseScreenWrapper? of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<_BaseScreenScope>()?.wrapper;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: canPop,
-      onPopInvoked: (didPop) async {
-        if (!didPop) {
-          await _handleBackNavigation(context);
-        }
-      },
-      child: child,
+    return _BaseScreenScope(
+      wrapper: this,
+      child: PopScope(
+        canPop: canPop,
+        onPopInvoked: (didPop) async {
+          if (!didPop) {
+            await _handleBackNavigation(context);
+          }
+        },
+        child: child,
+      ),
     );
   }
+
 
   Future<void> _handleBackNavigation(BuildContext context) async {
     if (onBackPressed != null) {
@@ -36,17 +44,28 @@ class BaseScreenWrapper extends StatelessWidget {
 
     if (customBackRoute != null) {
       if (context.mounted) {
-        context.go(customBackRoute!);
+        final Map<String, int> tabMapping = {
+          '/home': 0,
+          '/event': 1,
+          '/qrscanner': 2,
+          '/history': 3,
+          '/profile': 4,
+        };
+
+        if (tabMapping.containsKey(customBackRoute)) {
+          context.go('/main', extra: {'initialTab': tabMapping[customBackRoute]});
+        } else {
+          context.go(customBackRoute!);
+        }
       }
       return;
     }
 
-    // Smart back navigation logic
+
     if (context.mounted) {
       final router = GoRouter.of(context);
       final currentLocation = router.routerDelegate.currentConfiguration.uri.toString();
 
-      // Define your navigation hierarchy
       final Map<String, String> navigationHierarchy = {
         '/menu': '/main',
         '/product': '/menu',
@@ -55,17 +74,15 @@ class BaseScreenWrapper extends StatelessWidget {
         '/paymentMethod': '/checkout',
         '/voucher': '/checkout',
         '/paymentConfirmation': '/main',
-        '/orderDetail': '/history',
+        '/orderDetail': '/main',
         '/notification': '/main',
         '/favorite': '/main',
         '/settings': '/main',
         '/reservation': '/main',
-        '/history': '/main',
         '/qrscanner': '/main',
       };
 
-      // Find the appropriate back route
-      String backRoute = '/main'; // Default fallback
+      String backRoute = '/main';
 
       for (var route in navigationHierarchy.keys) {
         if (currentLocation.startsWith(route)) {
@@ -74,24 +91,26 @@ class BaseScreenWrapper extends StatelessWidget {
         }
       }
 
-      // Navigate to the determined back route
+      if (currentLocation.startsWith('/orderDetail')) {
+        context.go('/main', extra: {'initialTab': 3});
+        return;
+      }
+
       context.go(backRoute);
     }
   }
 }
 
-// Extension to make it easier to use
-extension ContextExtension on BuildContext {
-  void smartPop() {
-    final router = GoRouter.of(this);
-    router.routerDelegate.currentConfiguration.uri.toString();
+class _BaseScreenScope extends InheritedWidget {
+  final BaseScreenWrapper wrapper;
 
-    // If we can go back in history, do it
-    if (router.canPop()) {
-      router.pop();
-    } else {
-      // Otherwise, go to main
-      go('/main');
-    }
+  const _BaseScreenScope({
+    required this.wrapper,
+    required super.child,
+  });
+
+  @override
+  bool updateShouldNotify(covariant _BaseScreenScope oldWidget) {
+    return wrapper != oldWidget.wrapper;
   }
 }

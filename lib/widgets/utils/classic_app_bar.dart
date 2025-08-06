@@ -65,9 +65,14 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     // Priority 2: Custom route
     if (customBackRoute != null) {
-      context.go(customBackRoute!);
+      if (customBackRoute == '/history') {
+        context.go('/main', extra: {'initialTab': 3});
+      } else {
+        context.go(customBackRoute!);
+      }
       return;
     }
+
 
     // Priority 3: Default behavior
     if (Navigator.canPop(context)) {
