@@ -24,12 +24,41 @@ class ActionButtonWidget extends StatelessWidget {
       ['Completed'].contains(orderData?['orderStatus'] ?? orderData?['status']);
 
   bool get _shouldShowActionButton {
-    if (isLoadingRating) return false;
-    if (_isOrderCompleted && !_hasRating) return true;
-    if (_hasRating || !hasPaymentDetails) return false;
+    print('=== DEBUG ACTION BUTTON ===');
+    print('isLoadingRating: $isLoadingRating');
+    print('_isOrderCompleted: $_isOrderCompleted');
+    print('_hasRating: $_hasRating');
+    print('hasPaymentDetails: $hasPaymentDetails');
+    print('orderData paymentStatus: ${orderData?['paymentStatus']}');
+    print('orderData paymentDetails status: ${orderData?['paymentDetails']?['status']}');
 
+    if (isLoadingRating) {
+      print('Returning false: isLoadingRating = true');
+      return false;
+    }
+
+    if (_isOrderCompleted && !_hasRating) {
+      print('Returning true: order completed and no rating');
+      return true;
+    }
+
+    if (_hasRating) {
+      print('Returning false: already has rating');
+      return false;
+    }
+
+    // PERBAIKAN: Cek payment status dari orderData terlebih dahulu
+    // Jangan tergantung sepenuhnya pada hasPaymentDetails
     final paymentStatus = orderData?['paymentStatus'] ?? orderData?['paymentDetails']?['status'];
-    return ['pending', 'settlement', 'capture'].contains(paymentStatus) || hasPaymentDetails;
+
+    // Tampilkan tombol jika payment status adalah pending, settlement, atau capture
+    // ATAU jika hasPaymentDetails = true sebagai fallback
+    bool shouldShow = ['pending', 'settlement', 'capture'].contains(paymentStatus) || hasPaymentDetails;
+
+    print('Payment status: $paymentStatus');
+    print('Should show button: $shouldShow');
+
+    return shouldShow;
   }
 
   Widget _buildButton({
