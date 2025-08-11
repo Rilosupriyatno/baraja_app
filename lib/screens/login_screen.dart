@@ -17,7 +17,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController(); // Changed from emailController
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
@@ -31,11 +31,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
-
     super.dispose();
   }
+
   Future<void> _checkLoginStatus() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final isLoggedIn = await authService.checkLoginStatus();
@@ -55,14 +55,22 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.loginWithEmailAndPassword(
-        _emailController.text.trim(),
+        _identifierController.text.trim(),
         _passwordController.text,
       );
       if (mounted) {
         context.go('/main');
       }
     } catch (e) {
-      // Log the error to the console
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login gagal: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       print('Login error: $e');
     } finally {
       if (mounted) {
@@ -85,7 +93,14 @@ class _LoginScreenState extends State<LoginScreen> {
         context.go('/main');
       }
     } catch (e) {
-      // Log the error to the console
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google login gagal: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       print('Google login error: $e');
     } finally {
       if (mounted) {
@@ -95,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-  // Add this method to your _LoginScreenState class
+
   void _forgotPassword() {
     showDialog(
       context: context,
@@ -103,13 +118,20 @@ class _LoginScreenState extends State<LoginScreen> {
         final emailController = TextEditingController();
         return AlertDialog(
           title: const Text('Lupa Password'),
-          content: TextField(
-            controller: emailController,
-            decoration: const InputDecoration(
-              hintText: 'Masukkan email Anda',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.emailAddress,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Masukkan email Anda untuk reset password:'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  hintText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -118,14 +140,22 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                if (emailController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email tidak boleh kosong'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
                 try {
                   final authService = Provider.of<AuthService>(context, listen: false);
                   await authService.resetPassword(emailController.text.trim());
 
-                  // Close the dialog
                   Navigator.of(context).pop();
 
-                  // Show success snackbar
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Email reset password telah dikirim'),
@@ -133,13 +163,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   );
                 } catch (e) {
-                  // Close the dialog
                   Navigator.of(context).pop();
 
-                  // Show error snackbar
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(e.toString()),
+                      content: Text('Gagal mengirim email reset: ${e.toString().replaceAll('Exception: ', '')}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -152,6 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,20 +195,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const LogoWidget(),
-                  // const SizedBox(height: 40),
                   CustomTextField(
-                    controller: _emailController,
+                    controller: _identifierController,
                     hintText: 'Email',
                     icon: Icons.email,
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Masukkan email Anda';
+                        return 'Masukkan email atau username Anda';
                       }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(value)) {
-                        return 'Tolong masukkan email yang valid';
-                      }
+                      // Don't validate format here since it could be email or username
                       return null;
                     },
                   ),
@@ -211,15 +236,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // if (_errorMessage != null)
-                  //   Padding(
-                  //     padding: const EdgeInsets.only(bottom: 16.0),
-                  //     child: Text(
-                  //       _errorMessage!,
-                  //       style: const TextStyle(color: Colors.red),
-                  //       textAlign: TextAlign.center,
-                  //     ),
-                  //   ),
                   AuthButton(
                     text: 'Masuk',
                     isLoading: _isLoading,

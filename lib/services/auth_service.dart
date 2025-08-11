@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final String? baseUrl = dotenv.env['BASE_URL']; // Ganti dengan base URL-mu
+  final String? baseUrl = dotenv.env['BASE_URL'];
 
   Map<String, dynamic>? _user;
   String? _jwtToken;
@@ -18,11 +18,11 @@ class AuthService with ChangeNotifier {
   String? get jwtToken => _jwtToken;
 
   // ==============================
-// REGISTER DENGAN EMAIL DAN PASSWORD
-// ==============================
+  // REGISTER DENGAN EMAIL DAN PASSWORD
+  // ==============================
   Future<void> registerWithEmailAndPassword(String name, String email, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/api/auth/signup'), // pastikan endpoint ini benar
+      Uri.parse('$baseUrl/api/auth/signup'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'username': name,
@@ -37,11 +37,15 @@ class AuthService with ChangeNotifier {
       _jwtToken = responseData['token'];
 
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', _user?['_id'] ?? '');
+      await prefs.setString('username', _user?['username'] ?? '');
+      await prefs.setString('userRole', _user?['role'] ?? '');
       await prefs.setString('token', _jwtToken!);
 
       notifyListeners();
     } else {
-      throw Exception('Registrasi gagal: ${response.body}');
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Registrasi gagal');
     }
   }
 
@@ -80,50 +84,83 @@ class AuthService with ChangeNotifier {
         _jwtToken = responseData['token'];
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', _user?['_id']); // simpan userId
-        await prefs.setString('username', _user?['name']); // simpan userName
-        await prefs.setString('token', _jwtToken!);    // simpan token
-
+        await prefs.setString('userId', _user?['_id'] ?? '');
+        await prefs.setString('username', _user?['username'] ?? '');
+        await prefs.setString('userRole', _user?['role'] ?? '');
+        await prefs.setString('token', _jwtToken!);
 
         notifyListeners();
       } else {
-        print('Gagal login ke backend: ${response.body}');
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Google login gagal');
       }
     } catch (e) {
-      print('Terjadi kesalahan: $e');
+      throw Exception('Google login gagal: $e');
     }
   }
 
   // ==============================
-  // REGISTER DENGAN EMAIL DAN PASSWORD
+  // LOGIN DENGAN EMAIL DAN PASSWORD / USERNAME DAN PASSWORD
   // ==============================
-  Future<void> loginWithEmailAndPassword(String email, String password) async {
+  Future<void> loginWithEmailAndPassword(String identifier, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/signin'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'identifier': email, 'password': password}),
+      body: jsonEncode({'identifier': identifier, 'password': password}),
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Login gagal: ${response.body}');
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+
+      // Extract user data and token
+      _jwtToken = responseData['token'];
+
+      // Remove token from user data if it exists
+      final userData = Map<String, dynamic>.from(responseData);
+      userData.remove('token');
+      userData.remove('cashiers'); // Remove cashiers list if exists
+
+      _user = userData;
+
+      // Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', _user?['_id'] ?? '');
+      await prefs.setString('username', _user?['username'] ?? '');
+      await prefs.setString('userRole', _user?['role'] ?? '');
+      await prefs.setString('token', _jwtToken!);
+
+      // If user is admin and has cashiers data, save it separately if needed
+      if (responseData['cashiers'] != null) {
+        await prefs.setString('cashiers', jsonEncode(responseData['cashiers']));
+      }
+
+      notifyListeners();
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Login gagal: ${response.body}');
     }
-
-    // Simpan token atau data jika diperlukan
   }
-
 
   // ==============================
   // RESET PASSWORD
   // ==============================
   Future<void> resetPassword(String email) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/reset-password'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email}),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('Gagal mengirim email reset password');
+      if (response.statusCode != 200) {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Gagal mengirim email reset password');
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Terjadi kesalahan: $e');
     }
   }
 
@@ -131,29 +168,36 @@ class AuthService with ChangeNotifier {
   // CEK STATUS LOGIN
   // ==============================
   Future<bool> checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedToken = prefs.getString('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedToken = prefs.getString('token');
 
-    if (storedToken != null) {
-      // Coba validasi token dengan backend
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/user/profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $storedToken',
-          'ngrok-skip-browser-warning': 'true',
-        },
-      );
+      if (storedToken != null) {
+        // Validate token with backend
+        final response = await http.get(
+          Uri.parse('$baseUrl/api/user/profile'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $storedToken',
+            'ngrok-skip-browser-warning': 'true',
+          },
+        );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _user = data['user'];
-        _jwtToken = storedToken;
-        notifyListeners();
-        return true;
-      } else {
-        await logout(); // Token expired atau tidak valid
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          _user = data['user'];
+          _jwtToken = storedToken;
+          notifyListeners();
+          return true;
+        } else {
+          // Token expired or invalid
+          await logout();
+          return false;
+        }
       }
+    } catch (e) {
+      print('Error checking login status: $e');
+      await logout();
     }
     return false;
   }
@@ -164,36 +208,87 @@ class AuthService with ChangeNotifier {
   Future<void> fetchUserProfile() async {
     if (_jwtToken == null) return;
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/user/profile'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_jwtToken',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/user/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_jwtToken',
+          'ngrok-skip-browser-warning': 'true',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      _user = data['user'];
-      notifyListeners();
-    } else {
-      print('Gagal ambil profil: ${response.body}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _user = data['user'];
+        notifyListeners();
+      } else {
+        print('Failed to fetch profile: ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching user profile: $e');
     }
+  }
+
+  // ==============================
+  // GET USER ROLE
+  // ==============================
+  String? getUserRole() {
+    return _user?['role'];
+  }
+
+  // ==============================
+  // CHECK IF USER IS ADMIN
+  // ==============================
+  bool isAdmin() {
+    final role = getUserRole();
+    return role != null && [
+      'superadmin',
+      'admin',
+      'marketing',
+      'akuntan',
+      'inventory',
+      'operational',
+      'staff',
+      'cashier junior',
+      'cashier senior'
+    ].contains(role);
+  }
+
+  // ==============================
+  // CHECK IF USER IS CUSTOMER
+  // ==============================
+  bool isCustomer() {
+    return getUserRole() == 'customer';
   }
 
   // ==============================
   // LOGOUT
   // ==============================
   Future<void> logout() async {
-    _user = null;
-    _jwtToken = null;
+    try {
+      _user = null;
+      _jwtToken = null;
 
-    await _googleSignIn.signOut();
-    await FirebaseAuth.instance.signOut();
+      // Sign out from Google and Firebase
+      await _googleSignIn.signOut();
+      await FirebaseAuth.instance.signOut();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+      // Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      await prefs.remove('userId');
+      await prefs.remove('username');
+      await prefs.remove('userRole');
+      await prefs.remove('cashiers');
 
-    notifyListeners();
+      notifyListeners();
+    } catch (e) {
+      print('Error during logout: $e');
+      // Still clear local data even if there's an error
+      _user = null;
+      _jwtToken = null;
+      notifyListeners();
+    }
   }
 }

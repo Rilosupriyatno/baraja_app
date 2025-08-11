@@ -1,10 +1,11 @@
-import 'package:baraja_app/screens/event_screen.dart';
+import 'package:baraja_app/screens/admin_event_screen.dart';
 import 'package:baraja_app/screens/order_history_screen.dart';
 import 'package:baraja_app/screens/scanner.dart';
 import 'package:baraja_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
+import '../../screens/event_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/profile_screen.dart';
 
@@ -146,7 +147,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             screen: const EventScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.event),
-              title: "Ticket",
+              title: "Event",
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
