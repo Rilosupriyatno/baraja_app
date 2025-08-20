@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,7 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    serverClientId: dotenv.env['WEB_CLIENT_ID'], // Web Client ID
+  );
   final String? baseUrl = dotenv.env['BASE_URL'];
 
   Map<String, dynamic>? _user;
@@ -23,7 +28,7 @@ class AuthService with ChangeNotifier {
   Future<void> registerWithEmailAndPassword(String name, String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/signup'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json','ngrok-skip-browser-warning': 'true',},
       body: jsonEncode({
         'username': name,
         'email': email,
@@ -74,7 +79,7 @@ class AuthService with ChangeNotifier {
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/auth/google'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json','ngrok-skip-browser-warning': 'true',},
         body: jsonEncode({'idToken': googleAuth.idToken}),
       );
 
@@ -90,6 +95,8 @@ class AuthService with ChangeNotifier {
         await prefs.setString('token', _jwtToken!);
 
         notifyListeners();
+        _saveFcmToken();
+
       } else {
         final errorData = jsonDecode(response.body);
         throw Exception(errorData['message'] ?? 'Google login gagal');
@@ -105,7 +112,7 @@ class AuthService with ChangeNotifier {
   Future<void> loginWithEmailAndPassword(String identifier, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/signin'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json','ngrok-skip-browser-warning': 'true',},
       body: jsonEncode({'identifier': identifier, 'password': password}),
     );
 
@@ -135,11 +142,110 @@ class AuthService with ChangeNotifier {
       }
 
       notifyListeners();
+      _saveFcmToken();
+
     } else {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['message'] ?? 'Login gagal: ${response.body}');
     }
   }
+
+  // Tambahkan method debugging ini ke auth_service.dart
+
+  Future<void> _saveFcmToken() async {
+    try {
+      print("🔄 Starting FCM token save process...");
+
+      // Check if user is logged in
+      if (_jwtToken == null) {
+        print("❌ No JWT token available");
+        return;
+      }
+
+      // Request FCM permission first
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      print("📱 FCM Permission status: ${settings.authorizationStatus}");
+
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        print("❌ FCM permission denied");
+        return;
+      }
+
+      final fcmToken = await messaging.getToken();
+      print("🔑 FCM Token: ${fcmToken?.substring(0, 20)}..."); // Print partial token for debugging
+
+      if (fcmToken == null) {
+        print("❌ FCM token is null");
+        return;
+      }
+
+      if (_jwtToken == null) {
+        print("❌ JWT token is null");
+        return;
+      }
+
+      print("🌐 Sending request to: $baseUrl/api/fcm/save-fcm-token");
+      print("🔐 Using JWT token: ${_jwtToken?.substring(0, 20)}...");
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/fcm/save-fcm-token'),
+        headers: {
+          'Authorization': 'Bearer $_jwtToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'fcm_token': fcmToken,
+          'device_type': 'android',
+        }),
+      );
+
+      print("📡 Response status: ${response.statusCode}");
+      print("📡 Response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        print("✅ FCM token saved successfully");
+      } else {
+        print("❌ Failed to save FCM token. Status: ${response.statusCode}");
+        print("❌ Error response: ${response.body}");
+      }
+    } catch (e) {
+      print("💥 Exception in _saveFcmToken: $e");
+      print("💥 Exception type: ${e.runtimeType}");
+    }
+  }
+
+  Future<void> _removeFcmToken() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null && _jwtToken != null) {
+        final response = await http.post(
+          Uri.parse('$baseUrl/api/fcm/remove-fcm-token'),
+          headers: {
+            'Authorization': 'Bearer $_jwtToken',
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+          body: jsonEncode({'fcm_token': fcmToken}),
+        );
+        if (response.statusCode != 200) {
+          print("Failed to remove FCM token: ${response.body}");
+        }
+      }
+    } catch (e) {
+      print("Error removing FCM token: $e");
+    }
+  }
+
 
   // ==============================
   // RESET PASSWORD
@@ -148,7 +254,7 @@ class AuthService with ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/auth/reset-password'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json','ngrok-skip-browser-warning': 'true',},
         body: jsonEncode({'email': email}),
       );
 
@@ -188,6 +294,7 @@ class AuthService with ChangeNotifier {
           _user = data['user'];
           _jwtToken = storedToken;
           notifyListeners();
+
           return true;
         } else {
           // Token expired or invalid
@@ -267,6 +374,7 @@ class AuthService with ChangeNotifier {
   // ==============================
   Future<void> logout() async {
     try {
+      _removeFcmToken();
       _user = null;
       _jwtToken = null;
 

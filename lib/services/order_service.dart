@@ -270,6 +270,7 @@ class OrderService {
           };
         case 'Waiting':
           print('Returning Waiting status');
+
           return {
             'status': 'Menunggu konfirmasi kitchen',
             'color': const Color(0xFF3B82F6),

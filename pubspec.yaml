@@ -58,6 +58,10 @@ dependencies:
   flutter_localization: ^0.3.2
   intl: ^0.19.0
   qr_flutter: ^4.1.0
+  firebase_messaging: ^15.2.10
+  flutter_local_notifications: ^19.4.0
+  app_settings: ^6.1.1
+  permission_handler: ^12.0.1
 #  midtrans_sdk: ^0.4.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version
