@@ -8,7 +8,8 @@ class SocketService {
 
   void connectToSocket({
     required Function(Map<String, dynamic>) onPaymentUpdate,
-    required String id
+    required Function(Map<String, dynamic>) onOrderUpdate, // ✅ tambahan callback
+    required String id,
   }) {
     print('Attempting to connect to socket server at: $baseUrl');
 
@@ -19,30 +20,35 @@ class SocketService {
         'reconnection': true,
         'reconnectionAttempts': 10,
         'reconnectionDelay': 1000,
-        'timeout': 30000, // 30 seconds timeout
-        'forceNew': true, // Force a new connection
+        'timeout': 30000,
+        'forceNew': true,
       });
 
-      // Connection listeners
       _socket.onConnect((_) {
         print('Connected to socket server with ID: ${_socket.id}');
         _isConnected = true;
 
-        // Join room with acknowledgement callback
+        // Join room dengan ack
         print('Attempting to join room for order: $id');
         _socket.emitWithAck('join_order_room', id, ack: (data) {
           print('Room join acknowledgement: $data');
         });
       });
 
-      _socket.onConnectError((error) {
-        print('Connection error: $error');
-        _tryReconnect();
+      // 🔔 Payment update
+      _socket.on('payment_status_update', (data) {
+        print('Received payment update: $data');
+        if (data is Map) {
+          onPaymentUpdate(Map<String, dynamic>.from(data));
+        }
       });
 
-      _socket.onError((error) {
-        print('Socket error: $error');
-        _tryReconnect();
+      // 🔔 Order status update
+      _socket.on('order_status_update', (data) {
+        print('Received order status update: $data');
+        if (data is Map) {
+          onOrderUpdate(Map<String, dynamic>.from(data));
+        }
       });
 
       _socket.onDisconnect((_) {
@@ -51,35 +57,8 @@ class SocketService {
         _tryReconnect();
       });
 
-      // Debug events
-      _socket.onAny((event, data) {
-        print('Event received: $event, data: $data');
-      });
-
-      // Room joined confirmation
-      _socket.on('room_joined', (data) {
-        print('Room joined confirmation: $data');
-      });
-
-      // Payment update handler
-      _socket.on('payment_status_update', (data) {
-        print('Received payment update: $data');
-        try {
-          if (data != null && data is Map) {
-            final Map<String, dynamic> paymentData = Map<String, dynamic>.from(data);
-            onPaymentUpdate(paymentData);
-          } else {
-            print('Invalid payment update format: $data');
-          }
-        } catch (e) {
-          print('Error processing payment update: $e');
-        }
-      });
-
-      // Server ping handler
-      _socket.on('ping', (data) {
-        print('Received ping from server: $data');
-        _socket.emit('pong', {'message': 'Pong from client', 'timestamp': DateTime.now().toIso8601String()});
+      _socket.onError((error) {
+        print('Socket error: $error');
       });
     } catch (e) {
       print('Error setting up socket connection: $e');
@@ -95,7 +74,6 @@ class SocketService {
     }
   }
 
-  // Method to manually emit join_order_room event
   void joinOrderRoom(String id) {
     if (_socket.connected) {
       print('Manually joining room for order: $id');
@@ -111,5 +89,5 @@ class SocketService {
     print('Disposing socket connection');
     _socket.disconnect();
     _socket.dispose();
-    }
+  }
 }

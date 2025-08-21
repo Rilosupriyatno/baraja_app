@@ -189,6 +189,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       _socketService.connectToSocket(
         id: widget.id,
         onPaymentUpdate: _handlePaymentUpdate,
+        onOrderUpdate: (_) {}, // ✅ handler baru
       );
 
       // Add a delay before manually joining the room again
@@ -197,6 +198,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       });
     }
   }
+
 
   void _handlePaymentUpdate(Map<String, dynamic> data) {
     print('Payment update received in screen: $data');

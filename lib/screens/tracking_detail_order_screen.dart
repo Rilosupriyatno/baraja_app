@@ -223,11 +223,32 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     if (_isListeningForPayment) return;
 
     _isListeningForPayment = true;
-    // ✅ GUNAKAN orderId jika tersedia, fallback ke widget.id
     final socketId = orderId ?? widget.id;
-    _socketService.connectToSocket(id: socketId, onPaymentUpdate: _handlePaymentUpdate);
+
+    _socketService.connectToSocket(
+      id: socketId,
+      onPaymentUpdate: _handlePaymentUpdate,
+      onOrderUpdate: _handleOrderUpdate, // ✅ handler baru
+    );
+
     Future.delayed(const Duration(seconds: 3), () => _socketService.joinOrderRoom(socketId));
   }
+
+  void _handleOrderUpdate(Map<String, dynamic> data) {
+    final targetOrderId = orderId ?? widget.id;
+    if (data['order_id'].toString() != targetOrderId.toString() || !mounted) return;
+
+    print('🔔 Order update diterima: $data');
+
+    setState(() {
+      if (orderData != null) {
+        orderData!['orderStatus'] = data['status'];        // update status order
+        orderData!['paymentStatus'] = data['paymentStatus']; // sync payment
+        _updateOrderStatus();
+      }
+    });
+  }
+
 
   void _handlePaymentUpdate(Map<String, dynamic> data) {
     final targetOrderId = orderId ?? widget.id;
