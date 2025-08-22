@@ -30,7 +30,7 @@ class ActionButtonWidget extends StatelessWidget {
     print('_hasRating: $_hasRating');
     print('hasPaymentDetails: $hasPaymentDetails');
     print('orderData paymentStatus: ${orderData?['paymentStatus']}');
-    print('orderData paymentDetails status: ${orderData?['paymentDetails']?['status']}');
+    print('orderData paymentDetails status: ${orderData?['orderStatus']}');
 
     if (isLoadingRating) {
       print('Returning false: isLoadingRating = true');
@@ -49,7 +49,8 @@ class ActionButtonWidget extends StatelessWidget {
 
     // PERBAIKAN: Cek payment status dari orderData terlebih dahulu
     // Jangan tergantung sepenuhnya pada hasPaymentDetails
-    final paymentStatus = orderData?['paymentStatus'] ?? orderData?['paymentDetails']?['status'];
+    final paymentStatus = orderData?['paymentStatus'] ?? orderData?['orderStatus'];
+    print('ini adalah isi dari order data: $orderData');
 
     // Tampilkan tombol jika payment status adalah pending, settlement, atau capture
     // ATAU jika hasPaymentDetails = true sebagai fallback
@@ -106,7 +107,7 @@ class ActionButtonWidget extends StatelessWidget {
     
     print(orderData?['paymentStatus']);
 
-    final paymentStatus = orderData?['paymentStatus'] ?? orderData?['paymentDetails']?['status'];
+    final paymentStatus = orderData?['paymentStatus'] ?? orderData?['paymentDetails']?['OrderStatus'];
     final isPending = paymentStatus == 'pending';
 
     return _buildButton(

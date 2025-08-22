@@ -257,7 +257,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     setState(() {
       if (orderData != null) {
         orderData!['paymentStatus'] = data['transaction_status'];
-        orderData!['paymentDetails']?['status'] = data['transaction_status'];
+        orderData!['paymentDetails']?['orderStatus'] = data['transaction_status'];
         _updateOrderStatus();
       }
     });

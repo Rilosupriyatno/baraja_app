@@ -30,15 +30,15 @@ class StatusSectionWidget extends StatelessWidget {
     String orderStatusValue = '';
     if (orderData!['orderStatus'] != null) {
       orderStatusValue = orderData!['orderStatus'].toString();
-    } else if (orderData!['status'] != null) {
-      orderStatusValue = orderData!['status'].toString();
+    } else if (orderData!['orderStatus'] != null) {
+      orderStatusValue = orderData!['orderStatus'].toString();
     }
 
     print('🔍 StatusSectionWidget - Full orderData: $orderData');
     print('🔍 StatusSectionWidget - Payment Status: "$paymentStatus"');
     print('🔍 StatusSectionWidget - Order Status: "$orderStatusValue"');
     print('🔍 StatusSectionWidget - orderData["orderStatus"]: ${orderData!['orderStatus']}');
-    print('🔍 StatusSectionWidget - orderData["status"]: ${orderData!['status']}');
+    print('🔍 StatusSectionWidget - orderData["status"]: ${orderData!['orderStatus']}');
 
     // Prioritize order status if payment is successful
     if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
