@@ -241,13 +241,36 @@ class OrderService {
   /// - color: Color (status color)
   /// - icon: IconData (status icon)
 
+  /// Mengambil status order dalam format yang mudah digunakan untuk tracking UI
+  ///
+  /// Returns: Map<String, dynamic> dengan structure:
+  /// - status: String (order status text)
+  /// - color: Color (status color)
+  /// - icon: IconData (status icon)
   Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
     print('=== getOrderStatusInfo Debug ===');
     print('Input orderData: $orderData');
 
-    // Cek payment status terlebih dahulu
-    final paymentStatus = orderData['paymentStatus']?.toString() ?? '';
-    final orderStatus = orderData['orderStatus']?.toString() ?? '';
+    // 🔥 PERBAIKAN: Cek multiple sources untuk payment status
+    String paymentStatus = '';
+
+    // Prioritas: paymentStatus langsung, lalu dari paymentDetails
+    if (orderData['paymentStatus'] != null) {
+      paymentStatus = orderData['paymentStatus'].toString();
+    } else if (orderData['paymentDetails'] != null &&
+        orderData['paymentDetails']['status'] != null) {
+      paymentStatus = orderData['paymentDetails']['status'].toString();
+    }
+
+    // 🔥 PERBAIKAN: Cek multiple sources untuk order status
+    String orderStatus = '';
+
+    // Prioritas: orderStatus, lalu status
+    if (orderData['orderStatus'] != null) {
+      orderStatus = orderData['orderStatus'].toString();
+    } else if (orderData['status'] != null) {
+      orderStatus = orderData['status'].toString();
+    }
 
     print('Payment Status: "$paymentStatus"');
     print('Order Status: "$orderStatus"');
@@ -270,7 +293,6 @@ class OrderService {
           };
         case 'Waiting':
           print('Returning Waiting status');
-
           return {
             'status': 'Menunggu konfirmasi kitchen',
             'color': const Color(0xFF3B82F6),
@@ -344,13 +366,14 @@ class OrderService {
     } else {
       print('Unknown payment status, returning unknown status');
       return {
-        'status': 'Status pembayaran: $paymentStatus',
+        'status': paymentStatus.isNotEmpty
+            ? 'Status pembayaran: $paymentStatus'
+            : 'Status tidak diketahui',
         'color': const Color(0xFF6B7280),
         'icon': Icons.help_outline,
       };
     }
   }
-
   // Updated mapping function to match new API structure and include notes
 
   Order _mapToOrder(Map<String, dynamic> orderData) {

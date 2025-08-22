@@ -20,8 +20,25 @@ class StatusSectionWidget extends StatelessWidget {
   Map<String, dynamic> _getStatusInfo() {
     if (orderData == null) return {};
 
-    final paymentStatus = orderData!['paymentStatus'] ?? '';
-    final orderStatusValue = orderData!['orderStatus'] ?? '';
+    // PERBAIKAN: Cek multiple sources untuk payment status
+    String paymentStatus = '';
+    if (orderData!['paymentStatus'] != null) {
+      paymentStatus = orderData!['paymentStatus'].toString();
+    }
+
+    // PERBAIKAN: Cek multiple sources untuk order status
+    String orderStatusValue = '';
+    if (orderData!['orderStatus'] != null) {
+      orderStatusValue = orderData!['orderStatus'].toString();
+    } else if (orderData!['status'] != null) {
+      orderStatusValue = orderData!['status'].toString();
+    }
+
+    print('🔍 StatusSectionWidget - Full orderData: $orderData');
+    print('🔍 StatusSectionWidget - Payment Status: "$paymentStatus"');
+    print('🔍 StatusSectionWidget - Order Status: "$orderStatusValue"');
+    print('🔍 StatusSectionWidget - orderData["orderStatus"]: ${orderData!['orderStatus']}');
+    print('🔍 StatusSectionWidget - orderData["status"]: ${orderData!['status']}');
 
     // Prioritize order status if payment is successful
     if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
@@ -33,6 +50,8 @@ class StatusSectionWidget extends StatelessWidget {
 
   // Get order status information when payment is successful
   Map<String, dynamic> _getOrderStatusInfo(String orderStatusValue) {
+    print('Processing order status: "$orderStatusValue"');
+
     switch (orderStatusValue) {
       case 'Pending':
         return {
@@ -78,6 +97,7 @@ class StatusSectionWidget extends StatelessWidget {
           'showPulse': false,
         };
       default:
+        print('Unknown order status: "$orderStatusValue", using default');
         return {
           'subtitle': 'Status pesanan',
           'description': 'Pesanan Anda sedang diproses',

@@ -9,10 +9,20 @@ class OrderDetailWidget extends StatelessWidget {
   const OrderDetailWidget({super.key, required this.orderData});
 
   // Method untuk mendapatkan status pembayaran
-  Map<String, dynamic> _getPaymentStatus(String status) {
-    switch (status) {
+  Map<String, dynamic> _getPaymentStatus(String? status) {
+    // ✅ PERBAIKAN: Handle null status
+    if (status == null) {
+      return {
+        'label': 'Status Tidak Diketahui',
+        'icon': Icons.help_outline,
+        'color': Colors.grey,
+      };
+    }
+
+    switch (status.toLowerCase()) {
       case 'settlement':
       case 'capture':
+      case 'paid':
         return {
           'label': 'Lunas',
           'icon': Icons.check_circle,
@@ -60,8 +70,12 @@ class OrderDetailWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = orderData['items'] as List? ?? [];
-    final paymentStatus = _getPaymentStatus(orderData['paymentStatus']);
-    print(orderData['paymentStatus']);
+
+    // ✅ PERBAIKAN: Safe access untuk paymentStatus
+    final paymentStatusValue = orderData['paymentStatus']?.toString();
+    final paymentStatus = _getPaymentStatus(paymentStatusValue);
+
+    print('Payment Status Value: $paymentStatusValue');
 
     return Container(
       width: double.infinity,
@@ -102,7 +116,7 @@ class OrderDetailWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          orderData['orderNumber'] ?? '',
+                          orderData['orderNumber']?.toString() ?? 'No Order Number',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -122,7 +136,7 @@ class OrderDetailWidget extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        orderData['orderDate'] ?? '',
+                        orderData['orderDate']?.toString() ?? 'No Date',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.barajaPrimary.primaryColor,
@@ -193,34 +207,12 @@ class OrderDetailWidget extends StatelessWidget {
                             SizedBox(
                               width: 40,
                               height: 40,
-                              child: (item['imageUrl'] != null &&
-                                  item['imageUrl'].toString().isNotEmpty &&
-                                  item['imageUrl'] != 'https://placehold.co/1920x1080/png')
-                                  ? Image.network(
-                                item['imageUrl'],
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/images/product_default_image.jpeg',
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                  );
-                                },
-                              )
-                                  : Image.asset(
-                                'assets/images/product_default_image.jpeg',
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
+                              child: _buildItemImage(item),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                item['name'] ?? '',
+                                item['name']?.toString() ?? 'Unknown Item',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -235,7 +227,7 @@ class OrderDetailWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                'x${item['quantity'] ?? 0}',
+                                'x${item['quantity']?.toString() ?? '0'}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -245,7 +237,7 @@ class OrderDetailWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              formatCurrency(item['price'] ?? 0),
+                              formatCurrency(_getNumericValue(item['price'])),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -257,145 +249,13 @@ class OrderDetailWidget extends StatelessWidget {
                         const SizedBox(height: 12),
 
                         // Addons Section
-                        if (item['addons'] != null &&
-                            item['addons'] is List &&
-                            (item['addons'] as List).isNotEmpty) ...[
-                          const Row(
-                            children: [
-                              // Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
-                              SizedBox(width: 4),
-                              Text(
-                                'Tambahan:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(left: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: (item['addons'] as List).map((addon) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 2.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.circle, size: 6, color: Colors.blue),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              '${addon["name"] ?? ""}: ${addon["label"] ?? ""}',
-                                              style: const TextStyle(fontSize: 14),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Text(
-                                      formatCurrency(addon["price"] ?? 0),
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )).cast<Widget>().toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                        ..._buildAddonsSection(item),
 
                         // Topping Section
-                        if (item['toppings'] != null &&
-                            ((item['toppings'] is String && (item['toppings'] as String).isNotEmpty) ||
-                                (item['toppings'] is List && (item['toppings'] as List).isNotEmpty))) ...[
-                          const Row(
-                            children: [
-                              // Icon(Icons.cake, size: 16, color: Colors.deepOrange),
-                              SizedBox(width: 4),
-                              Text(
-                                'Topping:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(left: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.deepOrange.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
-                            ),
-                            child: _buildToppingsWidget(item['toppings']),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                        ..._buildToppingsSection(item),
 
                         // Notes Section
-                        if (item['notes'] != null &&
-                            item['notes'].toString().isNotEmpty) ...[
-                          const Row(
-                            children: [
-                              Icon(Icons.note_outlined, size: 16, color: Colors.amber),
-                              SizedBox(width: 4),
-                              Text(
-                                'Catatan:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(left: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.format_quote, size: 14, color: Colors.amber),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    item['notes'].toString(),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontStyle: FontStyle.italic,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                        ..._buildNotesSection(item),
                       ],
                     ),
                   );
@@ -461,14 +321,14 @@ class OrderDetailWidget extends StatelessWidget {
                 const SizedBox(height: 16),
                 PaymentRowWidget(
                   label: 'Total',
-                  value: formatCurrency(orderData['total'] ?? 0),
+                  value: formatCurrency(_getNumericValue(orderData['total'])),
                   icon: Icons.receipt,
                   isTotal: true,
                 ),
                 const SizedBox(height: 16),
                 PaymentRowWidget(
                   label: 'Metode Pembayaran',
-                  value: orderData['paymentMethod'] ?? '',
+                  value: orderData['paymentMethod']?.toString() ?? 'Not specified',
                   icon: Icons.credit_card,
                   isTotal: false,
                 ),
@@ -526,6 +386,223 @@ class OrderDetailWidget extends StatelessWidget {
     );
   }
 
+  // ✅ HELPER METHODS untuk null safety
+
+  Widget _buildItemImage(Map<String, dynamic> item) {
+    final imageUrl = item['imageUrl']?.toString();
+
+    if (imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl != 'https://placehold.co/1920x1080/png') {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            'assets/images/product_default_image.jpeg',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          );
+        },
+      );
+    } else {
+      return Image.asset(
+        'assets/images/product_default_image.jpeg',
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+  }
+
+  List<Widget> _buildAddonsSection(Map<String, dynamic> item) {
+    final addons = item['addons'];
+
+    if (addons == null ||
+        (addons is List && addons.isEmpty) ||
+        (addons is String && addons.isEmpty)) {
+      return [];
+    }
+
+    return [
+      const Row(
+        children: [
+          SizedBox(width: 4),
+          Text(
+            'Tambahan:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Container(
+        padding: const EdgeInsets.all(8),
+        margin: const EdgeInsets.only(left: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.withOpacity(0.2)),
+        ),
+        child: _buildAddonsContent(addons),
+      ),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  Widget _buildAddonsContent(dynamic addons) {
+    if (addons is List && addons.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: addons.map<Widget>((addon) {
+          if (addon is Map) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, size: 6, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${addon["name"]?.toString() ?? ""}: ${addon["label"]?.toString() ?? ""}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(_getNumericValue(addon["price"])),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }).toList(),
+      );
+    }
+
+    return Text(
+      addons?.toString() ?? '',
+      style: const TextStyle(fontSize: 14),
+    );
+  }
+
+  List<Widget> _buildToppingsSection(Map<String, dynamic> item) {
+    final toppings = item['toppings'];
+
+    if (toppings == null ||
+        (toppings is String && toppings.isEmpty) ||
+        (toppings is List && toppings.isEmpty)) {
+      return [];
+    }
+
+    return [
+      const Row(
+        children: [
+          SizedBox(width: 4),
+          Text(
+            'Topping:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Container(
+        padding: const EdgeInsets.all(8),
+        margin: const EdgeInsets.only(left: 8),
+        decoration: BoxDecoration(
+          color: Colors.deepOrange.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
+        ),
+        child: _buildToppingsWidget(toppings),
+      ),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  List<Widget> _buildNotesSection(Map<String, dynamic> item) {
+    final notes = item['notes']?.toString();
+
+    if (notes == null || notes.isEmpty) {
+      return [];
+    }
+
+    return [
+      const Row(
+        children: [
+          Icon(Icons.note_outlined, size: 16, color: Colors.amber),
+          SizedBox(width: 4),
+          Text(
+            'Catatan:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(8),
+        margin: const EdgeInsets.only(left: 8),
+        decoration: BoxDecoration(
+          color: Colors.amber.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.format_quote, size: 14, color: Colors.amber),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                notes,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8),
+    ];
+  }
+
+  // Helper method to safely get numeric values
+  num _getNumericValue(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value;
+    if (value is String) {
+      return num.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
   // Helper method to build toppings widget based on type
   Widget _buildToppingsWidget(dynamic toppings) {
     if (toppings is List && toppings.isNotEmpty && toppings.first is Map<String, dynamic>) {
@@ -545,7 +622,7 @@ class OrderDetailWidget extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${topping["name"] ?? ""}',
+                            topping["name"]?.toString() ?? '',
                             style: const TextStyle(fontSize: 14),
                           ),
                         ),
@@ -554,7 +631,7 @@ class OrderDetailWidget extends StatelessWidget {
                   ),
                   if (topping.containsKey("price") && topping["price"] != null)
                     Text(
-                      formatCurrency(topping["price"] as num),
+                      formatCurrency(_getNumericValue(topping["price"])),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -580,7 +657,7 @@ class OrderDetailWidget extends StatelessWidget {
                   ? toppings
                   : toppings is List
                   ? toppings.join(', ')
-                  : '',
+                  : toppings?.toString() ?? '',
               style: const TextStyle(fontSize: 14),
             ),
           ),

@@ -8,7 +8,7 @@ class SocketService {
 
   void connectToSocket({
     required Function(Map<String, dynamic>) onPaymentUpdate,
-    required Function(Map<String, dynamic>) onOrderUpdate, // ✅ tambahan callback
+    required Function(Map<String, dynamic>) onOrderUpdate,
     required String id,
   }) {
     print('Attempting to connect to socket server at: $baseUrl');
@@ -28,14 +28,14 @@ class SocketService {
         print('Connected to socket server with ID: ${_socket.id}');
         _isConnected = true;
 
-        // Join room dengan ack
+        // Join room with acknowledgment
         print('Attempting to join room for order: $id');
         _socket.emitWithAck('join_order_room', id, ack: (data) {
           print('Room join acknowledgement: $data');
         });
       });
 
-      // 🔔 Payment update
+      // Payment status updates
       _socket.on('payment_status_update', (data) {
         print('Received payment update: $data');
         if (data is Map) {
@@ -43,11 +43,67 @@ class SocketService {
         }
       });
 
-      // 🔔 Order status update
+      // Order status updates (including cashier confirmations)
       _socket.on('order_status_update', (data) {
         print('Received order status update: $data');
         if (data is Map) {
-          onOrderUpdate(Map<String, dynamic>.from(data));
+          final orderData = Map<String, dynamic>.from(data);
+
+          // Handle different status updates
+          if (orderData['status'] == 'Waiting') {
+            print('Order is now being processed by cashier: ${orderData['cashier']}');
+          } else if (orderData['status'] == 'OnProcess'){
+            print('Order is now being processed by cashier: ${orderData['cashier']}');
+          }
+          else if (orderData['status'] == 'Ready') {
+            print('Order is ready for pickup/serving');
+          } else if (orderData['status'] == 'Completed') {
+            print('Order has been completed');
+          }
+
+          onOrderUpdate(orderData);
+        }
+      });
+
+      // Handle specific events for better UX
+      _socket.on('order_confirmed', (data) {
+        print('Order confirmed by cashier: $data');
+        if (data is Map) {
+          final confirmData = Map<String, dynamic>.from(data);
+
+          // 🔥 PERBAIKAN: Sertakan paymentStatus dalam mapping data
+          final mappedData = {
+            'order_id': confirmData['orderId'],
+            'orderStatus': confirmData['status'] ?? 'Waiting', // Gunakan status dari server
+            'paymentStatus': confirmData['paymentStatus'] ?? 'settlement', // ✅ TAMBAHKAN ini
+            'cashier': confirmData['cashier'],
+            'message': confirmData['message'] ?? 'Your order is now being prepared',
+            'timestamp': confirmData['timestamp'],
+          };
+
+          print('🔧 Mapped order_confirmed data: $mappedData');
+          onOrderUpdate(mappedData);
+        }
+      });
+
+      // Kitchen updates (if you want to show cooking progress)
+      _socket.on('kitchen_update', (data) {
+        print('Kitchen update received: $data');
+        if (data is Map) {
+          final kitchenData = Map<String, dynamic>.from(data);
+
+          // 🔥 PERBAIKAN: Pastikan struktur data konsisten
+          final mappedKitchenData = {
+            'order_id': kitchenData['orderId'],
+            'orderStatus': kitchenData['status'],
+            'paymentStatus': kitchenData['paymentStatus'], // ✅ Sertakan jika ada
+            'message': kitchenData['message'] ?? 'Your food is ready!',
+            'completedItems': kitchenData['completedItems'],
+            'timestamp': kitchenData['timestamp'],
+          };
+
+          print('🔧 Mapped kitchen_update data: $mappedKitchenData');
+          onOrderUpdate(mappedKitchenData);
         }
       });
 
@@ -60,6 +116,17 @@ class SocketService {
       _socket.onError((error) {
         print('Socket error: $error');
       });
+
+      // Handle reconnect event
+      _socket.onReconnect((_) {
+        print('Reconnected to socket server');
+        _isConnected = true;
+        // Rejoin the room after reconnection
+        _socket.emitWithAck('join_order_room', id, ack: (data) {
+          print('Rejoined room after reconnection: $data');
+        });
+      });
+
     } catch (e) {
       print('Error setting up socket connection: $e');
     }
@@ -69,7 +136,9 @@ class SocketService {
     if (!_isConnected) {
       print('Attempting to reconnect...');
       Future.delayed(const Duration(seconds: 2), () {
-        _socket.connect();
+        if (!_isConnected) {
+          _socket.connect();
+        }
       });
     }
   }
@@ -85,9 +154,25 @@ class SocketService {
     }
   }
 
+  // Method to send order status update (if customer can trigger any actions)
+  void updateOrderStatus(String orderId, String status) {
+    if (_socket.connected) {
+      _socket.emit('update_order_status', {
+        'orderId': orderId,
+        'status': status,
+        'source': 'customer',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+  bool get isConnected => _isConnected;
+
   void dispose() {
     print('Disposing socket connection');
-    _socket.disconnect();
+    if (_socket.connected) {
+      _socket.disconnect();
+    }
     _socket.dispose();
   }
 }
