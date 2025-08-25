@@ -185,30 +185,30 @@ class OrderService {
 
   Future<Map<String, dynamic>> getOrderForTracking(String id) async {
     try {
-      // Get auth token dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('authToken');
-      // Headers untuk request
       final headers = {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true',
         if (token != null) 'Authorization': 'Bearer $token',
       };
-      print(id);
 
       final response = await http
-          .get(
-        Uri.parse('$baseUrl/api/order/$id'),
-        headers: headers,
-      )
+          .get(Uri.parse('$baseUrl/api/order/$id'), headers: headers)
           .timeout(requestTimeout);
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        print('Response data: $jsonData');
+        final orderData = jsonData['orderData'] ?? jsonData;
+
+        // 🔥 Normalisasi: kalau orderStatus null tapi status ada → isi orderStatus
+        if (orderData['orderStatus'] == null && orderData['status'] != null) {
+          orderData['orderStatus'] = orderData['status'];
+        }
+
         return {
           'success': true,
-          'data': jsonData['orderData'] ??
-              jsonData, // Fallback jika structure berbeda
+          'data': orderData,
           'error': null,
         };
       } else {
@@ -233,6 +233,7 @@ class OrderService {
       };
     }
   }
+
 
   /// Mengambil status order dalam format yang mudah digunakan untuk tracking UI
   ///

@@ -30,9 +30,10 @@ class StatusSectionWidget extends StatelessWidget {
     String orderStatusValue = '';
     if (orderData!['orderStatus'] != null) {
       orderStatusValue = orderData!['orderStatus'].toString();
-    } else if (orderData!['orderStatus'] != null) {
-      orderStatusValue = orderData!['orderStatus'].toString();
+    } else if (orderData!['status'] != null) {
+      orderStatusValue = orderData!['status'].toString();
     }
+
 
     print('🔍 StatusSectionWidget - Full orderData: $orderData');
     print('🔍 StatusSectionWidget - Payment Status: "$paymentStatus"');

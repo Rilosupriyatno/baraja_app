@@ -242,12 +242,14 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
     setState(() {
       if (orderData != null) {
-        orderData!['orderStatus'] = data['status'];        // update status order
-        orderData!['paymentStatus'] = data['paymentStatus']; // sync payment
+        // ✅ gunakan orderStatus dari socket, fallback ke status kalau ada API lama
+        orderData!['orderStatus'] = data['orderStatus'] ?? data['status'];
+        orderData!['paymentStatus'] = data['paymentStatus'] ?? orderData!['paymentStatus'];
         _updateOrderStatus();
       }
     });
   }
+
 
 
   void _handlePaymentUpdate(Map<String, dynamic> data) {

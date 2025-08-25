@@ -74,7 +74,7 @@ class SocketService {
           // 🔥 PERBAIKAN: Sertakan paymentStatus dalam mapping data
           final mappedData = {
             'order_id': confirmData['orderId'],
-            'orderStatus': confirmData['status'] ?? 'Waiting', // Gunakan status dari server
+            'orderStatus': confirmData['orderStatus'] ?? 'Waiting', // Gunakan status dari server
             'paymentStatus': confirmData['paymentStatus'] ?? 'settlement', // ✅ TAMBAHKAN ini
             'cashier': confirmData['cashier'],
             'message': confirmData['message'] ?? 'Your order is now being prepared',
@@ -95,7 +95,7 @@ class SocketService {
           // 🔥 PERBAIKAN: Pastikan struktur data konsisten
           final mappedKitchenData = {
             'order_id': kitchenData['orderId'],
-            'orderStatus': kitchenData['status'],
+            'orderStatus': kitchenData['orderStatus'],
             'paymentStatus': kitchenData['paymentStatus'], // ✅ Sertakan jika ada
             'message': kitchenData['message'] ?? 'Your food is ready!',
             'completedItems': kitchenData['completedItems'],
@@ -155,11 +155,11 @@ class SocketService {
   }
 
   // Method to send order status update (if customer can trigger any actions)
-  void updateOrderStatus(String orderId, String status) {
+  void updateOrderStatus(String orderId, String orderStatus) {
     if (_socket.connected) {
       _socket.emit('update_order_status', {
         'orderId': orderId,
-        'status': status,
+        'orderStatus': orderStatus,
         'source': 'customer',
         'timestamp': DateTime.now().toIso8601String(),
       });
