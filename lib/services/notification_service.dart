@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/notification_model.dart';
 import 'notification_count_service.dart'; // Import count service
@@ -66,14 +67,28 @@ class NotificationService {
   // Setup message handlers
   void setupMessageHandlers() {
     // Foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Foreground message: ${message.notification?.title}');
-      showLocalNotification(message);
+    // FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    //   print('Foreground message: ${message.notification?.title}');
+    //   showLocalNotification(message);
+    //
+    //   // Increase notification count
+    //   NotificationCountService().increaseCount();
+    // });
 
-      // Increase notification count
-      NotificationCountService().increaseCount();
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('notifications_enabled') ?? true;
+
+      if (enabled) {
+        print('Foreground message: ${message.notification?.title}');
+        showLocalNotification(message);
+
+        // Increase notification count
+        NotificationCountService().increaseCount();
+      } else {
+        print("User menonaktifkan notifikasi, tidak ditampilkan");
+      }
     });
-
     // Background message tap
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('Background message tapped: ${message.data}');
