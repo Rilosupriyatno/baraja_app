@@ -8,8 +8,8 @@ import '../models/cart_item.dart';
 import '../models/order_type.dart';
 import '../models/product.dart';
 import '../models/reservation_data.dart';
-import '../pages/account_settings_page.dart';
-import '../pages/favorit_page.dart';
+import '../screens/account_settings_screen.dart';
+import '../screens/favorit_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/login_screen.dart';
@@ -174,7 +174,7 @@ class AppRouter {
         GoRoute(
           path: '/favorite',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const FavoritePage(),
+          builder: (context, state) => const FavoriteScreen(),
         ),
         GoRoute(
           path: '/notification',
@@ -190,7 +190,7 @@ class AppRouter {
         GoRoute(
           path: '/settings',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const AccountSettingsPage(),
+          builder: (context, state) => const AccountSettingsScreen(),
         ),
 
         // Cart route

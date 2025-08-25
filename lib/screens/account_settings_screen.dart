@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
-class AccountSettingsPage extends StatefulWidget {
-  const AccountSettingsPage({super.key});
+class AccountSettingsScreen extends StatefulWidget {
+  const AccountSettingsScreen({super.key});
 
   @override
-  State<AccountSettingsPage> createState() => _AccountSettingsPageState();
+  State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
 }
 
-class _AccountSettingsPageState extends State<AccountSettingsPage> {
+class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
 

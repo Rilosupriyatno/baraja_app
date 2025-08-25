@@ -5,13 +5,13 @@ import 'package:provider/provider.dart';
 
 import '../services/product_service.dart';
 import '../services/auth_service.dart';
-import '../services/notification_count_service.dart'; // Import NotificationCountService
+import '../services/notification_count_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/home/action_button.dart';
 import '../widgets/home/product_slider.dart';
 import '../widgets/home/promo_carousel.dart';
-import '../widgets/common/notification_badge.dart'; // Import NotificationBadge
+import '../widgets/common/notification_badge.dart';
 import '../utils/currency_formatter.dart';
 import '../models/product.dart';
 
@@ -30,34 +30,36 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+
+    // Jalankan _loadData setelah frame pertama selesai build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final notificationCountService = Provider.of<NotificationCountService>(context, listen: false);
+      final notificationCountService =
+      Provider.of<NotificationCountService>(context, listen: false);
       final productService = ProductService();
 
       // Get user ID
       final userId = authService.user?['_id'];
 
+      // Jalankan semua paralel supaya cepat
       await Future.wait([
         authService.fetchUserProfile(),
         _fetchProducts(productService),
         if (userId != null) notificationCountService.fetchUnreadCount(userId),
       ]);
     } catch (e) {
-      print('Failed to load data: $e');
+      debugPrint('❌ Failed to load data: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -87,13 +89,14 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.notifications),
             color: Colors.amber,
             onPressed: () async {
-              final authService = Provider.of<AuthService>(context, listen: false);
+              final authService =
+              Provider.of<AuthService>(context, listen: false);
               final userId = authService.user?['_id'];
 
               if (userId != null) {
                 await context.push('/notification', extra: {'userId': userId});
 
-                // Refresh notification count after returning from notification page
+                // Refresh count setelah balik dari halaman notifikasi
                 notificationService.fetchUnreadCount(userId);
               }
             },

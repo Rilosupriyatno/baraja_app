@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
+import '../services/favorite_service.dart';
 import '../utils/currency_formatter.dart';
 import 'add_order_page.dart';
 
@@ -24,6 +26,183 @@ class ProductDetailModal extends StatefulWidget {
 
 class ProductDetailModalState extends State<ProductDetailModal> {
   final Color primaryColor = const Color(0xFF076A3B);
+  final FavoriteService favoriteService = FavoriteService();
+
+  bool isFavorite = false;
+  bool isToggling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavoriteStatusInstant();
+  }
+
+  // Method untuk load status favorit dengan cache dan instant UI
+  void _loadFavoriteStatusInstant() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId == null || userId.isEmpty) {
+        print("⚠️ User ID belum ada, tidak bisa cek status favorit");
+        return;
+      }
+
+      // 1. Cek cache dulu (instant)
+      final cachedFavorites = prefs.getStringList('cached_favorites_$userId') ?? [];
+      bool isCached = cachedFavorites.contains(widget.product.id);
+
+      // Update UI instant dari cache
+      if (mounted) {
+        setState(() {
+          isFavorite = isCached;
+        });
+      }
+
+      // 2. Background sync dengan backend untuk update cache
+      _syncFavoritesInBackground(userId);
+
+    } catch (e) {
+      print("Error loading favorite status: $e");
+    }
+  }
+
+  // Background sync tanpa ganggu UI
+  void _syncFavoritesInBackground(String userId) async {
+    try {
+      final favorites = await favoriteService.getFavorites(userId);
+      final favoriteIds = favorites.map((fav) => fav['_id'].toString()).toList();
+
+      // Update cache
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('cached_favorites_$userId', favoriteIds);
+
+      // Update UI jika ada perubahan
+      bool actualFavoriteStatus = favoriteIds.contains(widget.product.id);
+      if (mounted && actualFavoriteStatus != isFavorite) {
+        setState(() {
+          isFavorite = actualFavoriteStatus;
+        });
+      }
+    } catch (e) {
+      print("Error syncing favorites: $e");
+    }
+  }
+
+  void toggleFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('userId');
+    final menuItemId = widget.product.id;
+
+    if (userId == null || userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Optimistic UI update - langsung update tampilan dulu
+    final newFavoriteState = !isFavorite;
+    setState(() {
+      isFavorite = newFavoriteState;
+      isToggling = true;
+    });
+
+    // Update cache langsung
+    final cachedFavorites = prefs.getStringList('cached_favorites_$userId') ?? [];
+    if (newFavoriteState) {
+      if (!cachedFavorites.contains(menuItemId)) {
+        cachedFavorites.add(menuItemId);
+      }
+    } else {
+      cachedFavorites.remove(menuItemId);
+    }
+    await prefs.setStringList('cached_favorites_$userId', cachedFavorites);
+
+    try {
+      bool success;
+      if (newFavoriteState) {
+        success = await favoriteService.addFavorite(userId, menuItemId);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ditambahkan ke favorit'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        success = await favoriteService.removeFavorite(userId, menuItemId);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Dihapus dari favorit'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      }
+
+      // Jika gagal, kembalikan state dan cache ke semula
+      if (!success) {
+        setState(() {
+          isFavorite = !newFavoriteState;
+        });
+
+        // Rollback cache
+        final rollbackFavorites = prefs.getStringList('cached_favorites_$userId') ?? [];
+        if (!newFavoriteState) {
+          if (!rollbackFavorites.contains(menuItemId)) {
+            rollbackFavorites.add(menuItemId);
+          }
+        } else {
+          rollbackFavorites.remove(menuItemId);
+        }
+        await prefs.setStringList('cached_favorites_$userId', rollbackFavorites);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Terjadi kesalahan, coba lagi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
+    } catch (e) {
+      print("Error toggling favorite: $e");
+      // Kembalikan state dan cache jika ada error
+      setState(() {
+        isFavorite = !newFavoriteState;
+      });
+
+      // Rollback cache
+      final rollbackFavorites = prefs.getStringList('cached_favorites_$userId') ?? [];
+      if (!newFavoriteState) {
+        if (!rollbackFavorites.contains(menuItemId)) {
+          rollbackFavorites.add(menuItemId);
+        }
+      } else {
+        rollbackFavorites.remove(menuItemId);
+      }
+      await prefs.setStringList('cached_favorites_$userId', rollbackFavorites);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terjadi kesalahan, coba lagi'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isToggling = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,14 +300,18 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                               child: Text(
                                 product.name,
                                 style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold
                                 ),
                               ),
                             ),
+                            // Favorite button tanpa loading UI yang mengganggu
                             IconButton(
-                              icon: const Icon(Icons.favorite_border),
-                              onPressed: () {},
+                              icon: Icon(
+                                isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: Colors.red,
+                              ),
+                              onPressed: isToggling ? null : toggleFavorite,
                             ),
                           ],
                         ),
