@@ -10,7 +10,7 @@ import '../models/product.dart';
 import '../models/reservation_data.dart';
 import '../pages/account_settings_page.dart';
 import '../pages/favorit_page.dart';
-import '../pages/notification_page.dart';
+import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
@@ -179,8 +179,14 @@ class AppRouter {
         GoRoute(
           path: '/notification',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const NotificationPage(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            final userId = extra?['userId'] ?? '';
+
+            return NotificationScreen(userId: userId);
+          },
         ),
+
         GoRoute(
           path: '/settings',
           parentNavigatorKey: _rootNavigatorKey,

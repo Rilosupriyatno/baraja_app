@@ -1,12 +1,20 @@
 // services/notification_service.dart
+import 'dart:convert';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+
+import '../models/notification_model.dart';
+import 'notification_count_service.dart'; // Import count service
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
+  final String? baseUrl = dotenv.env['BASE_URL'];
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
@@ -61,6 +69,9 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('Foreground message: ${message.notification?.title}');
       showLocalNotification(message);
+
+      // Increase notification count
+      NotificationCountService().increaseCount();
     });
 
     // Background message tap
@@ -200,5 +211,54 @@ class NotificationService {
         );
       },
     );
+  }
+
+  // Get notification user service
+  Future<List<NotificationModel>> getUserNotifications(String userId) async {
+    final url = Uri.parse("${baseUrl!}/api/notifications/$userId");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List notifications = data['data'];
+
+      return notifications.map((n) => NotificationModel.fromJson(n)).toList();
+    } else {
+      throw Exception("Failed to load notifications");
+    }
+  }
+
+  // Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    final url = Uri.parse("${baseUrl!}/api/notifications/$notificationId/read");
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      // Update notification count service
+      NotificationCountService().decreaseCount();
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? "Failed to mark notification as read");
+    }
+  }
+
+  // Mark all notifications as read for a user
+  Future<void> markAllNotificationsAsRead(String userId) async {
+    final url = Uri.parse("${baseUrl!}/api/notifications/$userId/read-all");
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      // Reset notification count
+      NotificationCountService().resetCount();
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? "Failed to mark all notifications as read");
+    }
   }
 }

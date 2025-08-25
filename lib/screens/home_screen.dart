@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../services/product_service.dart'; // Import ProductService
+import '../services/product_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_count_service.dart'; // Import NotificationCountService
 import '../theme/app_theme.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/home/action_button.dart';
 import '../widgets/home/product_slider.dart';
 import '../widgets/home/promo_carousel.dart';
+import '../widgets/common/notification_badge.dart'; // Import NotificationBadge
 import '../utils/currency_formatter.dart';
-import '../models/product.dart'; // Import Product model
+import '../models/product.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,21 +39,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Load user data and products in parallel
       final authService = Provider.of<AuthService>(context, listen: false);
+      final notificationCountService = Provider.of<NotificationCountService>(context, listen: false);
       final productService = ProductService();
+
+      // Get user ID
+      final userId = authService.user?['_id'];
 
       await Future.wait([
         authService.fetchUserProfile(),
         _fetchProducts(productService),
+        if (userId != null) notificationCountService.fetchUnreadCount(userId),
       ]);
     } catch (e) {
-      // Handle error
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('Failed to load data: ${e.toString()}')),
-      // );
       print('Failed to load data: $e');
-
     } finally {
       if (mounted) {
         setState(() {
@@ -64,7 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchProducts(ProductService productService) async {
     try {
       final products = await productService.getProducts();
-      // print(products);
       final discountedProducts = await productService.getDiscountedProducts();
 
       if (mounted) {
@@ -76,6 +76,31 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       throw Exception('Failed to fetch products: $e');
     }
+  }
+
+  Widget _buildNotificationIcon() {
+    return Consumer<NotificationCountService>(
+      builder: (context, notificationService, child) {
+        return NotificationBadge(
+          count: notificationService.unreadCount,
+          child: IconButton(
+            icon: const Icon(Icons.notifications),
+            color: Colors.amber,
+            onPressed: () async {
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final userId = authService.user?['_id'];
+
+              if (userId != null) {
+                await context.push('/notification', extra: {'userId': userId});
+
+                // Refresh notification count after returning from notification page
+                notificationService.fetchUnreadCount(userId);
+              }
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -103,50 +128,44 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            color: Colors.amber,
-            onPressed: () {
-              context.push('/notification');
-            },
-          ),
+          _buildNotificationIcon(),
           const SizedBox(width: 16),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
+        onRefresh: _loadData,
+        child: ListView(
+          children: [
+            const PromoCarousel(),
+            const SizedBox(height: 16),
+            const ActionButtons(),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 4.0, vertical: 18.0),
+              child: Column(
                 children: [
-                  const PromoCarousel(),
+                  ProductSlider(
+                    products: _discountedProducts.isNotEmpty
+                        ? _discountedProducts
+                        : _products,
+                    formatPrice: formatCurrency,
+                    title: 'Untuk Kamu',
+                  ),
                   const SizedBox(height: 16),
-                  const ActionButtons(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4.0, vertical: 18.0),
-                    child: Column(
-                      children: [
-                        ProductSlider(
-                          products: _discountedProducts.isNotEmpty
-                              ? _discountedProducts
-                              : _products,
-                          formatPrice: formatCurrency,
-                          title: 'Untuk Kamu',
-                        ),
-                        const SizedBox(height: 16),
-                        ProductSlider(
-                          products: _products,
-                          title: 'Rekomendasi',
-                          isBundle: true,
-                          formatPrice: formatCurrency,
-                        ),
-                      ],
-                    ),
+                  ProductSlider(
+                    products: _products,
+                    title: 'Rekomendasi',
+                    isBundle: true,
+                    formatPrice: formatCurrency,
                   ),
                 ],
               ),
             ),
+          ],
+        ),
+      ),
       floatingActionButton: const CheckoutButton(),
     );
   }
