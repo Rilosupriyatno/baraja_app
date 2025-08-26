@@ -1,27 +1,29 @@
 class FormValidators {
-  // Validator untuk username
+  // Validator untuk username - matching backend validation
   static String? validateUsername(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Nama pengguna tidak boleh kosong';
+      return 'Username tidak boleh kosong';
     }
 
-    if (value.trim().length < 3) {
-      return 'Nama pengguna minimal 3 karakter';
+    final trimmed = value.trim();
+
+    if (trimmed.length < 3) {
+      return 'Username harus 3-30 karakter';
     }
 
-    if (value.trim().length > 30) {
-      return 'Nama pengguna maksimal 30 karakter';
+    if (trimmed.length > 30) {
+      return 'Username harus 3-30 karakter';
     }
 
-    // Cek karakter yang diizinkan (huruf, angka, underscore, titik, spasi)
-    if (!RegExp(r'^[a-zA-Z0-9._\s]+$').hasMatch(value.trim())) {
-      return 'Nama pengguna hanya boleh berisi huruf, angka, titik, underscore, dan spasi';
+    // Matching backend regex: /^[a-zA-Z0-9._\s]+$/
+    if (!RegExp(r'^[a-zA-Z0-9._\s]+$').hasMatch(trimmed)) {
+      return 'Username hanya boleh berisi huruf, angka, titik, underscore, dan spasi';
     }
 
     return null;
   }
 
-  // Validator untuk email
+  // Validator untuk email - matching backend validation
   static String? validateEmail(String? value, {bool required = true}) {
     if (!required && (value == null || value.trim().isEmpty)) {
       return null;
@@ -31,19 +33,21 @@ class FormValidators {
       return 'Email tidak boleh kosong';
     }
 
-    // Regex pattern untuk validasi email yang lebih ketat
+    final trimmed = value.trim();
+
+    // More comprehensive email validation matching backend
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
 
-    if (!emailRegex.hasMatch(value.trim())) {
+    if (!emailRegex.hasMatch(trimmed)) {
       return 'Format email tidak valid';
     }
 
     return null;
   }
 
-  // Validator untuk nomor telepon
+  // Validator untuk nomor telepon - matching backend validation
   static String? validatePhone(String? value, {bool required = false}) {
     if (!required && (value == null || value.trim().isEmpty)) {
       return null;
@@ -53,16 +57,17 @@ class FormValidators {
       return 'Nomor telepon tidak boleh kosong';
     }
 
-    if (value != null && value.isNotEmpty) {
+    if (value != null && value.trim().isNotEmpty) {
       // Hapus semua karakter selain angka untuk pengecekan
       final numbersOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
 
+      // Matching backend validation: 10-15 digits
       if (numbersOnly.length < 10) {
-        return 'Nomor telepon minimal 10 digit';
+        return 'Nomor telepon harus 10-15 digit';
       }
 
       if (numbersOnly.length > 15) {
-        return 'Nomor telepon maksimal 15 digit';
+        return 'Nomor telepon harus 10-15 digit';
       }
 
       // Cek format nomor telepon Indonesia
@@ -74,7 +79,7 @@ class FormValidators {
     return null;
   }
 
-  // Validator untuk password
+  // Validator untuk password - matching backend validation exactly
   static String? validatePassword(String? value, {bool required = true}) {
     if (!required && (value == null || value.isEmpty)) {
       return null;
@@ -84,22 +89,23 @@ class FormValidators {
       return 'Password tidak boleh kosong';
     }
 
+    // Matching backend: minimum 6 characters
     if (value.length < 6) {
-      return 'Password minimal 6 karakter';
+      return 'Password baru minimal 6 karakter';
     }
 
     if (value.length > 128) {
       return 'Password maksimal 128 karakter';
     }
 
-    // Cek apakah mengandung minimal satu huruf
+    // Matching backend: must contain letters
     if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
-      return 'Password harus mengandung minimal satu huruf';
+      return 'Password harus mengandung huruf';
     }
 
-    // Cek apakah mengandung minimal satu angka
+    // Matching backend: must contain numbers
     if (!RegExp(r'[0-9]').hasMatch(value)) {
-      return 'Password harus mengandung minimal satu angka';
+      return 'Password harus mengandung angka';
     }
 
     return null;
@@ -136,6 +142,14 @@ class FormValidators {
     return null;
   }
 
+  // Validator untuk current password (for change password)
+  static String? validateCurrentPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password saat ini diperlukan';
+    }
+    return null;
+  }
+
   // Validator untuk alamat
   static String? validateAddress(String? value, {bool required = false}) {
     if (!required && (value == null || value.trim().isEmpty)) {
@@ -159,7 +173,7 @@ class FormValidators {
     return null;
   }
 
-  // Helper method untuk format nomor telepon
+  // Helper method untuk format nomor telepon Indonesia
   static String formatPhoneNumber(String phone) {
     // Hapus semua karakter selain angka dan +
     String cleaned = phone.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -189,5 +203,76 @@ class FormValidators {
       return null; // Tidak perlu validasi untuk field read-only
     }
     return null;
+  }
+
+  // Composite validator untuk update profile
+  static String? validateUpdateProfile(String field, String? value, {bool isGoogleUser = false}) {
+    switch (field) {
+      case 'username':
+        return validateUsername(value);
+      case 'email':
+        return isGoogleUser ? null : validateEmail(value, required: false);
+      case 'phone':
+        return validatePhone(value, required: false);
+      default:
+        return null;
+    }
+  }
+
+  // Validate all fields for profile update
+  static Map<String, String> validateProfileData({
+    required String username,
+    String? email,
+    String? phone,
+    bool isGoogleUser = false,
+  }) {
+    Map<String, String> errors = {};
+
+    String? usernameError = validateUsername(username);
+    if (usernameError != null) {
+      errors['username'] = usernameError;
+    }
+
+    if (!isGoogleUser && email != null && email.isNotEmpty) {
+      String? emailError = validateEmail(email, required: false);
+      if (emailError != null) {
+        errors['email'] = emailError;
+      }
+    }
+
+    if (phone != null && phone.isNotEmpty) {
+      String? phoneError = validatePhone(phone, required: false);
+      if (phoneError != null) {
+        errors['phone'] = phoneError;
+      }
+    }
+
+    return errors;
+  }
+
+  // Validate change password data
+  static Map<String, String> validateChangePasswordData({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) {
+    Map<String, String> errors = {};
+
+    String? currentPasswordError = validateCurrentPassword(currentPassword);
+    if (currentPasswordError != null) {
+      errors['currentPassword'] = currentPasswordError;
+    }
+
+    String? newPasswordError = validateNewPassword(newPassword, currentPassword);
+    if (newPasswordError != null) {
+      errors['newPassword'] = newPasswordError;
+    }
+
+    String? confirmPasswordError = validateConfirmPassword(confirmPassword, newPassword);
+    if (confirmPasswordError != null) {
+      errors['confirmPassword'] = confirmPasswordError;
+    }
+
+    return errors;
   }
 }

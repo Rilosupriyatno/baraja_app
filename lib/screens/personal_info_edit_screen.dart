@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/form_validator.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../services/user_service.dart';
 
@@ -15,13 +15,10 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   bool _isGoogleUser = false;
   bool _isLoading = true;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -34,31 +31,28 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
     _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _loadUserData() async {
     try {
-      // Coba ambil data dari API terlebih dahulu
+      setState(() => _isLoading = true);
+
       final userData = await UserService.getCurrentUser();
 
       if (userData != null) {
-        // Simpan ke local storage
-        await UserService.saveUserDataLocally(userData);
+        // Ambil data Google user langsung dari userData tanpa request tambahan
+        final isGoogle = (userData['authType']?.toString().toLowerCase() == 'google');
 
         setState(() {
           _usernameController.text = userData['username'] ?? '';
           _emailController.text = userData['email'] ?? '';
           _phoneController.text = userData['phone'] ?? '';
-          _isGoogleUser = userData['password'] == '-' || userData['password'] == null;
+          _isGoogleUser = isGoogle;
           _isLoading = false;
         });
       } else {
-        // Fallback ke data lokal jika API gagal
         final localData = await UserService.getUserDataLocally();
-
         setState(() {
           _usernameController.text = localData['username'] ?? '';
           _emailController.text = localData['email'] ?? '';
@@ -66,11 +60,10 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
           _isGoogleUser = localData['is_google_user'] ?? false;
           _isLoading = false;
         });
+        _showWarningSnackBar('Menggunakan data offline, beberapa informasi mungkin tidak terbaru');
       }
     } catch (e) {
-      // Jika ada error, coba gunakan data lokal
       final localData = await UserService.getUserDataLocally();
-
       setState(() {
         _usernameController.text = localData['username'] ?? '';
         _emailController.text = localData['email'] ?? '';
@@ -78,60 +71,61 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
         _isGoogleUser = localData['is_google_user'] ?? false;
         _isLoading = false;
       });
-
       _showErrorSnackBar('Gagal memuat data dari server, menggunakan data lokal');
     }
   }
+
 
   Future<void> _saveUserData() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    // Client-side validation
+    final validationErrors = FormValidators.validateProfileData(
+      username: _usernameController.text,
+      email: _isGoogleUser ? null : _emailController.text,
+      phone: _phoneController.text,
+      isGoogleUser: _isGoogleUser,
+    );
+
+    if (validationErrors.isNotEmpty) {
+      final firstError = validationErrors.values.first;
+      _showErrorSnackBar(firstError);
+      return;
+    }
+
     try {
       setState(() {
-        _isLoading = true;
+        _isSaving = true;
       });
 
-      // Update data melalui API
-      bool success = await UserService.updateUserProfile(
-        username: _usernameController.text,
-        email: _isGoogleUser ? null : _emailController.text,
-        phone: _phoneController.text.isEmpty ? null : _phoneController.text,
+      // Update data through API
+      final result = await UserService.updateUserProfile(
+        username: FormValidators.cleanInput(_usernameController.text),
+        email: _isGoogleUser ? null : FormValidators.cleanInput(_emailController.text),
+        phone: FormValidators.cleanInput(_phoneController.text),
       );
 
-      if (success) {
-        // Update local storage juga
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('username', _usernameController.text);
-        await prefs.setString('phone', _phoneController.text);
+      setState(() {
+        _isSaving = false;
+      });
 
-        if (!_isGoogleUser) {
-          await prefs.setString('email', _emailController.text);
-
-          // Update password jika diisi
-          if (_passwordController.text.isNotEmpty) {
-            // Note: Password update harus dilakukan di screen terpisah untuk keamanan
-            await prefs.setString('password', _passwordController.text);
+      if (result['success']) {
+        _showSuccessSnackBar(result['message']);
+        // Delay navigation to let user see the success message
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            Navigator.pop(context, true); // Return true to indicate success
           }
-        }
-
-        setState(() {
-          _isLoading = false;
         });
-
-        _showSuccessSnackBar('Data berhasil diperbarui');
-        Navigator.pop(context);
       } else {
-        setState(() {
-          _isLoading = false;
-        });
-        _showErrorSnackBar('Gagal memperbarui data di server');
+        _showErrorSnackBar(result['message']);
       }
 
     } catch (e) {
       setState(() {
-        _isLoading = false;
+        _isSaving = false;
       });
       _showErrorSnackBar('Terjadi kesalahan jaringan');
     }
@@ -140,7 +134,13 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
       ),
@@ -150,9 +150,31 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -160,11 +182,18 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.white,
-        appBar: const ClassicAppBar(title: 'Informasi Pribadi'),
-        body: const Center(
-          child: CircularProgressIndicator(),
+        appBar: ClassicAppBar(title: 'Informasi Pribadi'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Memuat data pengguna...'),
+            ],
+          ),
         ),
       );
     }
@@ -193,7 +222,7 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Anda login menggunakan Google. Email dan password tidak dapat diubah.',
+                        'Anda login menggunakan Google. Email tidak dapat diubah melalui aplikasi ini.',
                         style: TextStyle(
                           color: Colors.blue.shade700,
                           fontSize: 14,
@@ -208,20 +237,14 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
             TextFormField(
               controller: _usernameController,
               decoration: const InputDecoration(
-                labelText: 'Nama Pengguna',
+                labelText: 'Nama Pengguna *',
                 hintText: 'Masukkan nama pengguna',
                 prefixIcon: Icon(Icons.person),
                 border: OutlineInputBorder(),
+                helperText: '3-30 karakter, hanya huruf, angka, titik, underscore, dan spasi',
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nama pengguna tidak boleh kosong';
-                }
-                if (value.trim().length < 3) {
-                  return 'Nama pengguna minimal 3 karakter';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.next,
+              validator: FormValidators.validateUsername,
             ),
             const SizedBox(height: 16),
 
@@ -229,9 +252,10 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
             TextFormField(
               controller: _emailController,
               enabled: !_isGoogleUser,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: 'Email',
-                hintText: _isGoogleUser ? 'Email tidak dapat diubah' : 'Masukkan email',
+                labelText: _isGoogleUser ? 'Email' : 'Email',
+                hintText: _isGoogleUser ? 'Email tidak dapat diubah' : 'Masukkan email (opsional)',
                 prefixIcon: Icon(
                   Icons.email,
                   color: _isGoogleUser ? Colors.grey : null,
@@ -243,15 +267,8 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
               style: TextStyle(
                 color: _isGoogleUser ? Colors.grey : Colors.black,
               ),
-              validator: _isGoogleUser ? null : (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email tidak boleh kosong';
-                }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                  return 'Format email tidak valid';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.next,
+              validator: _isGoogleUser ? null : (value) => FormValidators.validateEmail(value, required: false),
             ),
             const SizedBox(height: 16),
 
@@ -264,102 +281,16 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
                 hintText: 'Masukkan nomor telepon (opsional)',
                 prefixIcon: Icon(Icons.phone),
                 border: OutlineInputBorder(),
+                helperText: '10-15 digit, format Indonesia',
               ),
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  if (!RegExp(r'^[0-9+\-\s()]+$').hasMatch(value)) {
-                    return 'Format nomor telepon tidak valid';
-                  }
-                  if (value.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
-                    return 'Nomor telepon minimal 10 digit';
-                  }
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.done,
+              validator: (value) => FormValidators.validatePhone(value, required: false),
             ),
-            const SizedBox(height: 16),
-
-            // Password Section - hanya untuk non-Google user
-            if (!_isGoogleUser) ...[
-              const Divider(),
-              const SizedBox(height: 16),
-              Text(
-                'Ubah Password (Opsional)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // New Password Field
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Password Baru',
-                  hintText: 'Kosongkan jika tidak ingin mengubah password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    if (value.length < 6) {
-                      return 'Password minimal 6 karakter';
-                    }
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Confirm Password Field
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: 'Konfirmasi Password Baru',
-                  hintText: 'Ulangi password baru',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (_passwordController.text.isNotEmpty) {
-                    if (value != _passwordController.text) {
-                      return 'Konfirmasi password tidak cocok';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ],
-
             const SizedBox(height: 32),
 
             // Save Button
             ElevatedButton(
-              onPressed: _isLoading ? null : _saveUserData,
+              onPressed: (_isSaving) ? null : _saveUserData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -368,7 +299,7 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: _isLoading
+              child: _isSaving
                   ? const SizedBox(
                 height: 20,
                 width: 20,
@@ -382,6 +313,19 @@ class _PersonalInfoEditScreenState extends State<PersonalInfoEditScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Cancel Button
+            TextButton(
+              onPressed: _isSaving ? null : () => Navigator.pop(context),
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
                 ),
               ),
             ),

@@ -59,7 +59,9 @@ class PointButtons extends StatelessWidget {
         children: [
           ElevatedButton(
             onPressed: () {
-              context.go(route);
+              if (route != '/point') {
+                context.go(route);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/form_validator.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../services/user_service.dart';
 
@@ -18,6 +18,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   bool _isGoogleUser = false;
   bool _isLoading = true;
+  bool _isChanging = false;
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
@@ -37,56 +38,120 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Future<void> _checkUserType() async {
+    setState(() => _isLoading = true);
+
     try {
-      // Cek dari API apakah user Google atau tidak
-      bool isGoogle = await UserService.isGoogleUser();
+      print('DEBUG: Mulai cek user type...');
 
-      setState(() {
-        _isGoogleUser = isGoogle;
-        _isLoading = false;
-      });
+      // Ambil data user sekali saja
+      final userData = await UserService.getCurrentUser();
+
+      if (userData != null) {
+        print('DEBUG: userData = $userData');
+
+        final isGoogle = (userData['authType']?.toString().toLowerCase() == 'google');
+
+        if (mounted) {
+          setState(() {
+            _isGoogleUser = isGoogle;
+            _isLoading = false;
+          });
+        }
+      } else {
+        // fallback ke local
+        final localData = await UserService.getUserDataLocally();
+        print('DEBUG: fallback localData = $localData');
+
+        if (mounted) {
+          setState(() {
+            _isGoogleUser = localData['is_google_user'] ?? false;
+            _isLoading = false;
+          });
+        }
+        _showWarningSnackBar('Menggunakan data offline, beberapa informasi mungkin tidak terbaru');
+      }
     } catch (e) {
-      // Fallback ke checking lokal jika API gagal
-      final prefs = await SharedPreferences.getInstance();
-      bool isGoogle = prefs.getBool('is_google_user') ?? false;
+      print('ERROR: _checkUserType gagal => $e');
 
-      setState(() {
-        _isGoogleUser = isGoogle;
-        _isLoading = false;
-      });
+      try {
+        final localData = await UserService.getUserDataLocally();
+        if (mounted) {
+          setState(() {
+            _isGoogleUser = localData['is_google_user'] ?? false;
+            _isLoading = false;
+          });
+        }
+        _showErrorSnackBar('Gagal memuat data dari server, menggunakan data lokal');
+      } catch (localError) {
+        if (mounted) {
+          setState(() {
+            _isGoogleUser = false; // default jika semua gagal
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
   Future<void> _changePassword() async {
+    // Jangan lakukan apapun jika user adalah Google user
+    if (_isGoogleUser) {
+      _showErrorSnackBar('Anda tidak dapat mengubah password untuk akun Google');
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Client-side validation
+    final validationErrors = FormValidators.validateChangePasswordData(
+      currentPassword: _currentPasswordController.text,
+      newPassword: _newPasswordController.text,
+      confirmPassword: _confirmPasswordController.text,
+    );
+
+    if (validationErrors.isNotEmpty) {
+      final firstError = validationErrors.values.first;
+      _showErrorSnackBar(firstError);
       return;
     }
 
     try {
       setState(() {
-        _isLoading = true;
+        _isChanging = true;
       });
 
-      // Panggil API untuk mengubah password
+      // Call API to change password
       final result = await UserService.changePassword(
         currentPassword: _currentPasswordController.text,
         newPassword: _newPasswordController.text,
       );
 
       setState(() {
-        _isLoading = false;
+        _isChanging = false;
       });
 
       if (result['success']) {
         _showSuccessSnackBar(result['message']);
-        Navigator.pop(context);
+        // Clear form fields
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+
+        // Delay navigation to let user see the success message
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            Navigator.pop(context, true); // Return true to indicate success
+          }
+        });
       } else {
         _showErrorSnackBar(result['message']);
       }
 
     } catch (e) {
       setState(() {
-        _isLoading = false;
+        _isChanging = false;
       });
       _showErrorSnackBar('Terjadi kesalahan jaringan');
     }
@@ -95,7 +160,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
       ),
@@ -105,9 +176,31 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -118,61 +211,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: const ClassicAppBar(title: 'Ubah Password'),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    // Jika Google user, tampilkan pesan bahwa password tidak dapat diubah
-    if (_isGoogleUser) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: const ClassicAppBar(title: 'Ubah Password'),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.block,
-                size: 80,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Password Tidak Dapat Diubah',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade700,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              Text(
-                'Anda login menggunakan akun Google. Password dikelola oleh Google dan tidak dapat diubah melalui aplikasi ini.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('Kembali'),
+              const Text('Memuat informasi pengguna...'),
+              const SizedBox(height: 24),
+              // Add a fallback button in case loading takes too long
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = false;
+                    _isGoogleUser = false; // Default to regular user
+                  });
+                },
+                child: const Text('Lewati dan lanjutkan'),
               ),
             ],
           ),
@@ -188,36 +243,43 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Info Section
+            // Info Section - berbeda untuk Google user dan regular user
             Container(
               margin: const EdgeInsets.only(bottom: 24),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: _isGoogleUser ? Colors.orange.shade50 : Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(
+                  color: _isGoogleUser ? Colors.orange.shade200 : Colors.blue.shade200,
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.security, color: Colors.blue.shade600),
+                  Icon(
+                    _isGoogleUser ? Icons.info_outline : Icons.security,
+                    color: _isGoogleUser ? Colors.orange.shade600 : Colors.blue.shade600,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Keamanan Password',
+                          _isGoogleUser ? 'Akun Google' : 'Keamanan Password',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                            color: _isGoogleUser ? Colors.orange.shade700 : Colors.blue.shade700,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Gunakan password yang kuat dengan minimal 6 karakter, kombinasi huruf, angka, dan simbol.',
+                          _isGoogleUser
+                              ? 'Anda login menggunakan akun Google. Password dikelola oleh Google dan tidak dapat diubah melalui aplikasi ini.'
+                              : 'Password harus minimal 6 karakter dan mengandung huruf serta angka.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.blue.shade600,
+                            color: _isGoogleUser ? Colors.orange.shade600 : Colors.blue.shade600,
                           ),
                         ),
                       ],
@@ -231,11 +293,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             TextFormField(
               controller: _currentPasswordController,
               obscureText: _obscureCurrentPassword,
+              enabled: !_isGoogleUser, // Disable jika Google user
               decoration: InputDecoration(
-                labelText: 'Password Saat Ini',
-                hintText: 'Masukkan password saat ini',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
+                labelText: 'Password Saat Ini *',
+                hintText: _isGoogleUser ? 'Tidak tersedia untuk akun Google' : 'Masukkan password saat ini',
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: _isGoogleUser ? Colors.grey.shade400 : null,
+                ),
+                suffixIcon: _isGoogleUser
+                    ? Icon(Icons.block, color: Colors.grey.shade400)
+                    : IconButton(
                   icon: Icon(
                     _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
                   ),
@@ -246,13 +314,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   },
                 ),
                 border: const OutlineInputBorder(),
+                filled: _isGoogleUser,
+                fillColor: _isGoogleUser ? Colors.grey.shade100 : null,
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Password saat ini tidak boleh kosong';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.next,
+              validator: _isGoogleUser ? null : FormValidators.validateCurrentPassword,
             ),
             const SizedBox(height: 16),
 
@@ -260,11 +326,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             TextFormField(
               controller: _newPasswordController,
               obscureText: _obscureNewPassword,
+              enabled: !_isGoogleUser, // Disable jika Google user
               decoration: InputDecoration(
-                labelText: 'Password Baru',
-                hintText: 'Masukkan password baru',
-                prefixIcon: const Icon(Icons.lock),
-                suffixIcon: IconButton(
+                labelText: 'Password Baru *',
+                hintText: _isGoogleUser ? 'Tidak tersedia untuk akun Google' : 'Masukkan password baru',
+                prefixIcon: Icon(
+                  Icons.lock,
+                  color: _isGoogleUser ? Colors.grey.shade400 : null,
+                ),
+                suffixIcon: _isGoogleUser
+                    ? Icon(Icons.block, color: Colors.grey.shade400)
+                    : IconButton(
                   icon: Icon(
                     _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
                   ),
@@ -275,19 +347,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   },
                 ),
                 border: const OutlineInputBorder(),
+                helperText: _isGoogleUser ? null : 'Min. 6 karakter, harus ada huruf dan angka',
+                filled: _isGoogleUser,
+                fillColor: _isGoogleUser ? Colors.grey.shade100 : null,
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Password baru tidak boleh kosong';
-                }
-                if (value.length < 6) {
-                  return 'Password minimal 6 karakter';
-                }
-                if (value == _currentPasswordController.text) {
-                  return 'Password baru harus berbeda dengan password lama';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.next,
+              validator: _isGoogleUser ? null : (value) => FormValidators.validateNewPassword(
+                value,
+                _currentPasswordController.text,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -295,11 +363,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             TextFormField(
               controller: _confirmPasswordController,
               obscureText: _obscureConfirmPassword,
+              enabled: !_isGoogleUser, // Disable jika Google user
               decoration: InputDecoration(
-                labelText: 'Konfirmasi Password Baru',
-                hintText: 'Ulangi password baru',
-                prefixIcon: const Icon(Icons.lock_reset),
-                suffixIcon: IconButton(
+                labelText: 'Konfirmasi Password Baru *',
+                hintText: _isGoogleUser ? 'Tidak tersedia untuk akun Google' : 'Ulangi password baru',
+                prefixIcon: Icon(
+                  Icons.lock_reset,
+                  color: _isGoogleUser ? Colors.grey.shade400 : null,
+                ),
+                suffixIcon: _isGoogleUser
+                    ? Icon(Icons.block, color: Colors.grey.shade400)
+                    : IconButton(
                   icon: Icon(
                     _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
                   ),
@@ -310,31 +384,29 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   },
                 ),
                 border: const OutlineInputBorder(),
+                filled: _isGoogleUser,
+                fillColor: _isGoogleUser ? Colors.grey.shade100 : null,
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Konfirmasi password tidak boleh kosong';
-                }
-                if (value != _newPasswordController.text) {
-                  return 'Konfirmasi password tidak cocok';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.done,
+              validator: _isGoogleUser ? null : (value) => FormValidators.validateConfirmPassword(
+                value,
+                _newPasswordController.text,
+              ),
             ),
             const SizedBox(height: 32),
 
             // Change Password Button
             ElevatedButton(
-              onPressed: _isLoading ? null : _changePassword,
+              onPressed: _isGoogleUser || _isChanging ? null : _changePassword,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: _isGoogleUser ? Colors.grey : Colors.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: _isLoading
+              child: _isChanging
                   ? const SizedBox(
                 height: 20,
                 width: 20,
@@ -343,9 +415,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-                  : const Text(
-                'Ubah Password',
-                style: TextStyle(
+                  : Text(
+                _isGoogleUser ? 'Tidak Dapat Diubah' : 'Ubah Password',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -355,9 +427,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
             // Cancel Button
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isChanging ? null : () => Navigator.pop(context),
               child: const Text(
-                'Batal',
+                'Kembali',
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 16,

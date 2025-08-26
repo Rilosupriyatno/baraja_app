@@ -93,6 +93,8 @@ class AuthService with ChangeNotifier {
         await prefs.setString('username', _user?['username'] ?? '');
         await prefs.setString('userRole', _user?['role'] ?? '');
         await prefs.setString('token', _jwtToken!);
+        
+        print('ini adalah jwtToken $_jwtToken');
 
         notifyListeners();
         _saveFcmToken();
