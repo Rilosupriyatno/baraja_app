@@ -145,43 +145,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // Widget untuk menampilkan error message
-  // Widget _buildErrorMessage(String? errorMessage) {
-  //   if (errorMessage == null || errorMessage.isEmpty) {
-  //     return const SizedBox.shrink();
-  //   }
-  //
-  //   return Container(
-  //     margin: const EdgeInsets.only(top: 8),
-  //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-  //     decoration: BoxDecoration(
-  //       color: Colors.red.shade50,
-  //       borderRadius: BorderRadius.circular(6),
-  //       border: Border.all(color: Colors.red.shade200),
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         Icon(
-  //           Icons.error_outline,
-  //           size: 16,
-  //           color: Colors.red.shade700,
-  //         ),
-  //         const SizedBox(width: 8),
-  //         Expanded(
-  //           child: Text(
-  //             errorMessage,
-  //             style: TextStyle(
-  //               fontSize: 12,
-  //               color: Colors.red.shade700,
-  //               fontWeight: FontWeight.w500,
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   // Helper method untuk mendapatkan waktu minimum pickup (5 menit dari sekarang)
   TimeOfDay _getMinimumPickupTime() {
     final now = DateTime.now();
