@@ -1,0 +1,104 @@
+import 'package:flutter/material.dart';
+import '../../models/order_type.dart';
+import '../../providers/cart_provider.dart';
+import '../../screens/checkout_page.dart';
+
+
+class CheckoutValidator {
+  static Map<String, dynamic> validateForm({
+    required CartProvider cartProvider,
+    required OrderType selectedOrderType,
+    required String deliveryAddress,
+    required TimeOfDay? pickupTime,
+    required String tableNumber,
+    required String? selectedPaymentMethod,
+    required String? selectedPaymentMethodName,
+    required ReservationType selectedReservationType,
+    required int Function(int) calculateDiscount,
+    required bool Function(String?) shouldShowReservationType,
+    required bool Function(String?, int) canSelectBlocking,
+    required int Function(String?) getMinimumAmountForBlocking,
+    required String Function(int) formatCurrency,
+    required bool Function(TimeOfDay) isValidPickupTime,
+    required TimeOfDay Function() getMinimumPickupTime,
+    required String Function(TimeOfDay) formatTime,
+  }) {
+    Map<String, String> errors = {};
+    String? firstErrorKey;
+
+    // Validasi keranjang kosong
+    if (cartProvider.items.isEmpty) {
+      return {
+        'isValid': false,
+        'errors': {'general': 'Keranjang belanja masih kosong'},
+        'firstErrorKey': 'general',
+      };
+    }
+
+    // Skip validation untuk reservasi & dine-in
+    if (!cartProvider.isReservation && !cartProvider.isDineIn) {
+      switch (selectedOrderType) {
+        case OrderType.delivery:
+          if (deliveryAddress.trim().isEmpty) {
+            errors['deliveryAddress'] = 'Alamat pengantaran harus diisi';
+            firstErrorKey ??= 'deliveryAddress';
+          } else if (deliveryAddress.trim().length < 10) {
+            errors['deliveryAddress'] =
+            'Alamat pengantaran terlalu singkat (minimal 10 karakter)';
+            firstErrorKey ??= 'deliveryAddress';
+          }
+          break;
+        case OrderType.pickup:
+          if (pickupTime == null) {
+            errors['pickupTime'] = 'Waktu pengambilan harus dipilih';
+            firstErrorKey ??= 'pickupTime';
+          } else if (!isValidPickupTime(pickupTime)) {
+            final minimumTime = getMinimumPickupTime();
+            errors['pickupTime'] =
+            'Waktu pickup minimal ${formatTime(minimumTime)} (5 menit dari sekarang)';
+            firstErrorKey ??= 'pickupTime';
+          }
+          break;
+        case OrderType.dineIn:
+          if (tableNumber.trim().isEmpty) {
+            errors['tableNumber'] = 'Nomor meja harus diisi';
+            firstErrorKey ??= 'tableNumber';
+          }
+          break;
+        case OrderType.reservation:
+          // TODO: Handle this case.
+          throw UnimplementedError();
+      }
+    }
+
+    // Validasi metode pembayaran
+    if (selectedPaymentMethod == null || selectedPaymentMethodName == null) {
+      errors['paymentMethod'] = 'Metode pembayaran harus dipilih';
+      firstErrorKey ??= 'paymentMethod';
+    }
+
+    // Validasi khusus untuk reservasi
+    if (cartProvider.isReservation && cartProvider.reservationData != null) {
+      final reservationData = cartProvider.reservationData!;
+      if (shouldShowReservationType(reservationData.areaCode)) {
+        final int finalTotal =
+            cartProvider.totalPrice - calculateDiscount(cartProvider.totalPrice);
+
+        if (selectedReservationType == ReservationType.blocking &&
+            !canSelectBlocking(reservationData.areaCode, finalTotal)) {
+          final minAmount =
+          getMinimumAmountForBlocking(reservationData.areaCode);
+          errors['reservationType'] =
+          'Minimum pembelian Rp${formatCurrency(minAmount)} untuk reservasi blocking di area ${reservationData.areaCode}';
+          firstErrorKey ??= 'reservationType';
+        }
+      }
+    }
+
+    return {
+      'isValid': errors.isEmpty,
+      'errors': errors,
+      'firstErrorKey': firstErrorKey,
+    };
+  }
+}

@@ -238,8 +238,8 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                 // Additional payment data from API response
                 if (_paymentData != null) ...[
                   const SizedBox(height: 8),
-                  if (_paymentData!.containsKey('transaction_id'))
-                    _buildInfoItem('Transaction ID', _paymentData!['transaction_id'].toString()),
+                  // if (_paymentData!.containsKey('transaction_id'))
+                  //   _buildInfoItem('Transaction ID', _paymentData!['transaction_id'].toString()),
                   if (_paymentData!.containsKey('status'))
                     _buildInfoItem('Status', _paymentData!['status'].toString()),
                 ],

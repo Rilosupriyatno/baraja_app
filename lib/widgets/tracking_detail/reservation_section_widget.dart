@@ -297,7 +297,7 @@ class ReservationSectionWidget extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 2.5,
+              childAspectRatio: 2.0,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
@@ -346,6 +346,7 @@ class ReservationSectionWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -365,14 +366,17 @@ class ReservationSectionWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            '${table['seats'] ?? 0} kursi • ${_getTableTypeText(table['tableType'])}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
+          Flexible( // ⬅️ biar nggak overflow
+            child: Text(
+              '${table['seats'] ?? 0} kursi • ${_getTableTypeText(table['tableType'])}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
         ],
       ),
+
     );
   }
 }

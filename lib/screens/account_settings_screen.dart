@@ -1,4 +1,4 @@
-import 'package:adaptive_theme/adaptive_theme.dart';
+// import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +17,7 @@ class AccountSettingsScreen extends StatefulWidget {
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
+  // bool _darkModeEnabled = false;
   bool _isLoading = false;
 
   @override
@@ -30,7 +30,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
+      // _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
     });
   }
 
@@ -153,15 +153,15 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
-  void _showComingSoonSnackBar(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature akan segera tersedia'),
-        backgroundColor: Colors.blue,
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
+  // void _showComingSoonSnackBar(String feature) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text('$feature akan segera tersedia'),
+  //       backgroundColor: Colors.blue,
+  //       duration: const Duration(seconds: 1),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

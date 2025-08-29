@@ -205,18 +205,18 @@ class MenuProductCard extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Text(
-                        product.description,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    ),
+                    // const SizedBox(height: 4),
+                    // Expanded(
+                    //   child: Text(
+                    //     product.description,
+                    //     style: TextStyle(
+                    //       color: Colors.grey[600],
+                    //       fontSize: 14,
+                    //     ),
+                    //     overflow: TextOverflow.ellipsis,
+                    //     maxLines: 2,
+                    //   ),
+                    // ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
