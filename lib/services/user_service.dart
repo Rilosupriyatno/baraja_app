@@ -20,7 +20,7 @@ class UserService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       print('DEBUG: Fetching user data from $baseUrl/api/user/profile');
       print('DEBUG: Response status: ${response.statusCode}');
@@ -75,7 +75,7 @@ class UserService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(requestData),
-      ).timeout(Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       final responseData = jsonDecode(response.body);
 
@@ -130,7 +130,7 @@ class UserService {
           'currentPassword': currentPassword,
           'newPassword': newPassword,
         }),
-      ).timeout(Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       final responseData = jsonDecode(response.body);
 
@@ -183,7 +183,7 @@ class UserService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(Duration(seconds: 8)); // Shorter timeout for this call
+      ).timeout(const Duration(seconds: 8)); // Shorter timeout for this call
 
       print('DEBUG isGoogleUser(): status = ${response.statusCode}');
       print('DEBUG isGoogleUser(): body = ${response.body}');
@@ -308,7 +308,7 @@ class UserService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       print('DEBUG isTokenValid(): Response status = ${response.statusCode}');
 

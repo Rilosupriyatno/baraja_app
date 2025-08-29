@@ -180,12 +180,12 @@ class FormValidators {
 
     // Jika dimulai dengan 0, ganti dengan +62
     if (cleaned.startsWith('0')) {
-      cleaned = '+62' + cleaned.substring(1);
+      cleaned = '+62${cleaned.substring(1)}';
     }
 
     // Jika dimulai dengan 62, tambahkan +
     if (cleaned.startsWith('62') && !cleaned.startsWith('+62')) {
-      cleaned = '+' + cleaned;
+      cleaned = '+$cleaned';
     }
 
     return cleaned;
