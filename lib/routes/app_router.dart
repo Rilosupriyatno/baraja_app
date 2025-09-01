@@ -230,29 +230,16 @@ class AppRouter {
           builder: (context, state) => const PaymentMethodScreen(),
         ),
 
-        // GoRoute(
-        //   path: '/voucher',
-        //   parentNavigatorKey: _rootNavigatorKey,
-        //   builder: (context, state) {
-        //     final appliedVoucherCode = state.extra as String?;
-        //     return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
-        //   },
-        // ),
-
         GoRoute(
           path: '/voucher',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>?;
-
-            return VoucherScreen(
-              appliedVoucherCode: extra?['appliedVoucherCode'] as String?,
-              orderAmount: (extra?['orderAmount'] as num?)?.toDouble() ?? 0.0,
-              outletId: extra?['outletId'] as String?,
-              customerType: extra?['customerType'] as String? ?? 'all',
-            );
+            final appliedVoucherCode = state.extra as String?;
+            return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
           },
         ),
+
+
         // Payment confirmation page
         GoRoute(
           path: '/paymentConfirmation',

@@ -33,8 +33,7 @@ class VoucherService {
         uri,
         headers: {
           'Content-Type': 'application/json',
-          // Tambahkan authorization header jika diperlukan
-          // 'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
         },
       );
 
@@ -66,7 +65,7 @@ class VoucherService {
         Uri.parse('$baseUrl/api/vouchers/validate'),
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: json.encode({
           'code': code,
@@ -108,7 +107,7 @@ class VoucherService {
         Uri.parse('$baseUrl/api/vouchers/apply'),
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: json.encode({
           'code': code,
@@ -127,6 +126,31 @@ class VoucherService {
   }
 }
 
+// Model untuk outlet
+class OutletModel {
+  final String id;
+  final String name;
+
+  OutletModel({
+    required this.id,
+    required this.name,
+  });
+
+  factory OutletModel.fromJson(Map<String, dynamic> json) {
+    return OutletModel(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+    };
+  }
+}
+
 // Model untuk Voucher dari database
 class VoucherModel {
   final String id;
@@ -138,13 +162,12 @@ class VoucherModel {
   final DateTime validFrom;
   final DateTime validTo;
   final int quota;
-  final List<String> applicableOutlets;
+  final List<OutletModel>? applicableOutlets; // Changed to List<OutletModel>
   final String customerType;
   final bool printOnReceipt;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
-
   VoucherModel({
     required this.id,
     required this.code,
@@ -155,7 +178,7 @@ class VoucherModel {
     required this.validFrom,
     required this.validTo,
     required this.quota,
-    required this.applicableOutlets,
+    this.applicableOutlets,
     required this.customerType,
     required this.printOnReceipt,
     required this.isActive,
@@ -164,9 +187,18 @@ class VoucherModel {
   });
 
   factory VoucherModel.fromJson(Map<String, dynamic> json) {
+    List<OutletModel>? outlets;
+    if (json['applicableOutlets'] != null) {
+      if (json['applicableOutlets'] is List) {
+        outlets = (json['applicableOutlets'] as List)
+            .map((outlet) => OutletModel.fromJson(outlet))
+            .toList();
+      }
+    }
+
     return VoucherModel(
       id: json['_id'] ?? '',
-      code: json['code'] ?? '',
+      code: json['code'] ?? json['_id'] ?? '', // Fallback to _id if code is null
       name: json['name'] ?? '',
       description: json['description'],
       discountAmount: (json['discountAmount'] ?? 0).toDouble(),
@@ -174,7 +206,7 @@ class VoucherModel {
       validFrom: DateTime.parse(json['validFrom']),
       validTo: DateTime.parse(json['validTo']),
       quota: json['quota'] ?? 0,
-      applicableOutlets: List<String>.from(json['applicableOutlets'] ?? []),
+      applicableOutlets: outlets,
       customerType: json['customerType'] ?? 'all',
       printOnReceipt: json['printOnReceipt'] ?? false,
       isActive: json['isActive'] ?? true,
@@ -194,7 +226,7 @@ class VoucherModel {
       'validFrom': validFrom.toIso8601String(),
       'validTo': validTo.toIso8601String(),
       'quota': quota,
-      'applicableOutlets': applicableOutlets,
+      'applicableOutlets': applicableOutlets?.map((outlet) => outlet.toJson()).toList(),
       'customerType': customerType,
       'printOnReceipt': printOnReceipt,
       'isActive': isActive,
@@ -203,32 +235,51 @@ class VoucherModel {
     };
   }
 
+  // Calculate actual discount amount for the order
+  double calculateDiscount(double orderAmount) {
+    if (discountType == 'percentage') {
+      return orderAmount * (discountAmount / 100);
+    } else {
+      return discountAmount;
+    }
+  }
+
+  // Check if voucher is applicable for the order amount
+  bool isApplicableForAmount(double orderAmount) {
+    return true; // Always applicable since no minimum spend requirement
+  }
+
   // Konversi ke model Voucher yang digunakan di UI
-  Voucher toVoucherUI({double? orderAmount, double? minimumSpend}) {
+  Voucher toVoucherUI({double? orderAmount}) {
     String displayDescription = '';
     String additionalInfo = '';
     String? additionalRequirement;
+    bool isDisabled = false;
 
     // Format deskripsi berdasarkan tipe diskon
     if (discountType == 'percentage') {
-      final maxDiscount = discountAmount * 100; // Asumsi discountAmount adalah decimal untuk percentage
-      displayDescription = 'Disc ${maxDiscount.toInt()}%';
-      if (minimumSpend != null && minimumSpend > 0) {
-        displayDescription += ' up to Rp${_formatCurrency(maxDiscount)}';
-        additionalInfo = 'Minimum spend Rp${_formatCurrency(minimumSpend)}';
-      } else {
-        additionalInfo = 'No minimum purchase';
+      displayDescription = 'Disc ${discountAmount.toInt()}%';
+
+      if (orderAmount != null) {
+        final discountValue = calculateDiscount(orderAmount);
+        displayDescription += ' (Rp${_formatCurrency(discountValue)})';
       }
+
+      additionalInfo = description ?? '';
     } else {
       displayDescription = 'Disc Rp${_formatCurrency(discountAmount)}';
-      if (minimumSpend != null && minimumSpend > 0) {
-        additionalInfo = 'Minimum spend Rp${_formatCurrency(minimumSpend)}';
+      additionalInfo = description ?? '';
+    }
 
-        // Cek apakah order amount cukup
-        if (orderAmount != null && orderAmount < minimumSpend) {
-          final needAmount = minimumSpend - orderAmount;
-          additionalRequirement = 'Spend another Rp${_formatCurrency(needAmount)} to enjoy this voucher';
-        }
+    // Add validity info
+    final now = DateTime.now();
+    if (validTo.isBefore(now)) {
+      isDisabled = true;
+      additionalRequirement = 'This voucher has expired';
+    } else {
+      final daysLeft = validTo.difference(now).inDays;
+      if (daysLeft <= 3) {
+        additionalInfo += ' • Expires in $daysLeft day${daysLeft == 1 ? '' : 's'}';
       }
     }
 
@@ -238,7 +289,7 @@ class VoucherModel {
       additionalInfo: additionalInfo,
       additionalRequirement: additionalRequirement,
       iconAsset: 'assets/images/voucher_icon.png', // Default icon
-      isDisabled: additionalRequirement != null,
+      isDisabled: isDisabled,
     );
   }
 
