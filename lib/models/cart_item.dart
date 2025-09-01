@@ -10,6 +10,8 @@ class CartItem {
 
   // Private field to store the total price
   final int _totalprice;
+  final String? outletId;
+  final String? outletName;
 
   CartItem({
     required this.id,
@@ -19,7 +21,9 @@ class CartItem {
     required this.quantity,
     required this.addons,
     required this.toppings,
-    required this.notes, // Required notes parameter
+    required this.notes,
+    this.outletId,
+    this.outletName,
     int? totalprice, // Optional parameter - if provided, use it directly
   }) : _totalprice = totalprice ?? calculateTotalPrice(price, addons, toppings);
 

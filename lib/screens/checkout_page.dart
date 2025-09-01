@@ -265,6 +265,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final int subtotal = cartProvider.totalPrice;
         final int discount = calculateDiscount(subtotal);
         final int finalTotal = subtotal - discount;
+        for (var item in cartItems) {
+          print("CartItem: ${item.name} "
+              "| OutletId: ${item.outletId} "
+              "| OutletName: ${item.outletName}");
+        }
+        
 
         // Calculate down payment amount (50% of final total)
         final int downPaymentAmount = (finalTotal * 0.5).round();

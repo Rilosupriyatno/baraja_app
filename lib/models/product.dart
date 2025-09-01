@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
 
+
+class Outlet {
+  final String outletId;
+  final String name;
+
+  Outlet({
+    required this.outletId,
+    required this.name,
+  });
+}
+
 class Product {
   final String id;
   final String name;
@@ -16,6 +27,8 @@ class Product {
   final Color? imageColor;
   final double averageRating;
   final int reviewCount;
+  final List<Outlet> availableAt;
+
 
   Product({
     required this.id,
@@ -33,6 +46,7 @@ class Product {
     this.imageColor,
     required this.averageRating,
     required this.reviewCount,
+    required this.availableAt
   });
   // You can add methods to help with category processing
   List<String> getCategories() {

@@ -28,7 +28,9 @@ class AddOrderPageState extends State<AddOrderPage> {
 
     // Initialize quantity controller
     quantityController.text = quantity.toString();
-
+    for (var outlet in widget.product.availableAt) {
+      print('${outlet.outletId} - ${outlet.name}');
+    }
     // Initialize default addon options if available
     if (widget.product.addons != null) {
       for (var addon in widget.product.addons!) {
@@ -130,6 +132,14 @@ class AddOrderPageState extends State<AddOrderPage> {
       }
     });
 
+    // ✅ Ambil outlet pertama (atau bisa dibuat pilihan outlet)
+    String? outletId;
+    String? outletName;
+    if (widget.product.availableAt.isNotEmpty) {
+      outletId = widget.product.availableAt.first.outletId;
+      outletName = widget.product.availableAt.first.name;
+    }
+
     CartItem newItem = CartItem(
       id: widget.product.id,
       name: widget.product.name,
@@ -139,13 +149,20 @@ class AddOrderPageState extends State<AddOrderPage> {
       addons: addonList,
       toppings: toppingsList,
       quantity: quantity,
-      notes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
+      notes: notesController.text.trim().isNotEmpty
+          ? notesController.text.trim()
+          : null,
+
+      // ✅ Outlet info
+      outletId: outletId,
+      outletName: outletName,
     );
 
     cartProvider.addToCart(newItem);
 
     Navigator.pop(context);
   }
+
 
   @override
   Widget build(BuildContext context) {

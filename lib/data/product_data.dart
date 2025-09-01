@@ -25,7 +25,7 @@ class ProductData {
         Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
         averageRating: 4,
-        reviewCount: 3
+        reviewCount: 3, availableAt: [],
     ),
     Product(
       id: '2',
@@ -46,7 +46,7 @@ class ProductData {
         Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
         averageRating: 4,
-        reviewCount: 3
+        reviewCount: 3, availableAt: []
     ),
     Product(
       id: '3',
@@ -67,7 +67,7 @@ class ProductData {
         Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
         averageRating: 4,
-        reviewCount: 3
+        reviewCount: 3, availableAt: []
     ),
     Product(
       id: '4',
@@ -88,7 +88,7 @@ class ProductData {
         Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
         averageRating: 4,
-        reviewCount: 3
+        reviewCount: 3, availableAt: []
     ),
     Product(
       id: '5',
@@ -109,7 +109,7 @@ class ProductData {
         Addon(id: '2', name: 'Chocolate Bar', price: 10000, options: []),
       ],
       averageRating: 4,
-      reviewCount: 3
+      reviewCount: 3, availableAt: []
     ),
   ];
 

@@ -22,7 +22,6 @@ class ProductService {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
 
-        // Ubah dari 'formattedData' ke 'data'
         if (jsonData['success'] == true && jsonData['data'] != null) {
           final List<dynamic> productsJson = jsonData['data'];
 
@@ -56,7 +55,9 @@ class ProductService {
                     price: option['price'] is int
                         ? option['price'].toDouble()
                         : (option['price'] ?? 0).toDouble(),
-                    isDefault: option['isdefault'] ?? option['isDefault'] ?? false,
+                    isDefault: option['isdefault'] ??
+                        option['isDefault'] ??
+                        false,
                   ))
                       .toList();
                 }
@@ -67,35 +68,40 @@ class ProductService {
                   options: options,
                   price: 0.0,
                 );
-              })
-                  .toList();
+              }).toList();
             }
 
             // Handle discount percentage
             String? discountPercentage;
             if (productJson['discountPercentage'] != null) {
-              discountPercentage = productJson['discountPercentage'].toString();
+              discountPercentage =
+                  productJson['discountPercentage'].toString();
             }
 
-            // Parse prices safely - sesuaikan dengan backend response
+            // Parse prices
             double originalPrice = 0.0;
             if (productJson['originalPrice'] != null) {
               originalPrice = productJson['originalPrice'] is int
                   ? productJson['originalPrice'].toDouble()
-                  : double.tryParse(productJson['originalPrice'].toString()) ?? 0.0;
+                  : double.tryParse(
+                  productJson['originalPrice'].toString()) ??
+                  0.0;
             }
 
             double discountPrice = originalPrice;
             if (productJson['discountedPrice'] != null) {
               discountPrice = productJson['discountedPrice'] is int
                   ? productJson['discountedPrice'].toDouble()
-                  : double.tryParse(productJson['discountedPrice'].toString()) ?? 0.0;
+                  : double.tryParse(
+                  productJson['discountedPrice'].toString()) ??
+                  0.0;
             }
 
-            // Process category - sesuaikan dengan backend response
-            dynamic rawCategory = productJson['category'] ?? {'name': 'Uncategorized'};
+            // Process category
+            dynamic rawCategory =
+                productJson['category'] ?? {'name': 'Uncategorized'};
 
-            // Process subCategory - ambil dari backend response
+            // Process subCategory
             String subCategoryName = 'Lainnya';
             if (productJson['subCategory'] != null) {
               var subCat = productJson['subCategory'];
@@ -106,7 +112,7 @@ class ProductService {
               }
             }
 
-            // ✅ FIXED: Determine mainCategory berdasarkan category, JANGAN override dengan subCategory
+            // Determine mainCategory
             String mainCategory = 'Makanan'; // Default
             if (rawCategory is Map && rawCategory['name'] != null) {
               String categoryName = rawCategory['name'].toLowerCase();
@@ -123,7 +129,6 @@ class ProductService {
               }
             }
 
-            // Jika masih default, coba cek dari subCategory
             if (mainCategory == 'Makanan' && subCategoryName.isNotEmpty) {
               String subCatLower = subCategoryName.toLowerCase();
               if (subCatLower.contains('minuman') ||
@@ -137,12 +142,25 @@ class ProductService {
               }
             }
 
+            // ✅ Parse availableAt → ambil outletId
+            // ✅ Parse availableAt → ambil outletId & name
+            List<Outlet> outlets = [];
+            if (productJson['availableAt'] != null) {
+              outlets = (productJson['availableAt'] as List)
+                  .map((outlet) => Outlet(
+                outletId: outlet['_id']?.toString() ?? '',
+                name: outlet['name'] ?? '',
+              ))
+                  .toList();
+            }
+
+
             return Product(
               id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
-              category: rawCategory, // Pass the full category object
-              mainCategory: mainCategory, // ✅ FIXED: Gunakan mainCategory yang benar
-              subCategory: subCategoryName, // Set subCategory secara terpisah
+              category: rawCategory,
+              mainCategory: mainCategory,
+              subCategory: subCategoryName,
               imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
@@ -157,16 +175,20 @@ class ProductService {
                   ? productJson['reviewCount']
                   : (productJson['reviewCount'] ?? 0),
               imageColor: generateImageColor(mainCategory),
+
+              // Tambahkan outletIds
+              availableAt: outlets,
             );
           }).toList();
         } else {
-          debugPrint('API returned error: ${jsonData['message'] ?? 'Unknown error'}');
-          debugPrint('Response body: ${response.body}'); // Debug tambahan
+          debugPrint(
+              'API returned error: ${jsonData['message'] ?? 'Unknown error'}');
+          debugPrint('Response body: ${response.body}');
           throw Exception('Failed to load products');
         }
       } else {
         debugPrint('HTTP error: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}'); // Debug tambahan
+        debugPrint('Response body: ${response.body}');
         throw Exception('Failed to load products');
       }
     } catch (e) {
@@ -175,7 +197,6 @@ class ProductService {
     }
   }
 
-  // Helper function to assign color locally
   Color generateImageColor(String mainCategory) {
     switch (mainCategory.toLowerCase()) {
       case 'makanan':
@@ -189,17 +210,23 @@ class ProductService {
     }
   }
 
-  // Other filter functions
   Future<List<Product>> getProductsByCategory(String category) async {
     final products = await getProducts();
-    return products.where((product) =>
-        product.category.toLowerCase().contains(category.toLowerCase())).toList();
+    return products
+        .where((product) => product.category
+        .toString()
+        .toLowerCase()
+        .contains(category.toLowerCase()))
+        .toList();
   }
 
   Future<List<Product>> getProductsByMainCategory(String mainCategory) async {
     final products = await getProducts();
-    return products.where((product) =>
-        product.mainCategory.toLowerCase().contains(mainCategory.toLowerCase())).toList();
+    return products
+        .where((product) => product.mainCategory
+        .toLowerCase()
+        .contains(mainCategory.toLowerCase()))
+        .toList();
   }
 
   Future<Product?> getProductById(String id) async {
@@ -213,6 +240,8 @@ class ProductService {
 
   Future<List<Product>> getDiscountedProducts() async {
     final products = await getProducts();
-    return products.where((product) => product.discountPercentage != null).toList();
+    return products
+        .where((product) => product.discountPercentage != null)
+        .toList();
   }
 }
