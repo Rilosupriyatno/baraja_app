@@ -270,7 +270,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               "| OutletId: ${item.outletId} "
               "| OutletName: ${item.outletName}");
         }
-        
+
 
         // Calculate down payment amount (50% of final total)
         final int downPaymentAmount = (finalTotal * 0.5).round();
@@ -573,6 +573,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'addons': item.addons,
                         'toppings': item.toppings,
                         'notes': item.notes,
+                        'outletId': item.outletId,       // ✅ tambahkan
+                        'outletName': item.outletName,
                       })
                           .toList();
 

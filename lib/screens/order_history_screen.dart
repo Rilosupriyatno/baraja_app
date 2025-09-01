@@ -344,17 +344,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     ),
                     const SizedBox(height: 4),
 
-                    // Item customizations
-                    if (_hasCustomizations(firstItem))
-                      Text(
-                        _buildCustomizationText(firstItem),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    // // Item customizations
+                    // if (_hasCustomizations(firstItem))
+                    //   Text(
+                    //     _buildCustomizationText(firstItem),
+                    //     style: TextStyle(
+                    //       fontSize: 12,
+                    //       color: Colors.grey[600],
+                    //     ),
+                    //     maxLines: 1,
+                    //     overflow: TextOverflow.ellipsis,
+                    //   ),
 
                     // If there are more items, show count
                     if (order.items.length > 1)

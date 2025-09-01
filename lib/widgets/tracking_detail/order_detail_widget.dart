@@ -256,6 +256,16 @@ class OrderDetailWidget extends StatelessWidget {
 
                         // Notes Section
                         ..._buildNotesSection(item),
+
+                        const SizedBox(height: 12),
+                        Text(
+                          item['outletName']?.toString() ?? 'Unknown Outlet',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ],
                     ),
                   );
