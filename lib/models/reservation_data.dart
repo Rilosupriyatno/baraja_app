@@ -64,3 +64,38 @@ class ReservationData {
         'selectedTables: ${selectedTableIds.join(", ")})';
   }
 }
+/// Model lebih ringkas khusus untuk Open Bill
+class OpenBillData {
+  final String reservationId;
+  final DateTime date;
+  final TimeOfDay time;
+  final String areaId;
+  final String areaCode;
+  final String tableId;
+  final String tableNumbers; // Menambahkan field untuk tableNumbers
+
+  OpenBillData({
+    required this.reservationId,
+    required this.date,
+    required this.time,
+    required this.areaId,
+    required this.areaCode,
+    required this.tableId,
+    required this.tableNumbers, // Inisialisasi default
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'reservation_id': reservationId,
+      'area_id': areaId,
+      'area_code': areaCode,
+      'tableId': tableId,
+      'table_numbers': tableNumbers, // Menambahkan tableNumbers ke JSON
+    };
+  }
+
+  @override
+  String toString() {
+    return 'OpenBillData(reservationId: $reservationId, date: $date, time: $time, areaId: $areaId, areaCode: $areaCode, tableId: $tableId, tableNumbers: $tableNumbers)'; // Menambahkan tableNumbers ke string
+  }
+}

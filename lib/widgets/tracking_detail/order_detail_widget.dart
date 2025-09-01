@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../models/reservation_data.dart';
+import '../../screens/menu_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart';
 import 'payment_row_widget.dart';
@@ -266,6 +268,61 @@ class OrderDetailWidget extends StatelessWidget {
                             color: Colors.black87,
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final reservationId = orderData['reservation']?['_id']?.toString() ?? '';
+                              final selectedArea = orderData['reservation']?['area'];
+                              final selectedTable = orderData['reservation']?['tables'] as List?; // Pastikan ini adalah list
+
+                              final areaId = selectedArea?['_id']?.toString() ?? '';
+                              final areaCode = selectedArea?['name']?.toString() ?? '';
+
+                              // Mengambil ID dan nomor tabel dari tabel pertama dalam list
+                              final tableId = (selectedTable != null && selectedTable.isNotEmpty)
+                                  ? selectedTable[0]['_id']?.toString() ?? ''
+                                  : '';
+                              final tableNumbers = (selectedTable != null && selectedTable.isNotEmpty)
+                                  ? selectedTable[0]['tableNumber']?.toString() ?? ''
+                                  : '';
+                              // Format date
+
+                              print('ini adalah print Item: $orderData');
+                              print('Navigating to MenuScreen with reservationId: $reservationId, areaId: $areaId, areaCode: $areaCode, selectedTableIds: $tableId');
+                                final openBillData = OpenBillData(
+                                  reservationId: reservationId,
+                                  date: DateTime.now(),
+                                  time: TimeOfDay.now(),
+                                  areaId: areaId,
+                                  areaCode: areaCode,
+                                  tableId: tableId,
+                                  tableNumbers: tableNumbers,
+                                );
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => MenuScreen(
+                                      isOpenBill: true,
+                                      openBillData: openBillData,
+                                    ),
+                                  ),
+                                );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              backgroundColor: AppTheme.primaryColor,
+                            ),
+                            icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
+                            label: const Text(
+                              'Tambah Pesanan',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ),
+                        ),
+
                       ],
                     ),
                   );

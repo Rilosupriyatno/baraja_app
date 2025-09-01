@@ -401,40 +401,40 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     );
   }
 
-  bool _hasCustomizations(dynamic item) {
-    return (item.addons != null && item.addons.isNotEmpty) ||
-        (item.toppings != null && item.toppings.isNotEmpty);
-  }
-
-  String _buildCustomizationText(dynamic item) {
-    List<String> customizations = [];
-
-    if (item.addons != null && item.addons.isNotEmpty) {
-      List<String> addonNames = [];
-      for (var addon in item.addons) {
-        if (addon['name'] != null && addon['name'].isNotEmpty) {
-          addonNames.add(addon['name']);
-        }
-      }
-      if (addonNames.isNotEmpty) {
-        customizations.add(addonNames.join(', '));
-      }
-    }
-
-    if (item.toppings != null && item.toppings.isNotEmpty) {
-      List<String> toppingNames = [];
-      for (var topping in item.toppings) {
-        if (topping['name'] != null && topping['name'].isNotEmpty) {
-          toppingNames.add(topping['name']);
-        }
-      }
-      if (toppingNames.isNotEmpty) {
-        customizations.add(toppingNames.join(', '));
-      }
-    }
-
-    return customizations.isEmpty ? '-' : customizations.join(', ');
-  }
+  // bool _hasCustomizations(dynamic item) {
+  //   return (item.addons != null && item.addons.isNotEmpty) ||
+  //       (item.toppings != null && item.toppings.isNotEmpty);
+  // }
+  //
+  // String _buildCustomizationText(dynamic item) {
+  //   List<String> customizations = [];
+  //
+  //   if (item.addons != null && item.addons.isNotEmpty) {
+  //     List<String> addonNames = [];
+  //     for (var addon in item.addons) {
+  //       if (addon['name'] != null && addon['name'].isNotEmpty) {
+  //         addonNames.add(addon['name']);
+  //       }
+  //     }
+  //     if (addonNames.isNotEmpty) {
+  //       customizations.add(addonNames.join(', '));
+  //     }
+  //   }
+  //
+  //   if (item.toppings != null && item.toppings.isNotEmpty) {
+  //     List<String> toppingNames = [];
+  //     for (var topping in item.toppings) {
+  //       if (topping['name'] != null && topping['name'].isNotEmpty) {
+  //         toppingNames.add(topping['name']);
+  //       }
+  //     }
+  //     if (toppingNames.isNotEmpty) {
+  //       customizations.add(toppingNames.join(', '));
+  //     }
+  //   }
+  //
+  //   return customizations.isEmpty ? '-' : customizations.join(', ');
+  // }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';

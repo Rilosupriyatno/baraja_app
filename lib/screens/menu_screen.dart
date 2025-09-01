@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../models/product.dart';
@@ -17,6 +18,8 @@ class MenuScreen extends StatefulWidget {
   final ReservationData? reservationData;
   final bool isDineIn;
   final String? tableNumber;
+  final bool isOpenBill;
+  final OpenBillData? openBillData;
 
   const MenuScreen({
     super.key,
@@ -24,6 +27,8 @@ class MenuScreen extends StatefulWidget {
     this.reservationData,
     this.isDineIn = false,
     this.tableNumber,
+    this.isOpenBill = false,
+    this.openBillData, // ✅
   });
 
   @override
@@ -53,6 +58,7 @@ class _MenuScreenState extends State<MenuScreen> {
     super.initState();
     _loadProducts();
     print(widget.reservationData);
+    print("ini adalah data open bill: ${widget.openBillData}");
 
     // Set context in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -62,6 +68,8 @@ class _MenuScreenState extends State<MenuScreen> {
         cartProvider.setReservationData(widget.isReservation, widget.reservationData);
       } else if (widget.isDineIn && widget.tableNumber != null) {
         cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
+      } else if (widget.isOpenBill && widget.openBillData != null) {
+        cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData); // ✅
       }
     });
   }
@@ -330,6 +338,88 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  Widget _buildOpenBillInfo() {
+    if (!widget.isOpenBill || widget.openBillData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final data = widget.openBillData!;
+    print(data);
+
+    // // Helper method untuk mendapatkan nomor meja yang dipilih
+    // String getSelectedTables() {
+    //   if (data.tableId.isEmpty) {
+    //     return 'Belum dipilih';
+    //   }
+    //   return '${data.tableId.length} meja';
+    // }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Detail Open Bill',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Info dalam 2 baris
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📅 ${DateFormat('yyyy-MM-dd').format(data.date)}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Text(
+                '🕐 ${data.time.hour}:${data.time.minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📍 Area ${data.areaCode}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '🪑 ${data.tableNumbers}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
   // Widget untuk menampilkan info dine-in
   Widget _buildDineInInfo() {
     if (!widget.isDineIn || widget.tableNumber == null) {
@@ -423,6 +513,8 @@ class _MenuScreenState extends State<MenuScreen> {
             children: [
               // Reservation info (only shown if isReservation is true)
               _buildReservationInfo(),
+
+              _buildOpenBillInfo(),
 
               // Dine-in info (only shown if isDineIn is true)
               _buildDineInInfo(),

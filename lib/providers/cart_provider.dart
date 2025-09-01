@@ -8,10 +8,15 @@ class CartProvider with ChangeNotifier {
   ReservationData? _reservationData;
   bool _isDineIn = false;
   String? _tableNumber;
+  bool _isOpenBill = false;
+  OpenBillData? _openBillData;
+
 
   List<CartItem> get items => _items;
   bool get isReservation => _isReservation;
   ReservationData? get reservationData => _reservationData;
+  bool get isOpenBill => _isOpenBill;
+  OpenBillData? get openBillData => _openBillData;
   bool get isDineIn => _isDineIn;
   String? get tableNumber => _tableNumber;
 
@@ -23,6 +28,13 @@ class CartProvider with ChangeNotifier {
     _tableNumber = null;
     notifyListeners();
   }
+
+  void setOpenBillData(bool isOpenBill, OpenBillData? data) {
+    _isOpenBill = isOpenBill;
+    _openBillData = data;
+    notifyListeners();
+  }
+
 
   // Method untuk set dine-in data
   void setDineInData(bool isDineIn, String? tableNumber) {
