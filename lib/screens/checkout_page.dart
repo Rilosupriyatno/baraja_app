@@ -13,6 +13,7 @@ import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
 import '../widgets/checkout/checkout_validator.dart';
 import '../widgets/checkout/dine_in_info_widget.dart';
+import '../widgets/checkout/openBillInfoWidget.dart';
 import '../widgets/checkout/payment_type_widget.dart';
 import '../widgets/checkout/reservation_info_widget.dart';
 import '../widgets/checkout/order_type_selector_widget.dart';
@@ -28,6 +29,8 @@ class CheckoutPage extends StatefulWidget {
   final ReservationData? reservationData;
   final bool isDineIn;
   final String? tableNumber;
+  final bool isOpenBill;
+  final OpenBillData? openBillData;
 
   const CheckoutPage({
     super.key,
@@ -35,6 +38,8 @@ class CheckoutPage extends StatefulWidget {
     this.reservationData,
     this.isDineIn = false,
     this.tableNumber,
+    this.isOpenBill = false,
+    this.openBillData,
   });
 
   @override
@@ -241,9 +246,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   // Method untuk menentukan apakah order type selector harus ditampilkan
+// Method untuk menentukan apakah order type selector harus ditampilkan
   bool _shouldShowOrderTypeSelector(CartProvider cartProvider) {
-    // Jangan tampilkan selector jika dalam mode reservasi atau dine-in
-    return !cartProvider.isReservation && !cartProvider.isDineIn;
+    // Jangan tampilkan selector jika dalam mode reservasi, dine-in, atau open bill
+    return !cartProvider.isReservation && !cartProvider.isDineIn && !cartProvider.isOpenBill;
   }
 
   // Method untuk mendapatkan title section berdasarkan mode
@@ -252,6 +258,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return "Konfirmasi Pesanan Reservasi";
     } else if (cartProvider.isDineIn) {
       return "Konfirmasi Pesanan Dine In";
+    } else if (cartProvider.isOpenBill){
+      return "Konfirmasi Open Bill";
     } else {
       return "Mau makan dimana?";
     }
@@ -331,6 +339,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 });
                               },
                             ),
+                          if (cartProvider.isOpenBill && cartProvider.openBillData != null)
+                            OpenBillInfoWidget(openBillData: cartProvider.openBillData!),
+
 
                           // Dine-in info at the top
                           if (cartProvider.isDineIn)
@@ -411,9 +422,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
+
                                   Text(
                                     cartProvider.isReservation
                                         ? 'Pesanan untuk reservasi Anda'
+                                        : cartProvider.isOpenBill
+                                        ? 'Pesanan untuk meja ${cartProvider.openBillData!.tableNumbers}'
                                         : 'Pesanan untuk meja ${cartProvider.tableNumber}',
                                     style: TextStyle(
                                       fontSize: 14,

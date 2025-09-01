@@ -26,12 +26,18 @@ class CartProvider with ChangeNotifier {
     _reservationData = data;
     _isDineIn = false;
     _tableNumber = null;
+    _isOpenBill = false;
+    _openBillData = null;
     notifyListeners();
   }
 
   void setOpenBillData(bool isOpenBill, OpenBillData? data) {
     _isOpenBill = isOpenBill;
     _openBillData = data;
+    _isReservation = false;
+    _reservationData = null;
+    _isDineIn = false;
+    _tableNumber = null;
     notifyListeners();
   }
 
@@ -42,6 +48,8 @@ class CartProvider with ChangeNotifier {
     _tableNumber = tableNumber;
     _isReservation = false;
     _reservationData = null;
+    _isOpenBill = false;
+    _openBillData = null;
     notifyListeners();
   }
 
@@ -51,6 +59,8 @@ class CartProvider with ChangeNotifier {
     _reservationData = null;
     _isDineIn = false;
     _tableNumber = null;
+    _isOpenBill = false;
+    _openBillData = null;
     notifyListeners();
   }
 

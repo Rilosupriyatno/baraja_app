@@ -346,14 +346,6 @@ class _MenuScreenState extends State<MenuScreen> {
     final data = widget.openBillData!;
     print(data);
 
-    // // Helper method untuk mendapatkan nomor meja yang dipilih
-    // String getSelectedTables() {
-    //   if (data.tableId.isEmpty) {
-    //     return 'Belum dipilih';
-    //   }
-    //   return '${data.tableId.length} meja';
-    // }
-
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
@@ -555,6 +547,8 @@ class _MenuScreenState extends State<MenuScreen> {
           reservationData: widget.reservationData,
           isDineIn: widget.isDineIn,
           tableNumber: widget.tableNumber,
+          isOpenBill: widget.isOpenBill,
+          openBillData: widget.openBillData, // ✅
         ),
       ),
     );

@@ -204,6 +204,8 @@ class AppRouter {
               reservationData: extra?['reservationData'],
               isDineIn: extra?['isDineIn'] ?? false,
               tableNumber: extra?['tableNumber'],
+              isOpenBill: extra?['isOpenBill'] ?? false,
+              openBillData: extra?['openBillData'],
             );
           },
         ),
@@ -219,6 +221,8 @@ class AppRouter {
               reservationData: extra?['reservationData'],
               isDineIn: extra?['isDineIn'] ?? false,
               tableNumber: extra?['tableNumber'],
+              isOpenBill: extra?['isOpenBill'] ?? false,
+              openBillData: extra?['openBillData'],
             );
           },
         ),

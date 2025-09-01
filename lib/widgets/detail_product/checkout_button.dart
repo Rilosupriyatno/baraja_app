@@ -9,6 +9,8 @@ class CheckoutButton extends StatelessWidget {
   final ReservationData? reservationData;
   final bool isDineIn;
   final String? tableNumber;
+  final bool isOpenBill;
+  final OpenBillData? openBillData;
 
   const CheckoutButton({
     super.key,
@@ -16,6 +18,8 @@ class CheckoutButton extends StatelessWidget {
     this.reservationData,
     this.isDineIn = false,
     this.tableNumber,
+    this.isOpenBill = false,
+    this.openBillData,
   });
 
   @override
@@ -29,6 +33,8 @@ class CheckoutButton extends StatelessWidget {
         final ReservationData? reservationData = cartProvider.reservationData;
         final bool isDineIn = cartProvider.isDineIn;
         final String? tableNumber = cartProvider.tableNumber;
+        final bool isOpenBill = cartProvider.isOpenBill;
+        final OpenBillData? openBillData = cartProvider.openBillData;
         return FloatingActionButton.extended(
           onPressed: () {
             // Prepare extra data for navigation
@@ -43,6 +49,11 @@ class CheckoutButton extends StatelessWidget {
               extraData = {
                 'isDineIn': true,
                 'tableNumber': tableNumber,
+              };
+            } else if (isOpenBill && openBillData != null) {
+              extraData = {
+                'isOpenBill': true,
+                'openBillData': openBillData,
               };
             }
 
@@ -113,6 +124,8 @@ class CheckoutButton extends StatelessWidget {
       return 'Lanjut Reservasi';
     } else if (isDineIn) {
       return 'Pesan Sekarang';
+    } else if (isOpenBill) {
+      return 'Lanjut Pesan';
     } else {
       return 'Lanjut Bayar';
     }

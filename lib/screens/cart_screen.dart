@@ -2,6 +2,7 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../models/reservation_data.dart';
@@ -13,6 +14,8 @@ class CartScreen extends StatefulWidget {
   final ReservationData? reservationData;
   final bool isDineIn;
   final String? tableNumber;
+  final bool isOpenBill;
+  final OpenBillData? openBillData;
 
   const CartScreen({
     super.key,
@@ -20,6 +23,8 @@ class CartScreen extends StatefulWidget {
     this.reservationData,
     this.isDineIn = false,
     this.tableNumber,
+    this.isOpenBill = false,
+    this.openBillData,
   });
 
   @override
@@ -35,12 +40,18 @@ class CartScreenState extends State<CartScreen> {
     // Set reservation data in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      print('isOpenBill: ${widget.isOpenBill}');
+      print('openBillData: ${widget.openBillData}');
+      print('isDineIn: ${widget.isDineIn}');
+      print('tableNumber: ${widget.tableNumber}');
 
       // Set context hanya jika diberikan dari parameter
       if (widget.isReservation && widget.reservationData != null) {
         cartProvider.setReservationData(widget.isReservation, widget.reservationData);
       } else if (widget.isDineIn && widget.tableNumber != null) {
         cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
+      } else if (widget.isOpenBill && widget.openBillData != null) {
+        cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData);
       }
       // Jika tidak ada parameter, gunakan context yang sudah tersimpan di provider
     });
@@ -127,6 +138,81 @@ class CartScreenState extends State<CartScreen> {
     );
   }
 
+  Widget _buildOpenBillInfo(OpenBillData openBillData) {
+    if (!widget.isOpenBill || widget.openBillData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final data = widget.openBillData!;
+    print(data);
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Detail Open Bill',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Info dalam 2 baris
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📅 ${DateFormat('yyyy-MM-dd').format(data.date)}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Text(
+                '🕐 ${data.time.hour}:${data.time.minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '📍 Area ${data.areaCode}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '🪑 ${data.tableNumbers}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDineInInfo(String tableNumber) {
     return Container(
       margin: const EdgeInsets.all(16),
@@ -168,33 +254,40 @@ class CartScreenState extends State<CartScreen> {
   }
 
   // Method untuk mendapatkan title yang sesuai
-  String _getTitle(bool isReservation, bool isDineIn) {
+  String _getTitle(bool isReservation, bool isDineIn, bool isOpenBill) {
     if (isReservation) {
       return 'Keranjang Reservasi';
     } else if (isDineIn) {
       return 'Keranjang Dine In';
-    } else {
+    } else if (isOpenBill) {
+      return 'Keranjang Open Bill';
+    }  else {
       return 'Keranjang';
     }
   }
 
   // Method untuk mendapatkan empty state message
-  String _getEmptyStateMessage(bool isReservation, bool isDineIn) {
+  String _getEmptyStateMessage(bool isReservation, bool isDineIn, bool isOpenBill) {
     if (isReservation) {
       return 'Tambahkan menu untuk reservasi Anda';
     } else if (isDineIn) {
       return 'Tambahkan menu untuk dine in Anda';
-    } else {
+    } else if (isOpenBill) {
+      return 'Tambahkan menu untuk open bill Anda';
+    }
+    else {
       return 'Tambahkan menu favorit Anda';
     }
   }
 
   // Method untuk mendapatkan checkout button text
-  String _getCheckoutButtonText(bool isReservation, bool isDineIn) {
+  String _getCheckoutButtonText(bool isReservation, bool isDineIn, bool isOpenBill) {
     if (isReservation) {
       return 'Konfirmasi Reservasi';
     } else if (isDineIn) {
       return 'Pesan Sekarang';
+    } else if (isOpenBill) {
+      return 'Lanjut Pesan';
     } else {
       return 'Lanjutkan Pesanan';
     }
@@ -211,6 +304,8 @@ class CartScreenState extends State<CartScreen> {
         final ReservationData? reservationData = cartProvider.reservationData;
         final bool isDineIn = cartProvider.isDineIn;
         final String? tableNumber = cartProvider.tableNumber;
+        final bool isOpenBill = cartProvider.isOpenBill;
+        final OpenBillData? openBillData = cartProvider.openBillData;
 
         return BaseScreenWrapper(
           customBackRoute: '/menu',
@@ -231,7 +326,7 @@ class CartScreenState extends State<CartScreen> {
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
-                  title: Text(_getTitle(isReservation, isDineIn),
+                  title: Text(_getTitle(isReservation, isDineIn, isOpenBill),
                       style: const TextStyle(color: Colors.black)),
                 ),
 
@@ -239,6 +334,11 @@ class CartScreenState extends State<CartScreen> {
                 if (isReservation && reservationData != null)
                   SliverToBoxAdapter(
                     child: _buildReservationInfo(reservationData),
+                  ),
+
+                if (isOpenBill && openBillData != null)
+                  SliverToBoxAdapter(
+                    child: _buildOpenBillInfo(openBillData),
                   ),
 
                 // Dine-in info at the top
@@ -271,7 +371,7 @@ class CartScreenState extends State<CartScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _getEmptyStateMessage(isReservation, isDineIn),
+                            _getEmptyStateMessage(isReservation, isDineIn, isOpenBill),
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -314,6 +414,8 @@ class CartScreenState extends State<CartScreen> {
                         if (isReservation && reservationData != null) {
                           context.pop(); // Just go back to the menu screen
                         } else if (isDineIn && tableNumber != null) {
+                          context.pop(); // Just go back to the menu screen
+                        } else if (isOpenBill && openBillData != null){
                           context.pop(); // Just go back to the menu screen
                         } else {
                           context.push('/menu');
@@ -376,6 +478,11 @@ class CartScreenState extends State<CartScreen> {
                               'isReservation': true,
                               'reservationData': reservationData,
                             };
+                          } else if (isOpenBill && openBillData != null) {
+                            extraData = {
+                              'isOpenBill': true,
+                              'openBillData': openBillData,
+                            };
                           } else if (isDineIn && tableNumber != null) {
                             extraData = {
                               'isDineIn': true,
@@ -394,7 +501,7 @@ class CartScreenState extends State<CartScreen> {
                           backgroundColor: AppTheme.primaryColor,
                         ),
                         child: Text(
-                          _getCheckoutButtonText(isReservation, isDineIn),
+                          _getCheckoutButtonText(isReservation, isDineIn, isOpenBill),
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
