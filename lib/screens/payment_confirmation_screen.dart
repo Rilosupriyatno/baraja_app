@@ -82,6 +82,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
     // Check if payment method is cash
     _isCashPayment = _checkIfCashPayment();
+    for (var item in widget.items) {
+      print("PaymentConfirmation item: ${item.name} "
+          "| OutletId: ${item.outletId} "
+          "| OutletName: ${item.outletName}");
+    }
 
     // Create new order instance
     newOrder = Order(
@@ -97,6 +102,8 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         toppings: item.toppings,
         imageUrl: item.imageUrl,
         notes: item.notes,
+        outletId: item.outletId,
+        outletName: item.outletName,
       )).toList(),
       orderType: widget.orderType,
       tableNumber: widget.tableNumber ?? '',

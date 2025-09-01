@@ -270,6 +270,11 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                   // if (widget.reservationData!.specialRequest.isNotEmpty)
                   //   _buildInfoItem('Permintaan Khusus', widget.reservationData!.specialRequest),
                 ],
+                // ✅ Outlet info (ambil dari item pertama)
+                if (widget.items.isNotEmpty) ...[
+                  _buildInfoItem('Outlet', widget.items.first.outletName ?? '-'),
+                ],
+
 
                 const Divider(height: 32),
                 _buildSectionTitle('Detail Pesanan'),
