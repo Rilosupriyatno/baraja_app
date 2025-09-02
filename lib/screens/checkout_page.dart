@@ -47,6 +47,7 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+
   // Pilihan tipe pesanan
   late OrderType selectedOrderType;
   // Data meja untuk Dine-in
@@ -278,6 +279,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
               "| OutletId: ${item.outletId} "
               "| OutletName: ${item.outletName}");
         }
+        
+        print("ini adalah data open bill: ${cartProvider.openBillData}");
 
 
         // Calculate down payment amount (50% of final total)
@@ -505,8 +508,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   discount: discount,
                   voucherCode: selectedVoucherCode,
                   isReservation: cartProvider.isReservation,
+                  isOpenBill: cartProvider.isOpenBill, // ✅ tambahkan ini
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   onCheckoutPressed: () async {
+                    print("➡️ Tombol checkout ditekan"); // ✅ debug
                     // Set flag bahwa user sudah mencoba submit
                     setState(() {
                       hasAttemptedSubmit = true;
@@ -605,10 +610,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         finalOrderType = OrderType.reservation;
                       } else if (cartProvider.isDineIn) {
                         finalOrderType = OrderType.dineIn;
+                      } else if (cartProvider.isOpenBill) {
+                        // For open bill, it's essentially a dine-in order for an existing reservation
+                        finalOrderType = OrderType.dineIn;
                       } else {
                         finalOrderType = selectedOrderType;
                       }
-
+                      print("✅ sebelum createOrder : Memulai pembuatan pesanan...");
                       // Create order with payment type information for reservations
                       final orderResult = await orderService.createOrder(
                         items: items,
@@ -624,6 +632,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         discount: discount,
                         voucherCode: selectedVoucherCode,
                         reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
+                        openBillData: cartProvider.openBillData ?? null, // ✅ tambahkan ini
                         // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
                         reservationType: cartProvider.isReservation &&
                             cartProvider.reservationData != null &&
@@ -632,15 +641,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             : null, // Kirim null jika tidak applicable
                       );
 
+                      print("✅ createOrder berhasil: $orderResult");
+
                       Navigator.of(context).pop();
 
                       // Navigate to payment confirmation with payment type data
+                      // Update the extra data for navigation to include open bill info
                       final extraData = {
                         'items': List.from(cartItems),
                         'userId': userId,
                         'userName': userName,
                         'orderType': finalOrderType,
-                        'tableNumber': cartProvider.isDineIn ? cartProvider.tableNumber : tableNumber,
+                        'tableNumber': cartProvider.isDineIn ? cartProvider.tableNumber :
+                        cartProvider.isOpenBill ? cartProvider.openBillData?.tableNumbers :
+                        tableNumber,
                         'deliveryAddress': deliveryAddress,
                         'pickupTime': pickupTime,
                         'paymentDetails': paymentDetails,
@@ -654,7 +668,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'orderId': orderResult['order']?['order_id'] ?? '',
                       };
 
-                      // Add reservation and payment type data if applicable
+// Add open bill specific data
+                      if (cartProvider.isOpenBill && cartProvider.openBillData != null) {
+                        extraData['isOpenBill'] = true;
+                        extraData['openBillData'] = cartProvider.openBillData;
+                        extraData['existingReservation'] = orderResult['existingReservation'];
+                      }
+
+// Add reservation and payment type data if applicable
                       if (cartProvider.isReservation && cartProvider.reservationData != null) {
                         extraData['reservationData'] = cartProvider.reservationData;
                         extraData['isReservation'] = true;

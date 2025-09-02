@@ -10,11 +10,7 @@ import '../models/order_type.dart';
 import '../models/reservation_data.dart';
 
 class OrderService {
-  // Change this to your actual API base URL
   final String? baseUrl = dotenv.env['BASE_URL'];
-
-// Method to create a new order
-// Perbaikan untuk method createOrder di OrderService
 
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
@@ -32,8 +28,9 @@ class OrderService {
     required int discount,
     String? voucherCode,
     ReservationData? reservationData,
-    ReservationType? reservationType, // Parameter sudah ada
+    ReservationType? reservationType,
     required Map<String, dynamic> paymentDetails,
+    OpenBillData? openBillData, // Add this parameter
   }) async {
     try {
       // Convert TimeOfDay to string format if it exists
@@ -47,6 +44,7 @@ class OrderService {
       // Debug prints
       print('Order Type: ${orderType.toString().split('.').last}');
       print('Reservation Type: ${reservationType?.toString().split('.').last}');
+      print('Open Bill Data: $openBillData');
       print('Delivery Address: "$deliveryAddress"');
       print('Table Number: "$tableNumber"');
       print('Pickup Time: "$pickupTimeString"');
@@ -57,11 +55,21 @@ class OrderService {
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
+        'outlet': '67cbc9560f025d897d69f889',
       };
 
       // Add optional fields
       if (voucherCode != null && voucherCode.isNotEmpty) {
         orderData['voucherCode'] = voucherCode;
+      }
+
+      // Handle Open Bill scenario
+      if (openBillData != null) {
+        orderData['isOpenBill'] = true;
+        orderData['openBillData'] = {
+          'reservationId': openBillData.reservationId,
+          'tableNumbers': openBillData.tableNumbers,
+        };
       }
 
       // Add conditional fields based on order type
@@ -79,7 +87,7 @@ class OrderService {
         orderData['pickupTime'] = pickupTimeString;
       }
 
-      // PERBAIKAN: Handle reservation with reservationType
+      // Handle reservation with reservationType
       if (orderType.toString().split('.').last == 'reservation') {
         if (reservationData != null) {
           // Data reservasi dasar
@@ -91,17 +99,15 @@ class OrderService {
             'reservationDate': reservationData.formattedDate,
           };
 
-          // TAMBAHAN: Kirim reservationType ke backend jika ada
+          // Send reservationType to backend if exists
           if (reservationType != null) {
             orderData['reservationData']['reservationType'] =
-                reservationType.toString().split('.').last; // 'blocking' atau 'nonBlocking'
-
-            // Optional: Kirim sebagai field terpisah juga jika backend memerlukan
+                reservationType.toString().split('.').last;
             orderData['reservationType'] = reservationType.toString().split('.').last;
           }
         }
 
-        // Table number untuk reservasi (jika diperlukan)
+        // Table number for reservations (if needed)
         if (tableNumber != null && tableNumber.isNotEmpty) {
           orderData['tableNumber'] = tableNumber;
         }
@@ -110,7 +116,7 @@ class OrderService {
       print('Final orderData:');
       print(orderData);
 
-      // Get auth token dan kirim request
+      // Get auth token and send request
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('authToken');
 
@@ -139,11 +145,9 @@ class OrderService {
     }
   }
 
-  // Fungsi untuk mendapatkan riwayat pesanan pengguna
-
+  // ... rest of your existing methods remain the same
   Future<List<Order>> getUserOrderHistory() async {
     try {
-      // Ambil userId dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       if (userId == null) {
@@ -154,14 +158,12 @@ class OrderService {
         Uri.parse('$baseUrl/api/orders/history/$userId'),
         headers: {
           'Content-Type': 'application/json',
-          // Updated token key to match createOrder method
           'Authorization': 'Bearer ${prefs.getString('authToken') ?? ''}',
         },
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        // Updated to match new API structure
         final List<dynamic> ordersData = responseData['orderHistory'] ?? [];
         return ordersData.map((orderData) => _mapToOrder(orderData)).toList();
       } else {
@@ -173,14 +175,7 @@ class OrderService {
     }
   }
 
-  // Static configuration untuk tracking
   static const Duration requestTimeout = Duration(seconds: 10);
-  /// Mengambil data order berdasarkan orderId untuk tracking
-  ///
-  /// Returns: Map<String, dynamic> dengan structure:
-  /// - success: bool
-  /// - data: Map<String, dynamic>? (orderData)
-  /// - error: String? (error message)
 
   Future<Map<String, dynamic>> getOrderForTracking(String id) async {
     try {
@@ -200,7 +195,6 @@ class OrderService {
         final jsonData = json.decode(response.body);
         final orderData = jsonData['orderData'] ?? jsonData;
 
-        // 🔥 Normalisasi: kalau orderStatus null tapi status ada → isi orderStatus
         if (orderData['orderStatus'] == null && orderData['status'] != null) {
           orderData['orderStatus'] = orderData['status'];
         }
@@ -233,28 +227,12 @@ class OrderService {
     }
   }
 
-
-  /// Mengambil status order dalam format yang mudah digunakan untuk tracking UI
-  ///
-  /// Returns: Map<String, dynamic> dengan structure:
-  /// - status: String (order status text)
-  /// - color: Color (status color)
-  /// - icon: IconData (status icon)
-
-  /// Mengambil status order dalam format yang mudah digunakan untuk tracking UI
-  ///
-  /// Returns: Map<String, dynamic> dengan structure:
-  /// - status: String (order status text)
-  /// - color: Color (status color)
-  /// - icon: IconData (status icon)
   Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
     print('=== getOrderStatusInfo Debug ===');
     print('Input orderData: $orderData');
 
-    // 🔥 PERBAIKAN: Cek multiple sources untuk payment status
     String paymentStatus = '';
 
-    // Prioritas: paymentStatus langsung, lalu dari paymentDetails
     if (orderData['paymentStatus'] != null) {
       paymentStatus = orderData['paymentStatus'].toString();
     } else if (orderData['paymentDetails'] != null &&
@@ -262,10 +240,8 @@ class OrderService {
       paymentStatus = orderData['paymentDetails']['status'].toString();
     }
 
-    // 🔥 PERBAIKAN: Cek multiple sources untuk order status
     String orderStatus = '';
 
-    // Prioritas: orderStatus, lalu status
     if (orderData['orderStatus'] != null) {
       orderStatus = orderData['orderStatus'].toString();
     } else if (orderData['status'] != null) {
@@ -275,14 +251,12 @@ class OrderService {
     print('Payment Status: "$paymentStatus"');
     print('Order Status: "$orderStatus"');
 
-    // Expanded payment status recognition
     if (paymentStatus.toLowerCase() == 'settlement' ||
         paymentStatus.toLowerCase() == 'paid' ||
         paymentStatus.toLowerCase() == 'capture') {
 
       print('Payment is successful, checking order status...');
 
-      // Jika sudah lunas, cek order status
       switch (orderStatus) {
         case 'Pending':
           print('Returning Pending status');
@@ -374,11 +348,8 @@ class OrderService {
       };
     }
   }
-  // Updated mapping function to match new API structure and include notes
 
   Order _mapToOrder(Map<String, dynamic> orderData) {
-    // Mengonversi status dari string ke enum OrderStatus
-
     OrderStatus getOrderStatus(String statusString) {
       switch (statusString.toLowerCase()) {
         case 'pending':
@@ -400,8 +371,6 @@ class OrderService {
       }
     }
 
-    // Mengonversi orderType dari string ke enum OrderType (default to dineIn if not provided)
-
     OrderType getOrderType(String? typeString) {
       if (typeString == null) return OrderType.dineIn;
       switch (typeString.toLowerCase()) {
@@ -417,12 +386,9 @@ class OrderService {
       }
     }
 
-    // Membuat list CartItem dari items pada orderData
-
     List<CartItem> cartItems = [];
     if (orderData['items'] != null) {
       for (var item in orderData['items']) {
-        // Mendapatkan informasi menuItem
         final menuItem = item['menuItem'];
         List<Map<String, dynamic>> addonsList = [];
         if (item['addons'] != null && item['addons'].isNotEmpty) {
@@ -451,23 +417,17 @@ class OrderService {
           quantity: item['quantity'] ?? 1,
           addons: addonsList,
           toppings: toppingsList,
-          notes: item['notes'], // Added notes field from API response
+          notes: item['notes'],
         ));
       }
     }
-
-    // Menghitung total dan subtotal
 
     int subtotal = 0;
     for (var item in cartItems) {
       subtotal += item.totalprice;
     }
-    // Menghitung diskon jika ada voucher (default 0 for new structure)
     int discount = 0;
-    // Add discount calculation logic here if needed
-    // Total setelah diskon
     int total = subtotal - discount;
-    // Membuat objek Order dengan data baru
 
     return Order(
       id: orderData['_id'] ?? '',
@@ -476,7 +436,7 @@ class OrderService {
       orderType: getOrderType(orderData['orderType']),
       tableNumber: orderData['tableNumber'] ?? '',
       deliveryAddress: orderData['deliveryAddress'] ?? '',
-      pickupTime: null, // Add if available in API
+      pickupTime: null,
       paymentDetails: {
         'method': orderData['paymentMethod'] ?? 'Cash',
         'status': orderData['paymentStatus'] ?? 'pending'

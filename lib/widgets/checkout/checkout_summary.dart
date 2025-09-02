@@ -9,6 +9,7 @@ class CheckoutSummary extends StatelessWidget {
   final String? voucherCode;
   final VoidCallback onCheckoutPressed;
   final bool isReservation;
+  final bool isOpenBill; // ✅ tambahan
   final PaymentType? selectedPaymentType;
 
   const CheckoutSummary({
@@ -18,16 +19,15 @@ class CheckoutSummary extends StatelessWidget {
     this.voucherCode,
     required this.onCheckoutPressed,
     this.isReservation = false,
+    this.isOpenBill = false, // ✅ default false
     this.selectedPaymentType,
   });
 
   @override
   Widget build(BuildContext context) {
     final int finalTotal = totalPrice - discount;
-    // Calculate down payment as 50% of the total (you can adjust this percentage)
     final int downPaymentAmount = (finalTotal * 0.5).round();
 
-    // Determine the amount to be paid based on payment type
     int amountToPay = finalTotal;
     if (isReservation && selectedPaymentType == PaymentType.downPayment) {
       amountToPay = downPaymentAmount;
@@ -57,7 +57,6 @@ class CheckoutSummary extends StatelessWidget {
                 fontSize: 16,
               ),
             ),
-
             const SizedBox(height: 12),
 
             Row(
@@ -104,7 +103,6 @@ class CheckoutSummary extends StatelessWidget {
               ],
             ),
 
-            // Show amount to pay now if it's different from total
             if (isReservation && selectedPaymentType == PaymentType.downPayment) ...[
               const SizedBox(height: 8),
               Row(
@@ -147,6 +145,8 @@ class CheckoutSummary extends StatelessWidget {
                 child: Text(
                   isReservation && selectedPaymentType == PaymentType.downPayment
                       ? "Bayar Down Payment ${formatCurrency(amountToPay)}"
+                      : isOpenBill
+                      ? "Checkout Open Bill ${formatCurrency(amountToPay)}"
                       : "Checkout ${formatCurrency(amountToPay)}",
                   style: const TextStyle(
                     fontSize: 16,

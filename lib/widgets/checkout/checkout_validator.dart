@@ -3,7 +3,6 @@ import '../../models/order_type.dart';
 import '../../providers/cart_provider.dart';
 import '../../screens/checkout_page.dart';
 
-
 class CheckoutValidator {
   static Map<String, dynamic> validateForm({
     required CartProvider cartProvider,
@@ -32,6 +31,15 @@ class CheckoutValidator {
         'isValid': false,
         'errors': {'general': 'Keranjang belanja masih kosong'},
         'firstErrorKey': 'general',
+      };
+    }
+
+    // ✅ Skip validasi untuk open bill
+    if (cartProvider.isOpenBill) {
+      return {
+        'isValid': true,
+        'errors': {},
+        'firstErrorKey': null,
       };
     }
 
@@ -66,7 +74,7 @@ class CheckoutValidator {
           }
           break;
         case OrderType.reservation:
-          // TODO: Handle this case.
+        // TODO: Handle this case.
           throw UnimplementedError();
       }
     }
