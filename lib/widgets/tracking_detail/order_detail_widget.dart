@@ -30,6 +30,12 @@ class OrderDetailWidget extends StatelessWidget {
           'icon': Icons.check_circle,
           'color': Colors.green,
         };
+      case 'partial':
+        return {
+          'label': 'Menunggu Pelunasan',
+          'icon': Icons.remove_circle,
+          'color': Colors.amber,
+        };
       case 'pending':
         return {
           'label': 'Menunggu Pembayaran',

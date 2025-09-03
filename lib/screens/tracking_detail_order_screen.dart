@@ -168,6 +168,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
         _hasPaymentDetails = paymentStatus == 'pending' ||
             paymentStatus == 'settlement' ||
+            paymentStatus == 'partial' ||
             paymentStatus == 'expire' ||
             paymentStatus == 'cancel' ||
             paymentStatus == 'capture';
@@ -332,6 +333,11 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
         switch (paymentStatus) {
           case 'pending':
             finalStatus = 'Menunggu Pembayaran';
+            finalColor = const Color(0xFFF59E0B);
+            finalIcon = Icons.access_time;
+            break;
+          case 'partial':
+            finalStatus = 'Menunggu Pelunasan';
             finalColor = const Color(0xFFF59E0B);
             finalIcon = Icons.access_time;
             break;

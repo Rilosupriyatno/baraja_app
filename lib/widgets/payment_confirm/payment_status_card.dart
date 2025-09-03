@@ -15,6 +15,7 @@ class PaymentStatusCard extends StatelessWidget {
     final status = paymentResponse?['transaction_status'] ?? 'unknown';
     final isSuccess = status == 'settlement';
     final isPending = status == 'pending';
+    final isPartial = status == 'partial';
 
     Color statusColor = Colors.grey;
     IconData statusIcon = Icons.info_outline;
@@ -28,6 +29,10 @@ class PaymentStatusCard extends StatelessWidget {
       statusColor = Colors.orange;
       statusIcon = Icons.pending_outlined;
       statusText = 'Menunggu Pembayaran';
+    } else if (isPartial) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.pending_outlined;
+      statusText = 'Menunggu Pelunasan';
     } else {
       statusColor = Colors.red;
       statusIcon = Icons.error_outline;

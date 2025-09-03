@@ -122,6 +122,12 @@ class StatusSectionWidget extends StatelessWidget {
           'description': 'Selesaikan pembayaran sebelum waktu habis',
           'showPulse': true,
         };
+      case 'partial':
+        return {
+          'subtitle': 'Menunggu pelunasan',
+          'description': 'Lakukan pelunasan di kasir',
+          'showPulse': true,
+        };
       case 'cancel':
         return {
           'subtitle': 'Pembayaran dibatalkan',

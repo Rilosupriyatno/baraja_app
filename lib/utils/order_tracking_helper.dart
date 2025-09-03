@@ -114,11 +114,20 @@ class OrderTrackingHelper {
 
   // Get payment status info when payment is not successful
   static Map<String, dynamic> _getPaymentStatusInfo(String paymentStatus) {
+    print('Checking payment status: $paymentStatus');
     switch (paymentStatus) {
       case 'pending':
         return {
           'status': 'Menunggu Pembayaran',
           'description': 'Selesaikan pembayaran sebelum waktu habis',
+          'color': const Color(0xFFF59E0B),
+          'icon': Icons.access_time,
+          'showPulse': true,
+        };
+      case 'partial':
+        return {
+          'status': 'Menunggu Pelunasan',
+          'description': 'Lakukan pelunasan di kasir',
           'color': const Color(0xFFF59E0B),
           'icon': Icons.access_time,
           'showPulse': true,

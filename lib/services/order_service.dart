@@ -324,6 +324,13 @@ class OrderService {
         'color': const Color(0xFFEF4444),
         'icon': Icons.payment,
       };
+    } else if (paymentStatus.toLowerCase() == 'partial') {
+      print('Returning pending payment status');
+      return {
+        'status': 'Menunggu Pelunasan',
+        'color': const Color(0xFFEF4444),
+        'icon': Icons.payment,
+      };
     } else if (paymentStatus.toLowerCase() == 'expire') {
       print('Returning expired payment status');
       return {
