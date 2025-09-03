@@ -50,6 +50,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   // Pilihan tipe pesanan
   late OrderType selectedOrderType;
+  String? outletId;
   // Data meja untuk Dine-in
   late String tableNumber;
   // Data untuk Delivery
@@ -95,7 +96,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Get actual data from CartProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
+      if (cartProvider.items.isNotEmpty) {
+        setState(() {
+          outletId = cartProvider.items.first.outletId?.toString();
+        });
+      }
       // Set initial order type based on the current context
       if (cartProvider.isReservation) {
         // For reservations, we'll use a special handling in the UI
@@ -276,7 +281,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final int finalTotal = subtotal - discount;
         for (var item in cartItems) {
           print("CartItem: ${item.name} "
-              "| OutletId: ${item.outletId} "
+              "| OutletId: $outletId "
               "| OutletName: ${item.outletName}");
         }
         
@@ -623,6 +628,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         userId: userId ?? 'guest',
                         userName: userName,
                         orderType: finalOrderType,
+                        outletId: outletId ?? '',
                         tableNumber: cartProvider.isDineIn ? cartProvider.tableNumber :
                         (finalOrderType == OrderType.dineIn ? tableNumber : null),
                         deliveryAddress: finalOrderType == OrderType.delivery ? deliveryAddress : null,

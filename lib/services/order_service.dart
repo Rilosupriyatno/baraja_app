@@ -18,6 +18,7 @@ class OrderService {
     required String userName,
     required OrderType orderType,
     String? tableNumber,
+    String? outletId,
     String? deliveryAddress,
     TimeOfDay? pickupTime,
     String? paymentMethod,
@@ -55,7 +56,7 @@ class OrderService {
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
-        'outlet': '67cbc9560f025d897d69f889',
+        'outlet': outletId,
       };
 
       // Add optional fields
