@@ -4,13 +4,31 @@ import '../services/event_service.dart';
 import '../widgets/event/event_card.dart';
 import 'event_detail_screen.dart';
 
-class EventScreen extends StatelessWidget {
+class EventScreen extends StatefulWidget {
   const EventScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final eventService = EventService();
+  State<EventScreen> createState() => _EventScreenState();
+}
 
+class _EventScreenState extends State<EventScreen> {
+  final eventService = EventService();
+  late Future<List<Event>> _futureEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureEvents = eventService.fetchEvents();
+  }
+
+  Future<void> _refreshEvents() async {
+    setState(() {
+      _futureEvents = eventService.fetchEvents();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
@@ -42,156 +60,20 @@ class EventScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<List<Event>>(
-        future: eventService.fetchEvents(),
+        future: _futureEvents,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4AF37)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Memuat event...",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            );
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(
-              child: Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red.shade400,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Oops! Terjadi kesalahan",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Error: ${snapshot.error}",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return Center(child: Text("Error: ${snapshot.error}"));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.event_busy,
-                        size: 48,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Belum ada event",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Event menarik akan segera hadir!",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return const Center(child: Text("Belum ada event"));
           }
 
           final events = snapshot.data!;
           return RefreshIndicator(
             color: const Color(0xFFD4AF37),
-            onRefresh: () async {
-              // Refresh logic here
-            },
+            onRefresh: _refreshEvents,
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               itemCount: events.length,
