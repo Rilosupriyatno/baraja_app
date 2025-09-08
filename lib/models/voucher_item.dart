@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 
 class VoucherItem extends StatelessWidget {
   final Voucher voucher;
@@ -18,6 +19,9 @@ class VoucherItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDisabled = !voucher.isActive;
+    final dateFormat = DateFormat("dd MMM yyyy");
+    final String validFrom = dateFormat.format(voucher.validFrom);
+    final String validTo = dateFormat.format(voucher.validTo);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
@@ -66,20 +70,31 @@ class VoucherItem extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                    Row(
-                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              voucher.discountType == "percentage"
+                                  ? "${voucher.discountAmount}%"
+                                  : "Rp ${voucher.discountAmount}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                isDisabled ? Colors.grey : Colors.green[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Tanggal berlaku
                         Text(
-                          voucher.discountType == "percentage"
-                              ? "${voucher.discountAmount}%"
-                              : "Rp ${voucher.discountAmount}",
+                          "Berlaku: $validFrom - $validTo",
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: isDisabled ? Colors.grey : Colors.green[700],
+                            fontSize: 12,
+                            color: isDisabled ? Colors.grey : Colors.black54,
                           ),
                         ),
-                      ],
-                    ),
                       ],
                     ),
                   ),
@@ -102,7 +117,6 @@ class VoucherItem extends StatelessWidget {
   }
 }
 
-
 class Voucher {
   final String id;
   final String code;
@@ -111,6 +125,8 @@ class Voucher {
   final int discountAmount;
   final String discountType; // "fixed" atau "percentage"
   final bool isActive;
+  final DateTime validFrom;
+  final DateTime validTo;
 
   Voucher({
     required this.id,
@@ -120,6 +136,8 @@ class Voucher {
     required this.discountAmount,
     required this.discountType,
     required this.isActive,
+    required this.validFrom,
+    required this.validTo,
   });
 
   factory Voucher.fromJson(Map<String, dynamic> json) {
@@ -131,6 +149,8 @@ class Voucher {
       discountAmount: json['discountAmount'],
       discountType: json['discountType'],
       isActive: json['isActive'] ?? true,
+      validFrom: DateTime.parse(json['validFrom']),
+      validTo: DateTime.parse(json['validTo']),
     );
   }
 }
