@@ -238,8 +238,12 @@ class AppRouter {
           path: '/voucher',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            final appliedVoucherCode = state.extra as String?;
-            return VoucherScreen(appliedVoucherCode: appliedVoucherCode);
+            final extras = state.extra as Map<String, dynamic>?;
+
+            return VoucherScreen(
+              appliedVoucherCode: extras?['appliedVoucherCode'] as String?,
+              readonly: extras?['readonly'] ?? false,
+            );
           },
         ),
 

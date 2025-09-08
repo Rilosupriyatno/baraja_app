@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/order_type.dart';
 import '../models/reservation_data.dart';
+import '../models/voucher_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
 import '../widgets/checkout/cart_item_widget.dart';
@@ -64,6 +65,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedBankCode;
   // Data voucher - updated variables
   String? selectedVoucherCode;
+  Voucher? selectedVoucher;
+
   String voucherDescription = "";
   int discountAmount = 0;
   PaymentType selectedPaymentType = PaymentType.fullPayment;
@@ -197,22 +200,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   // Calculate the discount amount based on the selected voucher
   int calculateDiscount(int subtotal) {
-    if (selectedVoucherCode == null) return 0;
+    if (selectedVoucher == null) return 0;
 
-    switch (selectedVoucherCode) {
-      case 'DISC10':
-        final discount = (subtotal * 0.1).round();
-        return discount > 20000 ? 20000 : discount;
-      case 'DISC15':
-        if (subtotal >= 20000) {
-          final discount = (subtotal * 0.15).round();
-          return discount > 25000 ? 25000 : discount;
-        }
-        return 0;
-      default:
-        return 0;
+    if (selectedVoucher!.discountType == "percentage") {
+      final discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
+      return discount;
+    } else if (selectedVoucher!.discountType == "fixed") {
+      return selectedVoucher!.discountAmount;
     }
+    return 0;
   }
+
 
   // Method untuk mengecek apakah area code memerlukan pilihan reservation type
   bool _shouldShowReservationType(String? areaCode) {
@@ -481,22 +479,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           const SizedBox(height: 16),
 
                           VoucherWidget(
-                            voucherCode: selectedVoucherCode ?? "",
-                            voucherApplied: selectedVoucherCode != null,
-                            onVoucherSelected: (String selectedCode) {
+                            voucherCode: selectedVoucher?.code ?? "",
+                            voucherApplied: selectedVoucher != null,
+                            onVoucherSelected: (Voucher voucher) {
                               setState(() {
-                                selectedVoucherCode = selectedCode;
+                                selectedVoucher = voucher;
+                                selectedVoucherCode = voucher.code; // ✅ tambahkan ini
                                 discountAmount = calculateDiscount(subtotal);
-                                switch (selectedCode) {
-                                  case 'DISC10':
-                                    voucherDescription = 'Disc 10% up to Rp20.000';
-                                    break;
-                                  case 'DISC15':
-                                    voucherDescription = 'Disc 15% up to Rp25.000';
-                                    break;
-                                  default:
-                                    voucherDescription = '';
-                                }
                               });
                             },
                           ),
@@ -512,6 +501,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   totalPrice: subtotal,
                   discount: discount,
                   voucherCode: selectedVoucherCode,
+                  discountType: selectedVoucher?.discountType,
                   isReservation: cartProvider.isReservation,
                   isOpenBill: cartProvider.isOpenBill, // ✅ tambahkan ini
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,

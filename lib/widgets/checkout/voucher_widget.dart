@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../models/voucher_item.dart';
 
 class VoucherWidget extends StatelessWidget {
   final String voucherCode;
   final bool voucherApplied;
-  final Function(String) onVoucherSelected; // Callback function
+  final Function(Voucher) onVoucherSelected; // ✅ terima Voucher, bukan String
 
   const VoucherWidget({
     super.key,
@@ -28,14 +29,18 @@ class VoucherWidget extends StatelessWidget {
         const SizedBox(height: 8),
         GestureDetector(
           onTap: () async {
-            final selectedVoucher = await context.push<String>(
+            // Kirim ke VoucherScreen, return Voucher object
+            final selectedVoucher = await context.push<Voucher>(
               '/voucher',
-              extra: voucherApplied ? voucherCode : null,
+              extra: {
+                'appliedVoucherCode': voucherApplied ? voucherCode : null,
+                'readonly': false,
+              },
             );
 
 
             if (selectedVoucher != null) {
-              onVoucherSelected(selectedVoucher); // Pass back to parent
+              onVoucherSelected(selectedVoucher); // ✅ kirim object Voucher
             }
           },
           child: Container(

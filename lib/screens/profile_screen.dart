@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../widgets/profile/profile_header.dart';
 import '../widgets/menu/menu_item.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../services/voucher_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
+  int _voucherCount = 0;
 
   @override
   void initState() {
@@ -26,6 +28,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserData() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     await authService.fetchUserProfile();
+
+    try {
+      final vouchers = await VoucherService().fetchVouchers();
+      _voucherCount = vouchers.length;
+    } catch (e) {
+      _voucherCount = 0; // fallback kalau error
+    }
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -68,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             userData != null
                 ? PointButtons(
               points: userData['loyaltyPoints']?.toString(),
-              vouchers: userData['claimedVouchers']?.length ?? 0,
+              vouchers: _voucherCount,
             )
                 : const PointButtons(),
 
@@ -100,15 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               iconColor: Colors.redAccent, // Merah hati
             ),
-            // const Divider(),
-            // MenuItem(
-            //   icon: Icons.notifications,
-            //   label: 'Pemberitahuan',
-            //   onTap: () {
-            //     context.push('/notification');
-            //   },
-            //   iconColor: Colors.amber, // Kuning lonceng
-            // ),
+
             const Divider(),
             MenuItem(
               icon: Icons.settings,

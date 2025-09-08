@@ -59,7 +59,10 @@ class PointButtons extends StatelessWidget {
         children: [
           ElevatedButton(
             onPressed: () {
-              if (route != '/point') {
+              if (route == '/voucher') {
+                // ✅ jika dari PointButtons, buka VoucherScreen dengan readonly
+                context.go(route, extra: {'readonly': true});
+              } else if (route == '/point') {
                 context.go(route);
               }
             },

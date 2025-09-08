@@ -11,6 +11,7 @@ class CheckoutSummary extends StatelessWidget {
   final bool isReservation;
   final bool isOpenBill; // ✅ tambahan
   final PaymentType? selectedPaymentType;
+  final String? discountType;
 
   const CheckoutSummary({
     super.key,
@@ -21,6 +22,7 @@ class CheckoutSummary extends StatelessWidget {
     this.isReservation = false,
     this.isOpenBill = false, // ✅ default false
     this.selectedPaymentType,
+    this.discountType,
   });
 
   @override
@@ -73,7 +75,9 @@ class CheckoutSummary extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Diskon Voucher ($voucherCode)",
+                    discountType == "percentage"
+                        ? "Diskon Voucher ($voucherCode%)"
+                        : "Diskon Voucher ($voucherCode)",
                     style: const TextStyle(color: Colors.green),
                   ),
                   Text(
