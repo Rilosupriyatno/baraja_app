@@ -60,17 +60,17 @@ class EventDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: IconButton(
-              icon: const Icon(Icons.share, color: Colors.black87, size: 20),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Fitur share akan segera hadir!'),
-                    backgroundColor: Color(0xFFD4AF37),
-                  ),
-                );
-              },
-            ),
+            // child: IconButton(
+            //   icon: const Icon(Icons.share, color: Colors.black87, size: 20),
+            //   onPressed: () {
+            //     ScaffoldMessenger.of(context).showSnackBar(
+            //       const SnackBar(
+            //         content: Text('Fitur share akan segera hadir!'),
+            //         backgroundColor: Color(0xFFD4AF37),
+            //       ),
+            //     );
+            //   },
+            // ),
           ),
         ],
       ),
