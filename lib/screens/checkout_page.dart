@@ -628,7 +628,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         discount: discount,
                         voucherCode: selectedVoucherCode,
                         reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
-                        openBillData: cartProvider.openBillData ?? null, // ✅ tambahkan ini
+                        openBillData: cartProvider.openBillData, // ✅ tambahkan ini
                         // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
                         reservationType: cartProvider.isReservation &&
                             cartProvider.reservationData != null &&
