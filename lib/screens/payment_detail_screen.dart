@@ -2,7 +2,8 @@ import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/utils/classic_app_bar.dart';
-import '../widgets/payment_detail/payment_methode_widget.dart'; // Import the new widget
+import '../widgets/payment_detail/payment_methode_widget.dart';
+import '../services/socket_service.dart'; // ✅ TAMBAHAN: Import SocketService
 import 'package:intl/intl.dart';
 
 class PaymentDetailsScreen extends StatefulWidget {
@@ -22,6 +23,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   bool isLoading = true;
   String? errorMessage;
 
+  // ✅ TAMBAHAN: Socket service dan state variables
+  final SocketService _socketService = SocketService();
+  bool _isListeningForPayment = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,13 +40,15 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     });
 
     try {
-      // Ganti dengan service API Anda
       final result = await ConfirmService().getPayment(widget.id);
 
       setState(() {
         if (result.success && result.data != null) {
           paymentData = result.data;
           isLoading = false;
+
+          // ✅ TAMBAHAN: Setup socket connection setelah data berhasil dimuat
+          _setupSocketConnection();
         } else {
           isLoading = false;
           errorMessage = result.message;
@@ -53,6 +60,69 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         errorMessage = 'Gagal memuat detail pembayaran: $e';
       });
     }
+  }
+
+  // ✅ TAMBAHAN: Setup socket connection untuk listen payment updates
+  void _setupSocketConnection() {
+    if (_isListeningForPayment || paymentData == null) return;
+
+    print('🔌 Setting up socket connection for payment ID: ${widget.id}');
+
+    _isListeningForPayment = true;
+
+    _socketService.connectToSocket(
+      id: widget.id,
+      onPaymentUpdate: _handlePaymentUpdate,
+      onOrderUpdate: _handleOrderUpdate, // Payment screen tidak perlu order update
+    );
+
+    // Join payment room
+    Future.delayed(const Duration(seconds: 2), () {
+      _socketService.joinOrderRoom(widget.id);
+      print('🏠 Joined payment room: ${widget.id}');
+    });
+  }
+  void _handleOrderUpdate(Map<String, dynamic> data) {
+    // Payment screen tidak memerlukan order update, tapi handler harus ada
+    print('📦 Order update received in payment screen (ignored): $data');
+  }
+
+  // ✅ TAMBAHAN: Handle payment update dari socket
+  void _handlePaymentUpdate(Map<String, dynamic> data) {
+    if (data['order_id']?.toString() != widget.id.toString() || !mounted) return;
+
+    print('💳 Payment update received: $data');
+
+    setState(() {
+      if (paymentData != null) {
+        // Update payment status dan data terkait
+        paymentData!['status'] = data['transaction_status'];
+        paymentData!['transaction_status'] = data['transaction_status'];
+
+        // Update transaction time jika ada
+        if (data['transaction_time'] != null) {
+          paymentData!['transaction_time'] = data['transaction_time'];
+        }
+
+        // Update expiry time jika ada
+        if (data['expiry_time'] != null) {
+          paymentData!['expiry_time'] = data['expiry_time'];
+        }
+
+        print('🔄 Payment data updated in UI');
+      }
+    });
+  }
+
+  // ✅ TAMBAHAN: Cleanup socket saat screen ditutup
+  @override
+  void dispose() {
+    if (_isListeningForPayment) {
+      // ✅ PERBAIKAN: Tidak menggunakan disconnect(), socket akan cleanup otomatis
+      // atau sesuaikan dengan method yang tersedia di SocketService
+      print('🔌 Cleaning up socket connection from payment screen');
+    }
+    super.dispose();
   }
 
   String _formatCurrency(dynamic amount) {
@@ -320,7 +390,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
             blurRadius: 12,
-            offset: const Offset(0, 4),
+            offset: const Offset(4, 4),
           ),
         ],
       ),

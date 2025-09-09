@@ -26,13 +26,15 @@ class CheckoutValidator {
     String? firstErrorKey;
 
     // Validasi keranjang kosong
-    if (cartProvider.items.isEmpty) {
+// Validasi keranjang kosong
+    if (cartProvider.items.isEmpty && !cartProvider.isReservation) {
       return {
         'isValid': false,
         'errors': {'general': 'Keranjang belanja masih kosong'},
         'firstErrorKey': 'general',
       };
     }
+
 
     // ✅ Skip validasi untuk open bill
     if (cartProvider.isOpenBill) {

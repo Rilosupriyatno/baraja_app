@@ -354,20 +354,37 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             const DineInInfoWidget(),
 
 
+
+
                           // Daftar Item Keranjang
                           if (cartItems.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20),
-                              child: Center(
-                                child: Text(
-                                  "Keranjang belanja kosong",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
+                            if (cartProvider.isReservation)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24.0),
+                                child: Center(
+                                  child: Text(
+                                    "Reservasi tanpa menu (Rp100.000)",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
+                              )
+                            else
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24.0),
+                                child: Center(
+                                  child: Text(
+                                    "Keranjang belanja kosong",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              )
                           else
                             ...cartItems.asMap().entries.map((entry) {
                               CartItem item = entry.value;
@@ -375,6 +392,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 item: item,
                               );
                             }),
+
                           const SizedBox(height: 24),
 
                           // Pemilihan Tipe Pesanan - Conditional Display

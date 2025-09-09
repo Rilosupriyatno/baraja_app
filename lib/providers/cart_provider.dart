@@ -164,8 +164,13 @@ class CartProvider with ChangeNotifier {
 
   // Fixed total price calculation
   int get totalPrice {
+    // Jika reservasi tanpa item → fallback harga default
+    if (_isReservation && _items.isEmpty) {
+      return 100000;
+    }
+
+    // Hitung total semua item di cart
     return _items.fold(0, (sum, item) {
-      // Calculate base price
       int itemPrice = item.price;
 
       // Add toppings price
@@ -184,10 +189,10 @@ class CartProvider with ChangeNotifier {
         }
       }
 
-      // Calculate total for this item (price per item * quantity)
       return sum + (itemPrice * item.quantity);
     });
   }
+
 
   // Helper method to get individual item total price (including addons and toppings)
   int getItemTotalPrice(CartItem item) {

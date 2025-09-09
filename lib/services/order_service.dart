@@ -56,7 +56,7 @@ class OrderService {
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
-        'outlet': outletId,
+        'outlet': outletId ?? '67cbc9560f025d897d69f889',
       };
 
       // Add optional fields
