@@ -14,7 +14,7 @@ import '../widgets/reservation/time_selector.dart';
 import '../models/reservation_data.dart';
 import '../models/area.dart';
 import '../services/reservation_service.dart';
-import 'cart_screen.dart';
+// import 'cart_screen.dart';
 import 'checkout_page.dart';
 import 'menu_screen.dart';
 
@@ -88,34 +88,34 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
   }
 
-  void _navigateToReservationOnly() {
-    if (selectedArea == null) return;
-
-    final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
-    final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-
-    final reservationData = ReservationData(
-      date: selectedDate,
-      time: selectedTime,
-      areaId: selectedArea!.id,
-      areaCode: selectedArea!.areaCode,
-      personCount: personCount,
-      formattedDate: formattedDate,
-      formattedTime: formattedTime,
-      selectedTableIds: selectedTableIds,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CartScreen(
-          isReservation: true,
-          reservationData: reservationData,
-        ),
-      ),
-    );
-  }
-
+  // void _navigateToReservationOnly() {
+  //   if (selectedArea == null) return;
+  //
+  //   final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
+  //   final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+  //
+  //   final reservationData = ReservationData(
+  //     date: selectedDate,
+  //     time: selectedTime,
+  //     areaId: selectedArea!.id,
+  //     areaCode: selectedArea!.areaCode,
+  //     personCount: personCount,
+  //     formattedDate: formattedDate,
+  //     formattedTime: formattedTime,
+  //     selectedTableIds: selectedTableIds,
+  //   );
+  //
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => CartScreen(
+  //         isReservation: true,
+  //         reservationData: reservationData,
+  //       ),
+  //     ),
+  //   );
+  // }
+  //
 
   Future<void> _refreshAreasAvailability() async {
     if (!_isValidReservationDate() || !_isValidTime(selectedTime, selectedDate)) {
@@ -530,9 +530,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
+              child: const Text(
                 'Batal',
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey),
               ),
             ),
             if (isAvailable) ...[

@@ -93,7 +93,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.initState();
 
     // Set default values
-    selectedOrderType = OrderType.delivery; // Default order type
+    selectedOrderType = OrderType.dineIn; // Default order type
     tableNumber = ""; // Default table number
 
     // Get actual data from CartProvider

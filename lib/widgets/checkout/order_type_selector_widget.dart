@@ -41,7 +41,7 @@ class OrderTypeSelectorWithValidation extends StatelessWidget {
           onDeliveryAddressChanged: onDeliveryAddressChanged,
           pickupTime: pickupTime,
           onPickupTimeChanged: onPickupTimeChanged,
-          hideDineInOption: true,
+          hideDineInOption: false,
         ),
         if (selectedType == OrderType.delivery)
           _buildErrorMessage(validationErrors['deliveryAddress']),
