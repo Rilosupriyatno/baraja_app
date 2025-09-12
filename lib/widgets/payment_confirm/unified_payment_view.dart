@@ -77,11 +77,12 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   @override
   void initState() {
     super.initState();
-    if (widget.isCashPayment) {
-      _processCashPayment();
-    } else {
-      _apiCallCompleted = true; // Digital payment is already processed
-    }
+    _apiCallCompleted = true; // Digital payment is already processed
+    // if (widget.isCashPayment) {
+    //   // _processCashPayment();
+    // } else {
+    //   _apiCallCompleted = true; // Digital payment is already processed
+    // }
   }
 
   /// Process cash payment using ConfirmService

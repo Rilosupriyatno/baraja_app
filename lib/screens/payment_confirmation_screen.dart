@@ -118,27 +118,14 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
-    // Create a dummy successful payment response to display the view
-    _paymentResponse = PaymentResult(
-      success: true,
-      message: "Payment initialized",
-      data: {
-        'order_id': widget.orderId,
-        'transaction_status': 'pending',
-        'transaction_id': 'dummy_${widget.orderId}',
-        // Add any other required fields for UnifiedPaymentView
-      },
-      statusCode: 200,
-      error: null,
-    );
-
     // Add order to provider immediately (optional)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       orderProvider.addOrder(newOrder);
-    });
 
-    // Note: _processPayment() is not called, so no automatic payment processing
+      // PERBAIKAN: Panggil _processPayment untuk semua jenis pembayaran
+      _processPayment();
+    });
   }
 
   bool _checkIfCashPayment() {
@@ -177,6 +164,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
           print('Payment processed successfully for order: ${widget.orderId}');
 
+          // Setup socket connection untuk non-cash payment
           if (!_isCashPayment) {
             _setupSocketConnection();
           }
@@ -184,14 +172,42 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           setState(() {
             _errorMessage = response.message;
           });
+
+          // Log error untuk debugging
+          print('Payment processing failed: ${response.message}');
+          print('Status code: ${response.statusCode}');
+
+          // Tampilkan snackbar error untuk user feedback
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal memproses pembayaran: ${response.message}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
         }
       }
     } catch (e) {
+      print('Exception during payment processing: $e');
+
       if (mounted) {
         setState(() {
           _isLoading = false;
           _errorMessage = e.toString();
         });
+
+        // Tampilkan error message yang lebih user-friendly
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Terjadi kesalahan sistem. Silakan coba lagi.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Coba Lagi',
+              onPressed: _retryPayment,
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -276,9 +292,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   }
 
   // Add manual payment processing button (optional)
-  void _manualProcessPayment() {
-    _processPayment();
-  }
+  // void _manualProcessPayment() {
+  //   _processPayment();
+  // }
 
   @override
   void dispose() {
