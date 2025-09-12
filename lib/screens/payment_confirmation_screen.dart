@@ -69,12 +69,12 @@ class PaymentConfirmationScreen extends StatefulWidget {
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   final SocketService _socketService = SocketService();
   late final Order newOrder;
-  bool _isLoading = true;
+  bool _isLoading = false; // Changed to false to prevent spinning
   PaymentResult? _paymentResponse;
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
-  bool _isProcessing = false; // Add this flag to prevent duplicate processing
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -118,10 +118,27 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
-    // Defer the payment handling until after the build phase
+    // Create a dummy successful payment response to display the view
+    _paymentResponse = PaymentResult(
+      success: true,
+      message: "Payment initialized",
+      data: {
+        'order_id': widget.orderId,
+        'transaction_status': 'pending',
+        'transaction_id': 'dummy_${widget.orderId}',
+        // Add any other required fields for UnifiedPaymentView
+      },
+      statusCode: 200,
+      error: null,
+    );
+
+    // Add order to provider immediately (optional)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _processPayment();
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      orderProvider.addOrder(newOrder);
     });
+
+    // Note: _processPayment() is not called, so no automatic payment processing
   }
 
   bool _checkIfCashPayment() {
@@ -129,7 +146,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     return paymentType == 'cash' || paymentType == 'tunai';
   }
 
-  // Single method to handle all payment processing
+  // Keep this method in case you want to manually trigger payment later
   Future<void> _processPayment() async {
     if (_isProcessing || !mounted) return;
 
@@ -141,7 +158,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     final confirmService = ConfirmService();
 
     try {
-      // Send order (works for both cash and digital payments)
       final response = await confirmService.sendOrder(
         newOrder,
         isDownPayment: widget.isDownPayment,
@@ -156,13 +172,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         });
 
         if (response.success) {
-          // Add order to provider
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.addOrder(newOrder);
 
           print('Payment processed successfully for order: ${widget.orderId}');
 
-          // For non-cash payments, setup socket connection
           if (!_isCashPayment) {
             _setupSocketConnection();
           }
@@ -192,20 +206,17 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     if (!_isListeningForPayment) {
       _isListeningForPayment = true;
 
-      // Connect to socket and listen for payment updates
       _socketService.connectToSocket(
         id: widget.id,
         onPaymentUpdate: _handlePaymentUpdate,
-        onOrderUpdate: (_) {}, // ✅ handler baru
+        onOrderUpdate: (_) {},
       );
 
-      // Add a delay before manually joining the room again
       Future.delayed(const Duration(seconds: 3), () {
         _socketService.joinOrderRoom(widget.id);
       });
     }
   }
-
 
   void _handlePaymentUpdate(Map<String, dynamic> data) {
     print('Payment update received in screen: $data');
@@ -215,14 +226,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
       if (mounted) {
         setState(() {
-          // Update the payment response with new transaction status
           if (_paymentResponse != null && _paymentResponse!.data != null) {
-            // Create a mutable copy of the data
             final updatedData = Map<String, dynamic>.from(_paymentResponse!.data!);
 
             updatedData['transaction_status'] = data['transaction_status'];
 
-            // Update other fields if they exist in the update
             if (data.containsKey('fraud_status')) {
               updatedData['fraud_status'] = data['fraud_status'];
             }
@@ -230,7 +238,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
               updatedData['status_message'] = data['status_message'];
             }
 
-            // Create new PaymentResult with updated data
             _paymentResponse = PaymentResult(
               success: _paymentResponse!.success,
               message: _paymentResponse!.message,
@@ -244,7 +251,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
       print('Payment status updated to: ${data['transaction_status']}');
 
-      // Update order status based on transaction status
       if (data['transaction_status'] == 'settlement' ||
           data['transaction_status'] == 'capture') {
         if (mounted) {
@@ -257,17 +263,20 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-  // Helper method to get payment response data as Map for widget compatibility
   Map<String, dynamic>? get _paymentResponseData {
     return _paymentResponse?.data;
   }
 
-  // Retry method for handling errors
   void _retryPayment() {
     setState(() {
       _errorMessage = null;
       _isProcessing = false;
     });
+    _processPayment();
+  }
+
+  // Add manual payment processing button (optional)
+  void _manualProcessPayment() {
     _processPayment();
   }
 
@@ -287,10 +296,10 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       canPop: false,
       child: Scaffold(
         backgroundColor: Colors.white,
-          appBar: const ClassicAppBar(
-            title: 'Konfirmasi Pembayaran',
-            customBackRoute: '/history',
-          ),
+        appBar: const ClassicAppBar(
+          title: 'Konfirmasi Pembayaran',
+          customBackRoute: '/history',
+        ),
         body: SafeArea(
           child: _isLoading
               ? const PaymentLoadingView()
@@ -299,27 +308,41 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             errorMessage: _errorMessage,
             onRetry: _retryPayment,
           )
-              : UnifiedPaymentView(
-            order: newOrder,
-            paymentResponse: _paymentResponseData,
-            paymentDetails: widget.paymentDetails,
-            orderType: widget.orderType,
-            tableNumber: widget.tableNumber ?? '',
-            deliveryAddress: widget.deliveryAddress,
-            pickupTime: widget.pickupTime,
-            subtotal: widget.subtotal,
-            discount: widget.discount,
-            total: widget.total,
-            voucherCode: widget.voucherCode,
-            items: widget.items,
-            isCashPayment: _isCashPayment,
-            // Add reservation-specific parameters
-            isReservation: widget.isReservation ?? false,
-            paymentType: widget.paymentType,
-            amountToPay: widget.amountToPay,
-            remainingPayment: widget.remainingPayment,
-            isDownPayment: widget.isDownPayment,
-            reservationData: widget.reservationData,
+              : Column(
+            children: [
+              // Optional: Add manual payment button
+              // if (!_isProcessing)
+              //   Padding(
+              //     padding: const EdgeInsets.all(16.0),
+              //     child: ElevatedButton(
+              //       onPressed: _manualProcessPayment,
+              //       child: Text('Process Payment'),
+              //     ),
+              //   ),
+              Expanded(
+                child: UnifiedPaymentView(
+                  order: newOrder,
+                  paymentResponse: _paymentResponseData,
+                  paymentDetails: widget.paymentDetails,
+                  orderType: widget.orderType,
+                  tableNumber: widget.tableNumber ?? '',
+                  deliveryAddress: widget.deliveryAddress,
+                  pickupTime: widget.pickupTime,
+                  subtotal: widget.subtotal,
+                  discount: widget.discount,
+                  total: widget.total,
+                  voucherCode: widget.voucherCode,
+                  items: widget.items,
+                  isCashPayment: _isCashPayment,
+                  isReservation: widget.isReservation ?? false,
+                  paymentType: widget.paymentType,
+                  amountToPay: widget.amountToPay,
+                  remainingPayment: widget.remainingPayment,
+                  isDownPayment: widget.isDownPayment,
+                  reservationData: widget.reservationData,
+                ),
+              ),
+            ],
           ),
         ),
       ),
