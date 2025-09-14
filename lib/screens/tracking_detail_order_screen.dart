@@ -10,6 +10,7 @@ import '../services/confirm_service.dart';
 import '../services/socket_service.dart';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
+import '../widgets/tracking_detail/order_type_section_widget.dart';
 import '../widgets/tracking_detail/status_section_widget.dart';
 import '../widgets/tracking_detail/action_button_widget.dart';
 import '../widgets/tracking_detail/rating_display_widget.dart';
@@ -486,7 +487,12 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                             child: OrderDetailWidget(orderData: orderData!),
                           ),
                         ),
-
+                      // OrderType Section detail
+                      if (orderData != null)
+                        SlideTransition(
+                          position: _slideAnimation,
+                          child: OrderTypeSectionWidget(orderData: orderData!),
+                        ),
                       // Reservation Section
                       if (orderData != null && orderData!['reservation'] != null)
                         SlideTransition(

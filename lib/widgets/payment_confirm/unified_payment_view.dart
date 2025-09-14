@@ -77,13 +77,25 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   @override
   void initState() {
     super.initState();
-    _apiCallCompleted = true; // Digital payment is already processed
-    // if (widget.isCashPayment) {
-    //   // _processCashPayment();
-    // } else {
-    //   _apiCallCompleted = true; // Digital payment is already processed
-    // }
+
+    if (widget.isCashPayment && widget.paymentResponse != null) {
+      _paymentData = widget.paymentResponse;
+      final actions = _paymentData?['actions'] as List<dynamic>?;
+      if (actions != null) {
+        for (var action in actions) {
+          if (action['name'] == 'generate-qr-code') {
+            _qrCodeUrl = action['url'];
+            break;
+          }
+        }
+      }
+      _apiCallCompleted = true;
+    } else {
+      _apiCallCompleted = true; // untuk non-cash
+    }
   }
+
+
 
   /// Process cash payment using ConfirmService
   Future<void> _processCashPayment() async {

@@ -47,6 +47,3 @@ extension OrderTypeExtension on OrderType {
     }
   }
 }
-
-// Import diletakkan disini agar tidak terjadi circular dependency
-// import 'package:flutter/material.dart';
