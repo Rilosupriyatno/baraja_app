@@ -10,9 +10,35 @@ class OrderDetailWidget extends StatelessWidget {
 
   const OrderDetailWidget({super.key, required this.orderData});
 
-  // Method untuk mendapatkan status pembayaran
-  Map<String, dynamic> _getPaymentStatus(String? status) {
-    // ✅ PERBAIKAN: Handle null status
+  // Method untuk mendapatkan status pembayaran dengan dukungan down payment
+  Map<String, dynamic> _getPaymentStatus(String? status, Map<String, dynamic>? paymentDetails) {
+    // Check if this is a down payment scenario
+    if (paymentDetails != null && paymentDetails['isDownPayment'] == true) {
+      final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
+      final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
+
+      if (isDownPaymentPaid && remainingAmount > 0) {
+        return {
+          'label': 'DP Dibayar - Sisa Belum Lunas',
+          'icon': Icons.schedule,
+          'color': Colors.orange,
+        };
+      } else if (isDownPaymentPaid && remainingAmount == 0) {
+        return {
+          'label': 'Lunas',
+          'icon': Icons.check_circle,
+          'color': Colors.green,
+        };
+      } else {
+        return {
+          'label': 'DP Belum Dibayar',
+          'icon': Icons.pending,
+          'color': Colors.red,
+        };
+      }
+    }
+
+    // Default payment status logic (existing code)
     if (status == null) {
       return {
         'label': 'Status Tidak Diketahui',
@@ -75,15 +101,245 @@ class OrderDetailWidget extends StatelessWidget {
     }
   }
 
+  // Widget untuk menampilkan informasi down payment
+  Widget _buildDownPaymentSection(Map<String, dynamic> orderData) {
+    final paymentDetails = orderData['paymentDetails'] as Map<String, dynamic>?;
+
+    if (paymentDetails == null || paymentDetails['isDownPayment'] != true) {
+      return const SizedBox.shrink();
+    }
+
+    final totalAmount = _getNumericValue(paymentDetails['totalAmount']);
+    final paidAmount = _getNumericValue(paymentDetails['paidAmount']);
+    final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
+    final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
+
+    return Column(
+      children: [
+        // Down Payment Section Header
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet,
+                color: Colors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Informasi Down Payment',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // DP Details Container
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.orange.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Total Amount (hanya tampilkan jika > 0)
+              if (totalAmount > 0) ...[
+                _buildPaymentDetailRow(
+                  'Total Pesanan',
+                  formatCurrency(totalAmount),
+                  Icons.receipt_long,
+                  Colors.grey.shade700,
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // DP Amount with Status
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDownPaymentPaid ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDownPaymentPaid ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isDownPaymentPaid ? Icons.check_circle : Icons.access_time,
+                      size: 20,
+                      color: isDownPaymentPaid ? Colors.green : Colors.red,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Down Payment (DP)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            isDownPaymentPaid ? 'Sudah Dibayar' : 'Belum Dibayar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDownPaymentPaid ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      formatCurrency(paidAmount),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDownPaymentPaid ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Remaining Amount
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.blue.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.pending_actions,
+                      size: 20,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sisa Pembayaran',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            remainingAmount > 0 ? 'Belum Lunas' : 'Lunas',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: remainingAmount > 0 ? Colors.orange : Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      formatCurrency(remainingAmount),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: remainingAmount > 0 ? Colors.orange : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Divider
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                Colors.grey.shade200,
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildPaymentDetailRow(String label, String value, IconData icon, Color iconColor) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: iconColor,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = orderData['items'] as List? ?? [];
+    final paymentDetails = orderData['paymentDetails'] as Map<String, dynamic>?;
 
-    // ✅ PERBAIKAN: Safe access untuk paymentStatus
+    // Safe access untuk paymentStatus dengan support down payment
     final paymentStatusValue = orderData['paymentStatus']?.toString();
-    final paymentStatus = _getPaymentStatus(paymentStatusValue);
+    final paymentStatus = _getPaymentStatus(paymentStatusValue, paymentDetails);
 
     print('Payment Status Value: $paymentStatusValue');
+    print('Payment Details: $paymentDetails');
 
     return Container(
       width: double.infinity,
@@ -158,202 +414,212 @@ class OrderDetailWidget extends StatelessWidget {
             ),
           ),
 
-          // Order Detail Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
+          // Order Detail Section (only show if items exist)
+          if (items.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long,
+                          color: AppTheme.barajaPrimary.primaryColor,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Detail Pesanan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Loop through all items
+                  ...items.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: index < items.length - 1 ? 16 : 0),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFFF8F9FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+                        ),
                       ),
-                      child: Icon(
-                        Icons.receipt_long,
-                        color: AppTheme.barajaPrimary.primaryColor,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Detail Pesanan',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Loop through all items
-                ...items.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-
-                  return Container(
-                    margin: EdgeInsets.only(bottom: index < items.length - 1 ? 16 : 0),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: _buildItemImage(item),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item['name']?.toString() ?? 'Unknown Item',
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: _buildItemImage(item),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  item['name']?.toString() ?? 'Unknown Item',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'x${item['quantity']?.toString() ?? '0'}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                formatCurrency(_getNumericValue(item['price'])),
                                 style: const TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.black87,
                                 ),
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'x${item['quantity']?.toString() ?? '0'}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              formatCurrency(_getNumericValue(item['price'])),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Addons Section
-                        ..._buildAddonsSection(item),
-
-                        // Topping Section
-                        ..._buildToppingsSection(item),
-
-                        // Notes Section
-                        ..._buildNotesSection(item),
-
-                        const SizedBox(height: 12),
-                        Text(
-                          item['outletName']?.toString() ?? 'Unknown Outlet',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  );
-                }),
-                const SizedBox(height: 20),
+                          const SizedBox(height: 12),
 
-                if (orderData['reservation'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final reservationId = orderData['reservation']?['_id']?.toString() ?? '';
-                        final selectedArea = orderData['reservation']?['area'];
-                        final selectedTable = orderData['reservation']?['tables'] as List?;
+                          // Addons Section
+                          ..._buildAddonsSection(item),
 
-                        final areaId = selectedArea?['_id']?.toString() ?? '';
-                        final areaCode = selectedArea?['name']?.toString() ?? '';
+                          // Topping Section
+                          ..._buildToppingsSection(item),
 
-                        final tableId = (selectedTable != null && selectedTable.isNotEmpty)
-                            ? selectedTable[0]['_id']?.toString() ?? ''
-                            : '';
-                        final tableNumbers = (selectedTable != null && selectedTable.isNotEmpty)
-                            ? selectedTable[0]['tableNumber']?.toString() ?? ''
-                            : '';
+                          // Notes Section
+                          ..._buildNotesSection(item),
 
-                        final openBillData = OpenBillData(
-                          reservationId: reservationId,
-                          date: DateTime.now(),
-                          time: TimeOfDay.now(),
-                          areaId: areaId,
-                          areaCode: areaCode,
-                          tableId: tableId,
-                          tableNumbers: tableNumbers,
-                        );
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MenuScreen(
-                              isOpenBill: true,
-                              openBillData: openBillData,
+                          const SizedBox(height: 12),
+                          Text(
+                            item['outletName']?.toString() ?? 'Unknown Outlet',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
                             ),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                        backgroundColor: AppTheme.primaryColor,
+                          const SizedBox(height: 16),
+                        ],
                       ),
-                      icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
-                      label: const Text(
-                        'Tambah Pesanan',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Elegant Divider
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  Colors.grey.shade200,
-                  Colors.transparent,
+                    );
+                  }),
                 ],
               ),
             ),
+
+            // Elegant Divider
+            Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.grey.shade200,
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Add Order Button for reservations
+          if (orderData['reservation'] != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 3, left: 24, right: 24, bottom: 16),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final reservationId = orderData['reservation']?['_id']?.toString() ?? '';
+                  final selectedArea = orderData['reservation']?['area'];
+                  final selectedTable = orderData['reservation']?['tables'] as List?;
+
+                  final areaId = selectedArea?['_id']?.toString() ?? '';
+                  final areaCode = selectedArea?['name']?.toString() ?? '';
+
+                  final tableId = (selectedTable != null && selectedTable.isNotEmpty)
+                      ? selectedTable[0]['_id']?.toString() ?? ''
+                      : '';
+                  final tableNumbers = (selectedTable != null && selectedTable.isNotEmpty)
+                      ? selectedTable[0]['tableNumber']?.toString() ?? ''
+                      : '';
+
+                  final openBillData = OpenBillData(
+                    reservationId: reservationId,
+                    date: DateTime.now(),
+                    time: TimeOfDay.now(),
+                    areaId: areaId,
+                    areaCode: areaCode,
+                    tableId: tableId,
+                    tableNumbers: tableNumbers,
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MenuScreen(
+                        isOpenBill: true,
+                        openBillData: openBillData,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: AppTheme.primaryColor,
+                ),
+                icon: const Icon(Icons.add_circle_rounded, color: Colors.white),
+                label: const Text(
+                  'Tambah Pesanan',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
+
+          // Down Payment Section (NEW)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+            child: _buildDownPaymentSection(orderData),
           ),
 
           // Payment Detail Section
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -390,13 +656,19 @@ class OrderDetailWidget extends StatelessWidget {
                   color: Colors.grey.shade300,
                 ),
                 const SizedBox(height: 16),
-                PaymentRowWidget(
-                  label: 'Total',
-                  value: formatCurrency(_getNumericValue(orderData['total'])),
-                  icon: Icons.receipt,
-                  isTotal: true,
-                ),
-                const SizedBox(height: 16),
+
+                // Show total only if not down payment or if items exist
+                if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
+                  PaymentRowWidget(
+                    label: 'Total',
+                    value: formatCurrency(_getNumericValue(orderData['total'])),
+                    icon: Icons.receipt,
+                    isTotal: true,
+                  ),
+
+                if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
+                  const SizedBox(height: 16),
+
                 PaymentRowWidget(
                   label: 'Metode Pembayaran',
                   value: orderData['paymentMethod']?.toString() ?? 'Not specified',
@@ -404,6 +676,7 @@ class OrderDetailWidget extends StatelessWidget {
                   isTotal: false,
                 ),
                 const SizedBox(height: 12),
+
                 // Custom Payment Status Widget
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -457,7 +730,7 @@ class OrderDetailWidget extends StatelessWidget {
     );
   }
 
-  // ✅ HELPER METHODS untuk null safety
+  // Helper methods remain the same...
 
   Widget _buildItemImage(Map<String, dynamic> item) {
     final imageUrl = item['imageUrl']?.toString();

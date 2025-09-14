@@ -131,63 +131,95 @@ class ConfirmService {
       );
     }
   }
-  /// METHOD BARU: getPayment
-  Future<PaymentResult> getPayment(String orderId) async {
+// confirm_service.dart - Tambahkan method ini
+
+  /// METHOD BARU: createFinalPayment untuk pelunasan
+  /// METHOD BARU: createFinalPayment untuk pelunasan (CASH ONLY)
+  Future<PaymentResult> createFinalPayment({
+    required String orderId,
+    required String paymentMethod,
+    String? bankCode,
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/getPayment/$orderId'),
+      print('=== CREATE FINAL PAYMENT ===');
+      print('Order ID: $orderId');
+      print('Payment Method: $paymentMethod');
+
+      // SEMENTARA HANYA CASH YANG DIIZINKAN
+      if (paymentMethod != 'cash') {
+        return PaymentResult(
+          success: false,
+          message: 'Sementara hanya pembayaran tunai yang tersedia untuk pelunasan',
+        );
+      }
+
+      // Untuk cash payment, gunakan struktur sederhana seperti di sendOrder
+      Map<String, dynamic> requestData = {
+        "payment_type": "cash",
+        "order_id": orderId,
+        "gross_amount": 0, // Akan diisi oleh backend berdasarkan remaining amount
+      };
+
+      print('Request Data: $requestData');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/final-payment'),
         headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestData),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
+        Map<String, dynamic>? responseData;
 
-        if (jsonData.containsKey('payment')) {
-          final paymentData = jsonData['payment'] as Map<String, dynamic>;
-          // paymentData.remove('raw_response');
-
-          _printGetPaymentSuccess(paymentData);
-
-          return PaymentResult(
-            success: true,
-            message: 'Data pembayaran berhasil diambil',
-            data: paymentData,
-          );
-        } else {
-          return PaymentResult(
-            success: false,
-            message: 'Data pembayaran tidak ditemukan di response',
-            statusCode: response.statusCode,
-          );
+        // Parse response body jika tidak kosong
+        if (response.body.isNotEmpty) {
+          try {
+            responseData = json.decode(response.body);
+          } catch (e) {
+            print('Warning: Failed to parse response body as JSON: $e');
+          }
         }
+
+        return PaymentResult(
+          success: true,
+          message: 'Pembayaran tunai pelunasan berhasil diproses',
+          data: responseData,
+        );
       } else {
-        _printErrorResponse(response);
-        String errorMessage = 'Gagal mengambil data pembayaran';
+        String errorMessage = 'Gagal memproses pembayaran tunai pelunasan';
+
         if (response.body.isNotEmpty) {
           try {
             final errorData = json.decode(response.body);
             errorMessage = errorData['message'] ?? errorMessage;
-          } catch (_) {}
+          } catch (e) {
+            errorMessage = 'Error ${response.statusCode}: ${response.body}';
+          }
+        } else {
+          errorMessage = 'Error ${response.statusCode}: ${response.reasonPhrase}';
         }
+
         return PaymentResult(
           success: false,
           message: errorMessage,
           statusCode: response.statusCode,
         );
       }
+
     } catch (error) {
-      _printException(error);
-      String errorMessage = 'Terjadi kesalahan saat mengambil data pembayaran';
+      print('Exception in createFinalPayment: $error');
+
+      String errorMessage = 'Terjadi kesalahan saat membuat final payment';
+
       if (error.toString().contains('SocketException')) {
         errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
       } else if (error.toString().contains('TimeoutException')) {
         errorMessage = 'Koneksi timeout. Silakan coba lagi.';
-      } else if (error.toString().contains('FormatException')) {
-        errorMessage = 'Terjadi kesalahan dalam format data.';
       }
+
       return PaymentResult(
         success: false,
         message: errorMessage,
@@ -195,6 +227,148 @@ class ConfirmService {
       );
     }
   }
+  /// METHOD BARU: getFinalPaymentDetails untuk ambil detail final payment
+  Future<PaymentResult> getFinalPaymentDetails(String orderId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/final-payment-status/$orderId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('Final Payment Status Response: ${response.statusCode}');
+      print('Final Payment Status Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          return PaymentResult(
+            success: true,
+            message: 'Final payment details berhasil diambil',
+            data: responseData['data'],
+          );
+        }
+      }
+
+      return PaymentResult(
+        success: false,
+        message: 'Final payment belum tersedia atau belum dibuat',
+      );
+
+    } catch (error) {
+      print('Error getting final payment details: $error');
+      return PaymentResult(
+        success: false,
+        message: 'Gagal mengambil detail final payment',
+        error: error.toString(),
+      );
+    }
+  }
+
+  /// Update getPayment method untuk handle multiple payments
+  Future<PaymentResult> getPayment(String orderId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/getPaymentStatus/$orderId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body dari getPayment: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+
+        // Handle new multiple payment structure
+        if (jsonData.containsKey('success') && jsonData['success'] == true) {
+          final data = jsonData['data'] as Map<String, dynamic>;
+          final paymentSummary = data['paymentSummary'] as Map<String, dynamic>?;
+
+          // Prioritize showing the latest payment or pending final payment
+          Map<String, dynamic> displayPayment;
+
+          if (data['finalPayment'] != null) {
+            // Ada final payment, tampilkan itu
+            displayPayment = data['finalPayment'];
+          } else if (data['downPayment'] != null) {
+            // Hanya ada down payment, tampilkan itu
+            displayPayment = data['downPayment'];
+
+            // Tambahkan informasi untuk UI bahwa masih ada sisa pembayaran
+            if (paymentSummary?['remainingAmount'] != null &&
+                paymentSummary!['remainingAmount'] > 0) {
+              displayPayment['needs_final_payment'] = true;
+              displayPayment['remaining_amount'] = paymentSummary['remainingAmount'];
+            }
+          } else {
+            return PaymentResult(
+              success: false,
+              message: 'Tidak ada data pembayaran ditemukan',
+            );
+          }
+
+          // Transform untuk kompatibilitas dengan UI yang ada
+          final transformedData = {
+            'order_id': displayPayment['order_id'],
+            'transaction_id': displayPayment['transaction_id'],
+            'method': displayPayment['method'],
+            'status': displayPayment['status'],
+            'amount': displayPayment['amount'],
+            'discount': displayPayment['discount'] ?? 0,
+            'remaining_amount': displayPayment['remainingAmount'] ?? 0,
+            'payment_type': displayPayment['paymentType'],
+            'fraud_status': displayPayment['fraud_status'],
+            'transaction_time': displayPayment['transaction_time'],
+            'expiry_time': displayPayment['expiry_time'],
+            'settlement_time': displayPayment['settlement_time'],
+            'currency': displayPayment['currency'],
+            'merchant_id': displayPayment['merchant_id'],
+            'actions': displayPayment['actions'] ?? [],
+            'transaction_status': displayPayment['status'],
+            'gross_amount': displayPayment['amount'],
+
+            // Tambahan info untuk final payment button
+            'needs_final_payment': displayPayment['needs_final_payment'] ?? false,
+            'is_fully_paid': paymentSummary?['isFullyPaid'] ?? false,
+            'total_amount': paymentSummary?['totalAmount'] ?? displayPayment['amount'],
+          };
+
+          _printGetPaymentSuccess(transformedData);
+
+          return PaymentResult(
+            success: true,
+            message: 'Data pembayaran berhasil diambil',
+            data: transformedData,
+          );
+        }
+      }
+
+      // Fallback error handling
+      String errorMessage = 'Gagal mengambil data pembayaran';
+      if (response.body.isNotEmpty) {
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['message'] ?? errorMessage;
+        } catch (_) {}
+      }
+
+      return PaymentResult(
+        success: false,
+        message: errorMessage,
+        statusCode: response.statusCode,
+      );
+
+    } catch (error) {
+      print('Exception in getPayment: $error');
+      return PaymentResult(
+        success: false,
+        message: 'Terjadi kesalahan saat mengambil data pembayaran',
+        error: error.toString(),
+      );
+    }
+  }
+
+
   void _printGetPaymentSuccess(Map<String, dynamic> paymentData) {
     print('\n${'=' * 50}');
     print('✅ GET PAYMENT SUCCESS');

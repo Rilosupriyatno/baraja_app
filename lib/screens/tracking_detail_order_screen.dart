@@ -17,6 +17,7 @@ import '../widgets/tracking_detail/rating_display_widget.dart';
 import '../widgets/tracking_detail/reservation_section_widget.dart';
 import '../widgets/tracking_detail/tracking_states_widget.dart';
 import '../services/order_service.dart';
+import 'final_payment_screen.dart';
 import 'menu_rating_screen.dart';
 
 class TrackingDetailOrderScreen extends StatefulWidget {
@@ -140,6 +141,38 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
         isLoading = false;
         errorMessage = 'Terjadi kesalahan: ${e.toString()}';
       });
+    }
+  }
+
+  void _navigateToFinalPayment() async {
+    final paymentDetails = orderData?['paymentDetails'] as Map<String, dynamic>?;
+    final remainingAmount = paymentDetails?['remainingAmount'] ?? 0;
+
+    if (remainingAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tidak ada sisa pembayaran'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Navigate to final payment selection screen
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FinalPaymentScreen(
+          orderId: getOrderId(),
+          remainingAmount: remainingAmount,
+          orderNumber: orderData?['orderNumber'] ?? 'N/A',
+        ),
+      ),
+    );
+
+    // Refresh data jika payment berhasil
+    if (result == true) {
+      _refreshData();
     }
   }
 
@@ -523,6 +556,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                 isLoadingRating: isLoadingRating,
                 onNavigateToPayment: _navigateToPaymentDetails,
                 onNavigateToRating: _navigateToRating,
+                onNavigateToFinalPayment: _navigateToFinalPayment, // NEW: Tambahkan callback
               ),
             ],
           ),
