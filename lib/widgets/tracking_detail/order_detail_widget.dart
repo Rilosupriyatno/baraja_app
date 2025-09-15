@@ -109,7 +109,7 @@ class OrderDetailWidget extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final totalAmount = _getNumericValue(paymentDetails['totalAmount']);
+    // final totalAmount = _getNumericValue(paymentDetails['totalAmount']);
     final paidAmount = _getNumericValue(paymentDetails['paidAmount']);
     final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
     final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
@@ -158,15 +158,15 @@ class OrderDetailWidget extends StatelessWidget {
           child: Column(
             children: [
               // Total Amount (hanya tampilkan jika > 0)
-              if (totalAmount > 0) ...[
-                _buildPaymentDetailRow(
-                  'Total Pesanan',
-                  formatCurrency(totalAmount),
-                  Icons.receipt_long,
-                  Colors.grey.shade700,
-                ),
-                const SizedBox(height: 8),
-              ],
+              // if (totalAmount > 0) ...[
+              //   _buildPaymentDetailRow(
+              //     'Total Pesanan',
+              //     formatCurrency(totalAmount),
+              //     Icons.receipt_long,
+              //     Colors.grey.shade700,
+              //   ),
+              //   const SizedBox(height: 8),
+              // ],
 
               // DP Amount with Status
               Container(
@@ -298,36 +298,36 @@ class OrderDetailWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentDetailRow(String label, String value, IconData icon, Color iconColor) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: iconColor,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildPaymentDetailRow(String label, String value, IconData icon, Color iconColor) {
+  //   return Row(
+  //     children: [
+  //       Icon(
+  //         icon,
+  //         size: 18,
+  //         color: iconColor,
+  //       ),
+  //       const SizedBox(width: 12),
+  //       Expanded(
+  //         child: Text(
+  //           label,
+  //           style: TextStyle(
+  //             fontSize: 14,
+  //             fontWeight: FontWeight.w600,
+  //             color: Colors.grey.shade700,
+  //           ),
+  //         ),
+  //       ),
+  //       Text(
+  //         value,
+  //         style: const TextStyle(
+  //           fontSize: 14,
+  //           fontWeight: FontWeight.w700,
+  //           color: Colors.black87,
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
