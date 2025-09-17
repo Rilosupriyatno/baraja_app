@@ -8,7 +8,10 @@ import 'payment_row_widget.dart';
 class OrderDetailWidget extends StatelessWidget {
   final Map<String, dynamic> orderData;
 
-  const OrderDetailWidget({super.key, required this.orderData});
+  const OrderDetailWidget({
+    super.key,
+    required this.orderData
+  });
 
   // Method untuk mendapatkan status pembayaran dengan dukungan down payment
   Map<String, dynamic> _getPaymentStatus(String? status, Map<String, dynamic>? paymentDetails) {
@@ -21,7 +24,7 @@ class OrderDetailWidget extends StatelessWidget {
         return {
           'label': 'DP Dibayar - Sisa Belum Lunas',
           'icon': Icons.schedule,
-          'color': Colors.orange,
+          'color': Colors.deepOrange,
         };
       } else if (isDownPaymentPaid && remainingAmount == 0) {
         return {
@@ -661,7 +664,7 @@ class OrderDetailWidget extends StatelessWidget {
                 if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
                   PaymentRowWidget(
                     label: 'Total',
-                    value: formatCurrency(_getNumericValue(orderData['total'])),
+                    value: formatCurrency(_getNumericValue(orderData['grandTotal'])),
                     icon: Icons.receipt,
                     isTotal: true,
                   ),

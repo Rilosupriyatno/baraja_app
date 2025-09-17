@@ -283,6 +283,7 @@ class ConfirmService {
         if (jsonData.containsKey('success') && jsonData['success'] == true) {
           final data = jsonData['data'] as Map<String, dynamic>;
           final paymentSummary = data['paymentSummary'] as Map<String, dynamic>?;
+          print("ini adalah payment summary: $paymentSummary");
 
           // Prioritize showing the latest payment or pending final payment
           Map<String, dynamic> displayPayment;

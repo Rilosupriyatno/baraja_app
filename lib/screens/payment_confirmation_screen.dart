@@ -13,6 +13,7 @@ import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
 import '../widgets/payment_confirm/unified_payment_view.dart';
 import '../widgets/utils/classic_app_bar.dart';
+import 'package:flutter/foundation.dart';
 
 class PaymentConfirmationScreen extends StatefulWidget {
   final List<CartItem> items;
@@ -66,22 +67,29 @@ class PaymentConfirmationScreen extends StatefulWidget {
   State<PaymentConfirmationScreen> createState() => _PaymentConfirmationScreenState();
 }
 
+// PERBAIKAN untuk _PaymentConfirmationScreenState
+
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   final SocketService _socketService = SocketService();
   late final Order newOrder;
-  bool _isLoading = false; // Changed to false to prevent spinning
+  bool _isLoading = false;
   PaymentResult? _paymentResponse;
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
   bool _isProcessing = false;
 
+  // ✅ TAMBAHAN: Variable untuk tracking real-time updates
+  String _currentOrderStatus = 'processing';
+  String _currentPaymentStatus = 'pending';
+
   @override
   void initState() {
     super.initState();
 
-    // Check if payment method is cash
     _isCashPayment = _checkIfCashPayment();
+
+    // Log items untuk debugging
     for (var item in widget.items) {
       print("PaymentConfirmation item: ${item.name} "
           "| OutletId: ${item.outletId} "
@@ -118,12 +126,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       status: OrderStatus.processing,
     );
 
-    // Add order to provider immediately (optional)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       orderProvider.addOrder(newOrder);
-
-      // PERBAIKAN: Panggil _processPayment untuk semua jenis pembayaran
       _processPayment();
     });
   }
@@ -133,7 +138,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     return paymentType == 'cash' || paymentType == 'tunai';
   }
 
-  // Keep this method in case you want to manually trigger payment later
   Future<void> _processPayment() async {
     if (_isProcessing || !mounted) return;
 
@@ -164,20 +168,16 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
           print('Payment processed successfully for order: ${widget.orderId}');
 
-          // Setup socket connection untuk non-cash payment
-          if (!_isCashPayment) {
-            _setupSocketConnection();
-          }
+          // ✅ PERBAIKAN: Setup socket connection untuk SEMUA jenis pembayaran
+          _setupSocketConnection();
         } else {
           setState(() {
             _errorMessage = response.message;
           });
 
-          // Log error untuk debugging
           print('Payment processing failed: ${response.message}');
           print('Status code: ${response.statusCode}');
 
-          // Tampilkan snackbar error untuk user feedback
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Gagal memproses pembayaran: ${response.message}'),
@@ -196,7 +196,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           _errorMessage = e.toString();
         });
 
-        // Tampilkan error message yang lebih user-friendly
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Terjadi kesalahan sistem. Silakan coba lagi.'),
@@ -218,30 +217,96 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
+  // ✅ PERBAIKAN: Setup socket connection untuk semua pembayaran
   void _setupSocketConnection() {
     if (!_isListeningForPayment) {
       _isListeningForPayment = true;
 
+      print('Setting up socket connection for order: ${widget.id}');
+
       _socketService.connectToSocket(
         id: widget.id,
         onPaymentUpdate: _handlePaymentUpdate,
-        onOrderUpdate: (_) {},
+        onOrderUpdate: _handleOrderUpdate, // ✅ PERBAIKAN: Handler yang proper
       );
 
       Future.delayed(const Duration(seconds: 3), () {
         _socketService.joinOrderRoom(widget.id);
+        print('Joined order room: ${widget.id}');
       });
     }
   }
 
+  // ✅ TAMBAHAN: Handler untuk order update
+  void _handleOrderUpdate(Map<String, dynamic> data) {
+    print('Order update received in PaymentConfirmationScreen: $data');
+
+    if (data['order_id']?.toString() == widget.orderId.toString()) {
+      print('Order update matches our order ID');
+
+      if (mounted) {
+        setState(() {
+          // Update order status
+          if (data.containsKey('orderStatus')) {
+            _currentOrderStatus = data['orderStatus'];
+          }
+
+          // Update payment status jika ada
+          if (data.containsKey('paymentStatus')) {
+            _currentPaymentStatus = data['paymentStatus'];
+          }
+
+          // Update provider jika diperlukan
+          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+
+          // Convert string status to OrderStatus enum
+          OrderStatus? newStatus;
+          switch (data['orderStatus']?.toLowerCase()) {
+            case 'pending':
+              newStatus = OrderStatus.pending;
+              break;
+            case 'waiting':
+              newStatus = OrderStatus.waiting;
+              break;
+            case 'onprocess':
+              newStatus = OrderStatus.processing;
+              break;
+            case 'ready':
+              newStatus = OrderStatus.ready;
+              break;
+            case 'completed':
+              newStatus = OrderStatus.completed;
+              break;
+            case 'cancelled':
+            case 'canceled':
+              newStatus = OrderStatus.cancelled;
+              break;
+          }
+
+          if (newStatus != null) {
+            orderProvider.updateOrderStatus(widget.id, newStatus);
+          }
+        });
+
+        print('Order status updated to: ${data['orderStatus']}');
+      }
+    } else {
+      print('Received order update for different order: ${data['order_id']}');
+    }
+  }
+
   void _handlePaymentUpdate(Map<String, dynamic> data) {
-    print('Payment update received in screen: $data');
+    print('Payment update received in PaymentConfirmationScreen: $data');
 
     if (data['order_id'] == widget.orderId) {
       print('Payment update matches our order ID');
 
       if (mounted) {
         setState(() {
+          // Update current payment status
+          _currentPaymentStatus = data['transaction_status'];
+
+          // Update payment response jika ada
           if (_paymentResponse != null && _paymentResponse!.data != null) {
             final updatedData = Map<String, dynamic>.from(_paymentResponse!.data!);
 
@@ -267,6 +332,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
       print('Payment status updated to: ${data['transaction_status']}');
 
+      // Update order status di provider untuk settlement/capture
       if (data['transaction_status'] == 'settlement' ||
           data['transaction_status'] == 'capture') {
         if (mounted) {
@@ -291,17 +357,11 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     _processPayment();
   }
 
-  // Add manual payment processing button (optional)
-  // void _manualProcessPayment() {
-  //   _processPayment();
-  // }
-
   @override
   void dispose() {
     print('Disposing PaymentConfirmationScreen');
-    if (!_isCashPayment) {
-      _socketService.dispose();
-    }
+    // ✅ PERBAIKAN: Dispose socket untuk semua pembayaran
+    _socketService.dispose();
     super.dispose();
   }
 
@@ -326,15 +386,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           )
               : Column(
             children: [
-              // Optional: Add manual payment button
-              // if (!_isProcessing)
-              //   Padding(
-              //     padding: const EdgeInsets.all(16.0),
-              //     child: ElevatedButton(
-              //       onPressed: _manualProcessPayment,
-              //       child: Text('Process Payment'),
-              //     ),
-              //   ),
               Expanded(
                 child: UnifiedPaymentView(
                   order: newOrder,

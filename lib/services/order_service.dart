@@ -154,6 +154,7 @@ class OrderService {
       if (userId == null) {
         throw Exception('User ID not found');
       }
+      print("ini adalah authToken = ${prefs.getString('authToken')}");
 
       final response = await http.get(
         Uri.parse('$baseUrl/api/orders/history/$userId'),
@@ -252,6 +253,31 @@ class OrderService {
     print('Payment Status: "$paymentStatus"');
     print('Order Status: "$orderStatus"');
 
+    // ✅ Handle status Reserved khusus untuk reservasi
+    if (orderStatus == 'Reserved') {
+      if (paymentStatus.toLowerCase() == 'settlement' ||
+          paymentStatus.toLowerCase() == 'paid' ||
+          paymentStatus.toLowerCase() == 'capture') {
+        return {
+          'status': 'Reservasi Berhasil - Silakan datang ke restoran',
+          'color': const Color(0xFF10B981),
+          'icon': Icons.event_seat,
+        };
+      } else if (paymentStatus.toLowerCase() == 'pending') {
+        return {
+          'status': 'Reservasi - Menunggu pembayaran',
+          'color': const Color(0xFFEF4444),
+          'icon': Icons.payment,
+        };
+      } else {
+        return {
+          'status': 'Reservasi - Status tidak diketahui',
+          'color': const Color(0xFFF68F3B),
+          'icon': Icons.event_seat,
+        };
+      }
+    }
+
     if (paymentStatus.toLowerCase() == 'settlement' ||
         paymentStatus.toLowerCase() == 'paid' ||
         paymentStatus.toLowerCase() == 'capture') {
@@ -328,7 +354,7 @@ class OrderService {
       print('Returning pending payment status');
       return {
         'status': 'Menunggu Pelunasan',
-        'color': const Color(0xFFEF4444),
+        'color': const Color(0xFFFF5722),
         'icon': Icons.payment,
       };
     } else if (paymentStatus.toLowerCase() == 'expire') {
@@ -374,6 +400,8 @@ class OrderService {
           return OrderStatus.completed;
         case 'cancelled':
           return OrderStatus.cancelled;
+        case 'reserved': // ✅ Tambah status untuk reservasi
+          return OrderStatus.pending; // atau buat enum baru untuk reserved
         default:
           return OrderStatus.pending;
       }
@@ -389,13 +417,18 @@ class OrderService {
           return OrderType.pickup;
         case 'dine-in':
         case 'dinein':
+          return OrderType.dineIn;
+        case 'reservation': // ✅ Tambah case untuk reservation
+          return OrderType.reservation;
         default:
           return OrderType.dineIn;
       }
     }
 
     List<CartItem> cartItems = [];
-    if (orderData['items'] != null) {
+
+    // ✅ Handle jika items ada dan tidak kosong
+    if (orderData['items'] != null && orderData['items'].isNotEmpty) {
       for (var item in orderData['items']) {
         final menuItem = item['menuItem'];
         List<Map<String, dynamic>> addonsList = [];
@@ -430,23 +463,66 @@ class OrderService {
       }
     }
 
+    // ✅ Gunakan grandTotal untuk semua jenis order
     int subtotal = 0;
-    for (var item in cartItems) {
-      subtotal += item.totalprice;
-    }
     int discount = 0;
-    int total = subtotal - discount;
+    int total = 0;
+
+    // Gunakan grandTotal dari backend untuk semua order
+    total = orderData['grandTotal'] ?? orderData['totalPrice'] ?? orderData['total'] ?? 0;
+    subtotal = total; // Set subtotal sama dengan total
+    discount = orderData['discount'] ?? 0;
+
+    // ✅ COMMENTED - Logic lama untuk perhitungan berbeda antara reservasi dan order biasa
+    // bool isReservation = orderData['status']?.toLowerCase() == 'reserved' ||
+    //                     orderData['orderType']?.toLowerCase() == 'reservation';
+    //
+    // if (isReservation) {
+    //   // ✅ Untuk reservasi, gunakan grandTotal dari backend
+    //   total = orderData['grandTotal'] ?? orderData['totalPrice'] ?? orderData['total'] ?? 0;
+    //   subtotal = total; // Set subtotal sama dengan total untuk reservasi
+    //   discount = 0; // Tidak ada discount untuk reservasi
+    // } else {
+    //   // ✅ Untuk order biasa, hitung dari items
+    //   if (cartItems.isNotEmpty) {
+    //     for (var item in cartItems) {
+    //       subtotal += item.totalprice;
+    //     }
+    //   } else {
+    //     subtotal = orderData['subtotal'] ?? 0;
+    //   }
+    //   discount = orderData['discount'] ?? 0;
+    //   total = orderData['total'] ?? orderData['totalPrice'] ?? (subtotal - discount);
+    // }
+
+    // ✅ Untuk reservasi tanpa items, buat placeholder CartItem
+    bool isReservation = orderData['status']?.toLowerCase() == 'reserved' ||
+        orderData['orderType']?.toLowerCase() == 'reservation';
+
+    if (cartItems.isEmpty && isReservation) {
+      cartItems.add(CartItem(
+        id: 'reservation-placeholder',
+        name: 'Reservasi Meja',
+        imageUrl: '',
+        price: 0,
+        totalprice: 0,
+        quantity: 1,
+        addons: [],
+        toppings: [],
+        notes: 'Reservasi - Total biaya dari sistem',
+      ));
+    }
 
     return Order(
       id: orderData['_id'] ?? '',
-      orderId: orderData['orderId'] ?? '',
+      orderId: orderData['order_id'] ?? orderData['orderId'] ?? '', // ✅ Gunakan order_id dari response
       items: cartItems,
       orderType: getOrderType(orderData['orderType']),
       tableNumber: orderData['tableNumber'] ?? '',
       deliveryAddress: orderData['deliveryAddress'] ?? '',
       pickupTime: null,
       paymentDetails: {
-        'method': orderData['paymentMethod'] ?? 'Cash',
+        'method': orderData['paymentMethod'] ?? 'Unknown',
         'status': orderData['paymentStatus'] ?? 'pending'
       },
       subtotal: subtotal,

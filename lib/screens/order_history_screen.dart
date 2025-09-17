@@ -22,6 +22,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   bool _isLoading = true;
   String _errorMessage = '';
 
+  // Add refresh keys for each tab to ensure refresh works properly
+  final GlobalKey<RefreshIndicatorState> _processRefreshKey = GlobalKey<RefreshIndicatorState>();
+  final GlobalKey<RefreshIndicatorState> _doneRefreshKey = GlobalKey<RefreshIndicatorState>();
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +42,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     try {
       final orders = await _orderService.getUserOrderHistory();
 
-      // // Debug: Print orders untuk memastikan data tersambung dengan benar
+      // Debug: Print orders untuk memastikan data tersambung dengan benar
       print('📦 Total orders loaded: ${orders.length}');
       for (var order in orders) {
         print('Order ID: ${order.id}');
@@ -49,17 +53,26 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
         print('----------------------');
       }
 
-      setState(() {
-        _orders = orders;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('❌ Error loading order history: $e');
-      setState(() {
-        _errorMessage = 'Gagal memuat riwayat pesanan: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat riwayat pesanan: $e';
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  // Method untuk manual refresh yang bisa dipanggil dari luar
+  Future<void> refreshData() async {
+    await _fetchOrderHistory();
   }
 
   @override
@@ -126,18 +139,23 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
               ],
             ),
           )
-              : RefreshIndicator(
-            onRefresh: _fetchOrderHistory,
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // Tab 1: Process (Ongoing orders)
-                _buildOrdersList(isCompleted: false),
+              : TabBarView(
+            controller: _tabController,
+            children: [
+              // Tab 1: Process (Ongoing orders)
+              RefreshIndicator(
+                key: _processRefreshKey,
+                onRefresh: _fetchOrderHistory,
+                child: _buildOrdersList(isCompleted: false),
+              ),
 
-                // Tab 2: Done (Completed orders)
-                _buildOrdersList(isCompleted: true),
-              ],
-            ),
+              // Tab 2: Done (Completed orders)
+              RefreshIndicator(
+                key: _doneRefreshKey,
+                onRefresh: _fetchOrderHistory,
+                child: _buildOrdersList(isCompleted: true),
+              ),
+            ],
           ),
         ));
   }
@@ -157,10 +175,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     filteredOrders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
 
     if (filteredOrders.isEmpty) {
+      // Make sure empty state is scrollable so refresh indicator works
       return ListView(
-        // Tambahkan padding bottom agar tidak tertutup bottom navigation
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom + 80, // 80 adalah tinggi bottom navigation bar
+          bottom: MediaQuery.of(context).padding.bottom + 80,
         ),
         children: [
           SizedBox(
@@ -184,6 +203,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                       color: Colors.grey[600],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tarik ke bawah untuk memperbarui',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -193,12 +221,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     }
 
     return ListView.builder(
-      // Tambahkan padding agar list tidak tertutup bottom navigation
+      // Enable always scrollable physics to make refresh indicator work even when content is short
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 6, // 80 adalah tinggi bottom navigation bar
+        bottom: MediaQuery.of(context).padding.bottom + 6,
       ),
       itemCount: filteredOrders.length,
       itemBuilder: (context, index) {
@@ -305,23 +334,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     // Status pesanan
                     Row(
                       children: [
-                        // Status utama pesanan
-                        // Container(
-                        //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        //   decoration: BoxDecoration(
-                        //     color: _getOrderStatusColor(order.status).withOpacity(0.1),
-                        //     borderRadius: BorderRadius.circular(12),
-                        //   ),
-                        //   child: Text(
-                        //     _getOrderStatusText(order.status),
-                        //     style: TextStyle(
-                        //       fontSize: 11,
-                        //       color: _getOrderStatusColor(order.status),
-                        //       fontWeight: FontWeight.bold,
-                        //     ),
-                        //   ),
-                        // ),
-
                         const SizedBox(width: 8),
 
                         // Payment status
@@ -343,18 +355,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                       ],
                     ),
                     const SizedBox(height: 4),
-
-                    // // Item customizations
-                    // if (_hasCustomizations(firstItem))
-                    //   Text(
-                    //     _buildCustomizationText(firstItem),
-                    //     style: TextStyle(
-                    //       fontSize: 12,
-                    //       color: Colors.grey[600],
-                    //     ),
-                    //     maxLines: 1,
-                    //     overflow: TextOverflow.ellipsis,
-                    //   ),
 
                     // If there are more items, show count
                     if (order.items.length > 1)
@@ -401,81 +401,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     );
   }
 
-  // bool _hasCustomizations(dynamic item) {
-  //   return (item.addons != null && item.addons.isNotEmpty) ||
-  //       (item.toppings != null && item.toppings.isNotEmpty);
-  // }
-  //
-  // String _buildCustomizationText(dynamic item) {
-  //   List<String> customizations = [];
-  //
-  //   if (item.addons != null && item.addons.isNotEmpty) {
-  //     List<String> addonNames = [];
-  //     for (var addon in item.addons) {
-  //       if (addon['name'] != null && addon['name'].isNotEmpty) {
-  //         addonNames.add(addon['name']);
-  //       }
-  //     }
-  //     if (addonNames.isNotEmpty) {
-  //       customizations.add(addonNames.join(', '));
-  //     }
-  //   }
-  //
-  //   if (item.toppings != null && item.toppings.isNotEmpty) {
-  //     List<String> toppingNames = [];
-  //     for (var topping in item.toppings) {
-  //       if (topping['name'] != null && topping['name'].isNotEmpty) {
-  //         toppingNames.add(topping['name']);
-  //       }
-  //     }
-  //     if (toppingNames.isNotEmpty) {
-  //       customizations.add(toppingNames.join(', '));
-  //     }
-  //   }
-  //
-  //   return customizations.isEmpty ? '-' : customizations.join(', ');
-  // }
-
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
-  // String _getOrderStatusText(OrderStatus status) {
-  //   switch (status) {
-  //     case OrderStatus.pending:
-  //       return 'Menunggu Konfirmasi';
-  //     // case OrderStatus.confirmed:
-  //     //   return 'Dikonfirmasi';
-  //     // case OrderStatus.preparing:
-  //     //   return 'Sedang Disiapkan';
-  //     // case OrderStatus.readyForPickup:
-  //     //   return 'Siap Diambil';
-  //     case OrderStatus.completed:
-  //       return 'Selesai';
-  //     case OrderStatus.cancelled:
-  //       return 'Dibatalkan';
-  //     default:
-  //       return 'Unknown';
-  //   }
-  // }
-  //
-  // Color _getOrderStatusColor(OrderStatus status) {
-  //   switch (status) {
-  //     case OrderStatus.pending:
-  //       return Colors.orange;
-  //     // case OrderStatus.confirmed:
-  //     //   return Colors.blue;
-  //     // case OrderStatus.preparing:
-  //     //   return Colors.purple;
-  //     // case OrderStatus.readyForPickup:
-  //     //   return Colors.green;
-  //     case OrderStatus.completed:
-  //       return Colors.green.shade700;
-  //     case OrderStatus.cancelled:
-  //       return Colors.red;
-  //     default:
-  //       return Colors.grey;
-  //   }
-  // }
 
   String _getPaymentStatusText(String? paymentStatus) {
     switch (paymentStatus?.toLowerCase()) {
@@ -483,6 +411,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
         return 'Lunas';
       case 'pending':
         return 'Menunggu Pembayaran';
+      case 'partial':
+        return 'Menunggu Pelunasan';
       case 'capture':
         return 'Lunas';
       case 'deny':
@@ -503,6 +433,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       case 'settlement':
       case 'capture':
         return Colors.green;
+      case 'partial':
+        return Colors.deepOrange;
       case 'pending':
         return Colors.orange;
       case 'deny':

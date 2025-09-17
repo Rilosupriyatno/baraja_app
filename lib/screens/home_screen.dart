@@ -30,8 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Jalankan _loadData setelah frame pertama selesai build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -40,43 +38,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final notificationCountService =
+    Provider.of<NotificationCountService>(context, listen: false);
+    final productService = ProductService();
+
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final notificationCountService =
-      Provider.of<NotificationCountService>(context, listen: false);
-      final productService = ProductService();
-
-      // Get user ID
-      final userId = authService.user?['_id'];
-
-      // Jalankan semua paralel supaya cepat
-      await Future.wait([
-        authService.fetchUserProfile(),
-        _fetchProducts(productService),
-        if (userId != null) notificationCountService.fetchUnreadCount(userId),
-      ]);
-    } catch (e) {
-      debugPrint('❌ Failed to load data: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _fetchProducts(ProductService productService) async {
-    try {
+      // ✅ Ambil produk dulu supaya UI cepat tampil
       final products = await productService.getProducts();
-      final discountedProducts = await productService.getDiscountedProducts();
-
       if (mounted) {
         setState(() {
           _products = products;
-          _discountedProducts = discountedProducts;
+          _discountedProducts =
+              products.where((p) => p.discountPercentage != null).toList();
+          _isLoading = false;
         });
       }
+
+      // ✅ Load profil & notifikasi di background (tidak blok UI)
+      authService.fetchUserProfile();
+      final userId = authService.user?['_id'];
+      if (userId != null) {
+        notificationCountService.fetchUnreadCount(userId);
+      }
     } catch (e) {
-      throw Exception('Failed to fetch products: $e');
+      debugPrint('❌ Failed to load data: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -95,8 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (userId != null) {
                 await context.push('/notification', extra: {'userId': userId});
-
-                // Refresh count setelah balik dari halaman notifikasi
+                // refresh setelah kembali dari notifikasi
                 notificationService.fetchUnreadCount(userId);
               }
             },
