@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/order.dart';
 import '../providers/order_provider.dart';
-import '../services/confirm_service.dart';
 import '../services/socket_service.dart';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
@@ -41,7 +40,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
   // State variables
   bool _isListeningForPayment = false;
-  bool _hasPaymentDetails = false;
+  final bool _hasPaymentDetails = false;
   String orderStatus = 'Memuat pesanan...';
   Color statusColor = const Color(0xFFF59E0B);
   IconData statusIcon = Icons.coffee_maker;
@@ -87,7 +86,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   Future<void> _initializeData() async {
     // ✅ PERBAIKAN: Fetch order data dulu untuk mendapatkan orderId
     await _fetchOrderData();
-    await _checkPaymentDetails();
+    // await _checkPaymentDetails();
     _setupSocketConnection();
   }
 
@@ -178,50 +177,50 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
   // ✅ MODIFIKASI: _checkPaymentDetails menggunakan orderId yang sudah disimpan
-  Future<void> _checkPaymentDetails() async {
-    // ✅ Skip jika orderId belum tersedia
-    if (orderId == null) {
-      print('⚠️ orderId is null, skipping payment check');
-      _hasPaymentDetails = false;
-      return;
-    }
-
-    try {
-      print('=== DEBUG PAYMENT CHECK ===');
-      print('🔍 Using orderId: $orderId');
-      print('🔍 Original widget.id: ${widget.id}');
-
-      // ✅ GUNAKAN orderId yang sudah disimpan
-      final result = await ConfirmService().getPayment(orderId!);
-
-      print('API Result success: ${result.success}');
-      print('API Result data: ${result.data}');
-
-      if (result.success && result.data != null) {
-        final paymentStatus = result.data!['status'];
-        print('Payment Status from API: $paymentStatus');
-
-        _hasPaymentDetails = paymentStatus == 'pending' ||
-            paymentStatus == 'settlement' ||
-            paymentStatus == 'partial' ||
-            paymentStatus == 'expire' ||
-            paymentStatus == 'cancel' ||
-            paymentStatus == 'capture';
-
-        print('_hasPaymentDetails set to: $_hasPaymentDetails');
-      } else {
-        print('API call failed or data is null');
-        print('Error: ${result.error}');
-        _hasPaymentDetails = false;
-      }
-    } catch (e) {
-      print('Error in _checkPaymentDetails: $e');
-      _hasPaymentDetails = false;
-    }
-
-    // ✅ Update state setelah payment check selesai
-    if (mounted) setState(() {});
-  }
+  // Future<void> _checkPaymentDetails() async {
+  //   // ✅ Skip jika orderId belum tersedia
+  //   if (orderId == null) {
+  //     print('⚠️ orderId is null, skipping payment check');
+  //     _hasPaymentDetails = false;
+  //     return;
+  //   }
+  //
+  //   try {
+  //     print('=== DEBUG PAYMENT CHECK ===');
+  //     print('🔍 Using orderId: $orderId');
+  //     print('🔍 Original widget.id: ${widget.id}');
+  //
+  //     // ✅ GUNAKAN orderId yang sudah disimpan
+  //     final result = await ConfirmService().getPayment(orderId!);
+  //
+  //     print('API Result success: ${result.success}');
+  //     print('API Result data: ${result.data}');
+  //
+  //     if (result.success && result.data != null) {
+  //       final paymentStatus = result.data!['status'];
+  //       print('Payment Status from API: $paymentStatus');
+  //
+  //       _hasPaymentDetails = paymentStatus == 'pending' ||
+  //           paymentStatus == 'settlement' ||
+  //           paymentStatus == 'partial' ||
+  //           paymentStatus == 'expire' ||
+  //           paymentStatus == 'cancel' ||
+  //           paymentStatus == 'capture';
+  //
+  //       print('_hasPaymentDetails set to: $_hasPaymentDetails');
+  //     } else {
+  //       print('API call failed or data is null');
+  //       print('Error: ${result.error}');
+  //       _hasPaymentDetails = false;
+  //     }
+  //   } catch (e) {
+  //     print('Error in _checkPaymentDetails: $e');
+  //     _hasPaymentDetails = false;
+  //   }
+  //
+  //   // ✅ Update state setelah payment check selesai
+  //   if (mounted) setState(() {});
+  // }
 
   Future<void> _checkExistingRating() async {
     if (orderData?['items']?.isEmpty ?? true) return;
@@ -469,7 +468,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => PaymentDetailsScreen(id: paymentId)),
+      MaterialPageRoute(builder: (context) => PaymentDetailScreen(id: paymentId)),
     );
   }
 

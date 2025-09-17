@@ -229,6 +229,52 @@ class OrderService {
     }
   }
 
+  Future<Map<String, dynamic>> getPaymentStatus(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('authToken');
+      final headers = {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/getPaymentStatus/$id'), headers: headers)
+          .timeout(requestTimeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        print("Data dari getPaymentStatus: $jsonData");
+        return {
+          'success': true,
+          'data': jsonData,
+          'error': null,
+        };
+      } else {
+        return {
+          'success': false,
+          'data': null,
+          'error': 'Failed to load payment status: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      String errorMessage;
+      if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else {
+        errorMessage = 'Gagal memuat status pembayaran. Silakan coba lagi.';
+      }
+
+      return {
+        'success': false,
+        'data': null,
+        'error': errorMessage,
+      };
+    }
+  }
+
   Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
     print('=== getOrderStatusInfo Debug ===');
     print('Input orderData: $orderData');

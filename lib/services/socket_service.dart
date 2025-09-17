@@ -175,4 +175,9 @@ class SocketService {
     }
     _socket.dispose();
   }
+
+  void disconnect() {
+    dispose(); // panggil dispose
+  }
+
 }

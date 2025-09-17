@@ -88,7 +88,7 @@ class _FinalPaymentScreenState extends State<FinalPaymentScreen> {
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  PaymentDetailsScreen(
+                  PaymentDetailScreen(
                     id: widget.orderId,
                   ),
             ),
