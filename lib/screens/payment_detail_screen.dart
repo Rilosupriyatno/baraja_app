@@ -99,6 +99,11 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
     }
   }
 
+  bool _isPaid() {
+    final status = paymentData?['status']?.toLowerCase() ?? '';
+    return status == 'settlement' || status == 'paid' || status == 'capture';
+  }
+
   String _formatCurrency(int amount) {
     return 'Rp${amount.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -532,6 +537,69 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
     );
   }
 
+  Widget _buildThankYouMessage() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF077A4B),
+            const Color(0xFF077A4B).withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF077A4B).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle,
+              color: Colors.white,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Terima Kasih!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pembayaran Anda telah berhasil diproses.\nPesanan sedang dalam persiapan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.9),
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -565,225 +633,195 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text(
-            'Detail Pembayaran',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-              fontSize: 18,
-              letterSpacing: -0.5,
-            ),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
-            onPressed: () => Navigator.of(context).pop(),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text(
+          'Detail Pembayaran',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+            fontSize: 18,
+            letterSpacing: -0.5,
           ),
         ),
-        body: isLoading
-            ? const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF077A4B),
-            strokeWidth: 2.5,
-          ),
-        )
-            : errorMessage != null
-            ? Center(child: Text(errorMessage!))
-            : paymentData == null
-            ? const Center(child: Text('Data pembayaran tidak tersedia'))
-            : RefreshIndicator(
-            onRefresh: _loadPaymentStatus,
-            color: const Color(0xFF077A4B),
-            child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    if (paymentData!['expiry_time'] != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              _getExpiryTimeColor(paymentData!['status'] ?? ''),
-                              _getExpiryTimeColor(paymentData!['status'] ?? '')
-                                  .withOpacity(0.8),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _getExpiryTimeColor(paymentData!['status'] ?? '')
-                                  .withOpacity(0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.schedule,
-                                    color: Colors.white.withOpacity(0.9), size: 20),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Batas Waktu Pembayaran',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              paymentData!['expiry_time'],
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // === Main Payment Info Card ===
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Amount & Status
-                            Center(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _formatCurrency(paymentData!['totalAmount'] ?? 0),
-                                    style: const TextStyle(
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF077A4B),
-                                      letterSpacing: -1,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(paymentData!['status'] ?? '')
-                                          .withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(
-                                        color: _getStatusColor(paymentData!['status'] ?? '')
-                                            .withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _getStatusText(paymentData!['status'] ?? 'N/A'),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: _getStatusColor(paymentData!['status'] ?? ''),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            // Order ID
-                            _buildInfoRow('Order ID', paymentData!['order_id'] ?? 'N/A'),
-
-                            const SizedBox(height: 16),
-
-                            // Payment Method
-                            _buildInfoRow(
-                              'Metode Pembayaran',
-                              _getPaymentMethodText(paymentData!['method'] ?? 'N/A'),
-                            ),
-
-                            // QR Code
-                            _buildQRCode(),
-
-                            // Bank Transfer Info
-                            _buildBankTransferInfo(),
-
-                            // Payment Instructions
-                            _buildPaymentInstructions(),
-                          ],
-                        ),
-                      ),
-
-                      // Refresh Button
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _loadPaymentStatus,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF077A4B),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                            shadowColor: const Color(0xFF077A4B).withOpacity(0.3),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.refresh, size: 18),
-                              SizedBox(width: 8),
-                              Text(
-                                'Perbarui Status',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: isLoading
+          ? const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF077A4B),
+          strokeWidth: 2.5,
+        ),
+      )
+          : errorMessage != null
+          ? Center(child: Text(errorMessage!))
+          : paymentData == null
+          ? const Center(child: Text('Data pembayaran tidak tersedia'))
+          : RefreshIndicator(
+        onRefresh: _loadPaymentStatus,
+        color: const Color(0xFF077A4B),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // === Thank You Message (jika sudah dibayar) atau Expiry Time ===
+              _isPaid()
+                  ? _buildThankYouMessage()
+                  : (paymentData!['expiry_time'] != null
+                  ? Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _getExpiryTimeColor(paymentData!['status'] ?? ''),
+                      _getExpiryTimeColor(paymentData!['status'] ?? '')
+                          .withOpacity(0.8),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _getExpiryTimeColor(paymentData!['status'] ?? '')
+                          .withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-            ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.schedule,
+                            color: Colors.white.withOpacity(0.9), size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Batas Waktu Pembayaran',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      paymentData!['expiry_time'],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : const SizedBox.shrink()),
+
+              const SizedBox(height: 24),
+
+              // === Main Payment Info Card ===
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount & Status
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            _formatCurrency(paymentData!['totalAmount'] ?? 0),
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF077A4B),
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(paymentData!['status'] ?? '')
+                                  .withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                color: _getStatusColor(paymentData!['status'] ?? '')
+                                    .withOpacity(0.3),
+                              ),
+                            ),
+                            child: Text(
+                              _getStatusText(paymentData!['status'] ?? 'N/A'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _getStatusColor(paymentData!['status'] ?? ''),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Order ID
+                    _buildInfoRow('Order ID', paymentData!['order_id'] ?? 'N/A'),
+
+                    const SizedBox(height: 16),
+
+                    // Payment Method
+                    _buildInfoRow(
+                      'Metode Pembayaran',
+                      _getPaymentMethodText(paymentData!['method'] ?? 'N/A'),
+                    ),
+
+                    // QR Code
+                    _buildQRCode(),
+
+                    // Bank Transfer Info
+                    _buildBankTransferInfo(),
+
+                    // Payment Instructions
+                    _buildPaymentInstructions(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
+      ),
     );
   }
 }
