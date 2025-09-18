@@ -374,6 +374,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
             finalIcon = Icons.access_time;
             break;
           case 'expire':
+          case 'Unpaid':
             finalStatus = 'Pembayaran Kadaluarsa';
             finalColor = const Color(0xFFEF4444);
             finalIcon = Icons.timer_off;

@@ -72,6 +72,7 @@ class OrderDetailWidget extends StatelessWidget {
           'color': Colors.orange,
         };
       case 'expire':
+      case 'Unpaid':
         return {
           'label': 'Kadaluarsa',
           'icon': Icons.timer_off,

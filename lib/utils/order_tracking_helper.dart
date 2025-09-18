@@ -133,6 +133,7 @@ class OrderTrackingHelper {
           'showPulse': true,
         };
       case 'expire':
+      case 'Unpaid':
         return {
           'status': 'Pembayaran Kadaluarsa',
           'description': 'Silakan buat pesanan baru untuk melanjutkan',

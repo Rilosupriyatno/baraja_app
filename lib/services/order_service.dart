@@ -403,7 +403,7 @@ class OrderService {
         'color': const Color(0xFFFF5722),
         'icon': Icons.payment,
       };
-    } else if (paymentStatus.toLowerCase() == 'expire') {
+    } else if (['expire', 'Unpaid'].contains(paymentStatus.toLowerCase())) {
       print('Returning expired payment status');
       return {
         'status': 'Pembayaran kadaluarsa',

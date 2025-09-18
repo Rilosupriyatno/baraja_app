@@ -120,6 +120,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
       case 'capture':
         return 'Sudah Dibayar';
       case 'expire':
+      case 'Unpaid':
         return 'Kadaluarsa';
       case 'cancel':
         return 'Dibatalkan';

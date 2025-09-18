@@ -111,6 +111,7 @@ class StatusSectionWidget extends StatelessWidget {
   Map<String, dynamic> _getPaymentStatusInfo(String paymentStatus) {
     switch (paymentStatus) {
       case 'expire':
+      case 'Unpaid':
         return {
           'subtitle': 'Pembayaran telah kadaluarsa',
           'description': 'Silakan buat pesanan baru untuk melanjutkan',

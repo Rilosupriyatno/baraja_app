@@ -420,6 +420,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       case 'cancel':
         return 'Dibatalkan';
       case 'expire':
+      case 'Unpaid':
         return 'Kadaluarsa';
       case 'failure':
         return 'Gagal';
@@ -442,7 +443,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       case 'failure':
         return Colors.red;
       case 'expire':
-        return Colors.grey;
+      case 'Unpaid':
+        return Colors.red;
       default:
         return Colors.grey;
     }
