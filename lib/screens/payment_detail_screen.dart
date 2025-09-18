@@ -482,7 +482,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          vaNumber!,
+                          vaNumber,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
