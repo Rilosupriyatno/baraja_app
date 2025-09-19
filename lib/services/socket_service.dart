@@ -95,6 +95,74 @@ class SocketService {
             print('Error processing order status update: $e');
           }
         });
+
+        // === Kitchen confirmed (mulai masak) ===
+        _socket.on('kitchen_order_confirmed', (data) {
+          print('Kitchen order confirmed: $data');
+          try {
+            if (data != null && data is Map) {
+              final confirmData = Map<String, dynamic>.from(data);
+
+              final mappedData = {
+                'order_id': confirmData['orderId'],
+                'orderStatus': confirmData['orderStatus'] ?? 'Cooking',
+                'kitchen': confirmData['kitchen'],
+                'message': confirmData['message'] ?? 'Your order is being prepared by kitchen',
+                'timestamp': confirmData['timestamp'],
+              };
+
+              print('🔧 Mapped kitchen_order_confirmed data: $mappedData');
+              onOrderUpdate(mappedData);
+            }
+          } catch (e) {
+            print('Error processing kitchen_order_confirmed: $e');
+          }
+        });
+
+        // === Kitchen updated (progress dapur) ===
+        _socket.on('kitchen_order_updated', (data) {
+          print('Kitchen order updated: $data');
+          try {
+            if (data != null && data is Map) {
+              final updateData = Map<String, dynamic>.from(data);
+
+              final mappedData = {
+                'order_id': updateData['orderId'],
+                'orderStatus': updateData['status'],
+                'kitchen': updateData['kitchen'],
+                'timestamp': updateData['timestamp'],
+              };
+
+              print('🔧 Mapped kitchen_order_updated data: $mappedData');
+              onOrderUpdate(mappedData);
+            }
+          } catch (e) {
+            print('Error processing kitchen_order_updated: $e');
+          }
+        });
+
+        // === Kitchen complete (siap diambil) ===
+        _socket.on('kitchen_update', (data) {
+          print('Kitchen update received: $data');
+          try {
+            if (data != null && data is Map) {
+              final kitchenData = Map<String, dynamic>.from(data);
+
+              final mappedKitchenData = {
+                'order_id': kitchenData['orderId'],
+                'orderStatus': kitchenData['orderStatus'] ?? 'Ready',
+                'message': kitchenData['message'] ?? 'Your food is ready!',
+                'completedItems': kitchenData['completedItems'],
+                'timestamp': kitchenData['timestamp'],
+              };
+
+              print('🔧 Mapped kitchen_update data: $mappedKitchenData');
+              onOrderUpdate(mappedKitchenData);
+            }
+          } catch (e) {
+            print('Error processing kitchen_update: $e');
+          }
+        });
       }
 
       // Server ping handler
