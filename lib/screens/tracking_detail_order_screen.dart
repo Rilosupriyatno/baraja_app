@@ -323,6 +323,11 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
             finalColor = const Color(0xFFF68F3B);
             finalIcon = Icons.alarm_outlined;
             break;
+          case 'Reserved':
+            finalStatus = 'Reservasi Anda telah diterima';
+            finalColor = const Color(0xFF3B82F6);
+            finalIcon = Icons.edit_note_sharp;
+            break;
           case 'Waiting':
             finalStatus = 'Menunggu konfirmasi kitchen';
             finalColor = const Color(0xFF3B82F6);

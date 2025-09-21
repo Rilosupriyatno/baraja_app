@@ -60,6 +60,12 @@ class StatusSectionWidget extends StatelessWidget {
           'description': 'Pesanan Anda akan segera diproses',
           'showPulse': true,
         };
+      case 'Reserved':
+        return {
+          'subtitle': 'Di reservasi',
+          'description': 'Reservasi Anda telah diterima',
+          'showPulse': true,
+        };
       case 'Waiting':
         return {
           'subtitle': 'Menunggu konfirmasi dari dapur',

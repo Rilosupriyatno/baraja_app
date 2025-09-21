@@ -31,10 +31,9 @@ class OrderService {
     ReservationData? reservationData,
     ReservationType? reservationType,
     required Map<String, dynamic> paymentDetails,
-    OpenBillData? openBillData, // Add this parameter
+    OpenBillData? openBillData,
   }) async {
     try {
-      // Convert TimeOfDay to string format if it exists
       String? pickupTimeString;
       if (pickupTime != null) {
         final hour = pickupTime.hour.toString().padLeft(2, '0');
@@ -42,15 +41,6 @@ class OrderService {
         pickupTimeString = '$hour:$minute';
       }
 
-      // Debug prints
-      print('Order Type: ${orderType.toString().split('.').last}');
-      print('Reservation Type: ${reservationType?.toString().split('.').last}');
-      print('Open Bill Data: $openBillData');
-      print('Delivery Address: "$deliveryAddress"');
-      print('Table Number: "$tableNumber"');
-      print('Pickup Time: "$pickupTimeString"');
-
-      // Prepare order data
       final orderData = <String, dynamic>{
         'userId': userId,
         'items': items,
@@ -59,39 +49,37 @@ class OrderService {
         'outlet': outletId ?? '67cbc9560f025d897d69f889',
       };
 
-      // Add optional fields
       if (voucherCode != null && voucherCode.isNotEmpty) {
         orderData['voucherCode'] = voucherCode;
       }
 
-      // Handle Open Bill scenario
       if (openBillData != null) {
-        orderData['isOpenBill'] = true;
+        orderData['isOpenBill'] = "true";
         orderData['openBillData'] = {
           'reservationId': openBillData.reservationId,
           'tableNumbers': openBillData.tableNumbers,
         };
       }
 
-      // Add conditional fields based on order type
       if (orderType.toString().split('.').last == 'dineIn' &&
-          tableNumber != null && tableNumber.isNotEmpty) {
+          tableNumber != null &&
+          tableNumber.isNotEmpty) {
         orderData['tableNumber'] = tableNumber;
       }
 
       if (orderType.toString().split('.').last == 'delivery' &&
-          deliveryAddress != null && deliveryAddress.isNotEmpty) {
+          deliveryAddress != null &&
+          deliveryAddress.isNotEmpty) {
         orderData['deliveryAddress'] = deliveryAddress;
       }
 
-      if (orderType.toString().split('.').last == 'pickup' && pickupTimeString != null) {
+      if (orderType.toString().split('.').last == 'pickup' &&
+          pickupTimeString != null) {
         orderData['pickupTime'] = pickupTimeString;
       }
 
-      // Handle reservation with reservationType
       if (orderType.toString().split('.').last == 'reservation') {
         if (reservationData != null) {
-          // Data reservasi dasar
           orderData['reservationData'] = {
             'reservationTime': reservationData.formattedTime,
             'guestCount': reservationData.personCount,
@@ -100,24 +88,19 @@ class OrderService {
             'reservationDate': reservationData.formattedDate,
           };
 
-          // Send reservationType to backend if exists
           if (reservationType != null) {
             orderData['reservationData']['reservationType'] =
                 reservationType.toString().split('.').last;
-            orderData['reservationType'] = reservationType.toString().split('.').last;
+            orderData['reservationType'] =
+                reservationType.toString().split('.').last;
           }
         }
 
-        // Table number for reservations (if needed)
         if (tableNumber != null && tableNumber.isNotEmpty) {
           orderData['tableNumber'] = tableNumber;
         }
       }
 
-      print('Final orderData:');
-      print(orderData);
-
-      // Get auth token and send request
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('authToken');
 
@@ -130,9 +113,6 @@ class OrderService {
         body: jsonEncode(orderData),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -141,20 +121,15 @@ class OrderService {
             'Failed to create order: ${errorBody['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('Error creating order: $e');
       throw Exception('Error creating order: $e');
     }
   }
 
-  // ... rest of your existing methods remain the same
   Future<List<Order>> getUserOrderHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
-      if (userId == null) {
-        throw Exception('User ID not found');
-      }
-      print("ini adalah authToken = ${prefs.getString('authToken')}");
+      if (userId == null) throw Exception('User ID not found');
 
       final response = await http.get(
         Uri.parse('$baseUrl/api/orders/history/$userId'),
@@ -172,7 +147,6 @@ class OrderService {
         throw Exception('Failed to load order history: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching order history: $e');
       return [];
     }
   }
@@ -201,11 +175,7 @@ class OrderService {
           orderData['orderStatus'] = orderData['status'];
         }
 
-        return {
-          'success': true,
-          'data': orderData,
-          'error': null,
-        };
+        return {'success': true, 'data': orderData, 'error': null};
       } else {
         return {
           'success': false,
@@ -214,17 +184,10 @@ class OrderService {
         };
       }
     } catch (e) {
-      String errorMessage;
-      if (e.toString().contains('TimeoutException')) {
-        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
-      } else {
-        errorMessage = 'Gagal memuat data pesanan. Silakan coba lagi.';
-      }
-
       return {
         'success': false,
         'data': null,
-        'error': errorMessage,
+        'error': 'Gagal memuat data pesanan. Silakan coba lagi.',
       };
     }
   }
@@ -245,13 +208,7 @@ class OrderService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-
-        print("Data dari getPaymentStatus: $jsonData");
-        return {
-          'success': true,
-          'data': jsonData,
-          'error': null,
-        };
+        return {'success': true, 'data': jsonData, 'error': null};
       } else {
         return {
           'success': false,
@@ -260,175 +217,17 @@ class OrderService {
         };
       }
     } catch (e) {
-      String errorMessage;
-      if (e.toString().contains('TimeoutException')) {
-        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
-      } else {
-        errorMessage = 'Gagal memuat status pembayaran. Silakan coba lagi.';
-      }
-
       return {
         'success': false,
         'data': null,
-        'error': errorMessage,
+        'error': 'Gagal memuat status pembayaran. Silakan coba lagi.',
       };
     }
   }
 
-  Map<String, dynamic> getOrderStatusInfo(Map<String, dynamic> orderData) {
-    print('=== getOrderStatusInfo Debug ===');
-    print('Input orderData: $orderData');
-
-    String paymentStatus = '';
-
-    if (orderData['paymentStatus'] != null) {
-      paymentStatus = orderData['paymentStatus'].toString();
-    } else if (orderData['paymentDetails'] != null &&
-        orderData['paymentDetails']['status'] != null) {
-      paymentStatus = orderData['paymentDetails']['status'].toString();
-    }
-
-    String orderStatus = '';
-
-    if (orderData['orderStatus'] != null) {
-      orderStatus = orderData['orderStatus'].toString();
-    } else if (orderData['status'] != null) {
-      orderStatus = orderData['status'].toString();
-    }
-
-    print('Payment Status: "$paymentStatus"');
-    print('Order Status: "$orderStatus"');
-
-    // ✅ Handle status Reserved khusus untuk reservasi
-    if (orderStatus == 'Reserved') {
-      if (paymentStatus.toLowerCase() == 'settlement' ||
-          paymentStatus.toLowerCase() == 'paid' ||
-          paymentStatus.toLowerCase() == 'capture') {
-        return {
-          'status': 'Reservasi Berhasil - Silakan datang ke restoran',
-          'color': const Color(0xFF10B981),
-          'icon': Icons.event_seat,
-        };
-      } else if (paymentStatus.toLowerCase() == 'pending') {
-        return {
-          'status': 'Reservasi - Menunggu pembayaran',
-          'color': const Color(0xFFEF4444),
-          'icon': Icons.payment,
-        };
-      } else {
-        return {
-          'status': 'Reservasi - Status tidak diketahui',
-          'color': const Color(0xFFF68F3B),
-          'icon': Icons.event_seat,
-        };
-      }
-    }
-
-    if (paymentStatus.toLowerCase() == 'settlement' ||
-        paymentStatus.toLowerCase() == 'paid' ||
-        paymentStatus.toLowerCase() == 'capture') {
-
-      print('Payment is successful, checking order status...');
-
-      switch (orderStatus) {
-        case 'Pending':
-          print('Returning Pending status');
-          return {
-            'status': 'Menunggu konfirmasi kasir',
-            'color': const Color(0xFFF68F3B),
-            'icon': Icons.alarm_outlined,
-          };
-        case 'Waiting':
-          print('Returning Waiting status');
-          return {
-            'status': 'Menunggu konfirmasi kitchen',
-            'color': const Color(0xFF3B82F6),
-            'icon': Icons.restaurant_menu,
-          };
-        case 'OnProcess':
-          print('Returning OnProcess status');
-          return {
-            'status': 'Pesananmu sedang dibuat',
-            'color': const Color(0xFFF59E0B),
-            'icon': Icons.coffee_maker,
-          };
-        case 'Completed':
-          print('Returning Completed status');
-          return {
-            'status': 'Selamat Menikmati',
-            'color': const Color(0xFF10B981),
-            'icon': Icons.done_all,
-          };
-        case 'OnTheWay':
-          print('Returning OnTheWay status');
-          return {
-            'status': 'Pesanan dalam perjalanan',
-            'color': const Color(0xFF8B5CF6),
-            'icon': Icons.local_shipping,
-          };
-        case 'Ready':
-          print('Returning Ready status');
-          return {
-            'status': 'Pesanan siap diambil',
-            'color': const Color(0xFF10B981),
-            'icon': Icons.check_circle,
-          };
-        case 'Canceled':
-        case 'Cancelled':
-          print('Returning Cancelled status');
-          return {
-            'status': 'Pesanan dibatalkan',
-            'color': const Color(0xFFEF4444),
-            'icon': Icons.cancel,
-          };
-        default:
-          print('Unknown order status, returning default');
-          return {
-            'status': 'Status: $orderStatus',
-            'color': const Color(0xFFF68F3B),
-            'icon': Icons.info_outline,
-          };
-      }
-    } else if (paymentStatus.toLowerCase() == 'pending') {
-      print('Returning pending payment status');
-      return {
-        'status': 'Menunggu pembayaran',
-        'color': const Color(0xFFEF4444),
-        'icon': Icons.payment,
-      };
-    } else if (paymentStatus.toLowerCase() == 'partial') {
-      print('Returning pending payment status');
-      return {
-        'status': 'Menunggu Pelunasan',
-        'color': const Color(0xFFFF5722),
-        'icon': Icons.payment,
-      };
-    } else if (['expire', 'Unpaid'].contains(paymentStatus.toLowerCase())) {
-      print('Returning expired payment status');
-      return {
-        'status': 'Pembayaran kadaluarsa',
-        'color': const Color(0xFFEF4444),
-        'icon': Icons.timer_off,
-      };
-    } else if (paymentStatus.toLowerCase() == 'cancel') {
-      print('Returning cancelled payment status');
-      return {
-        'status': 'Pembayaran dibatalkan',
-        'color': const Color(0xFFEF4444),
-        'icon': Icons.cancel,
-      };
-    } else {
-      print('Unknown payment status, returning unknown status');
-      return {
-        'status': paymentStatus.isNotEmpty
-            ? 'Status pembayaran: $paymentStatus'
-            : 'Status tidak diketahui',
-        'color': const Color(0xFF6B7280),
-        'icon': Icons.help_outline,
-      };
-    }
-  }
-
+  /// ========================================================
+  ///  Perubahan penting ada di sini
+  /// ========================================================
   Order _mapToOrder(Map<String, dynamic> orderData) {
     OrderStatus getOrderStatus(String statusString) {
       switch (statusString.toLowerCase()) {
@@ -446,8 +245,8 @@ class OrderService {
           return OrderStatus.completed;
         case 'cancelled':
           return OrderStatus.cancelled;
-        case 'reserved': // ✅ Tambah status untuk reservasi
-          return OrderStatus.pending; // atau buat enum baru untuk reserved
+        case 'reserved':
+          return OrderStatus.pending;
         default:
           return OrderStatus.pending;
       }
@@ -464,7 +263,7 @@ class OrderService {
         case 'dine-in':
         case 'dinein':
           return OrderType.dineIn;
-        case 'reservation': // ✅ Tambah case untuk reservation
+        case 'reservation':
           return OrderType.reservation;
         default:
           return OrderType.dineIn;
@@ -473,7 +272,6 @@ class OrderService {
 
     List<CartItem> cartItems = [];
 
-    // ✅ Handle jika items ada dan tidak kosong
     if (orderData['items'] != null && orderData['items'].isNotEmpty) {
       for (var item in orderData['items']) {
         final menuItem = item['menuItem'];
@@ -509,59 +307,37 @@ class OrderService {
       }
     }
 
-    // ✅ Gunakan grandTotal untuk semua jenis order
     int subtotal = 0;
     int discount = 0;
     int total = 0;
 
-    // Gunakan grandTotal dari backend untuk semua order
-    total = orderData['grandTotal'] ?? orderData['totalPrice'] ?? orderData['total'] ?? 0;
-    subtotal = total; // Set subtotal sama dengan total
+    total = orderData['grandTotal'] ??
+        orderData['totalPrice'] ??
+        orderData['total'] ??
+        0;
+    subtotal = total;
     discount = orderData['discount'] ?? 0;
 
-    // ✅ COMMENTED - Logic lama untuk perhitungan berbeda antara reservasi dan order biasa
-    // bool isReservation = orderData['status']?.toLowerCase() == 'reserved' ||
-    //                     orderData['orderType']?.toLowerCase() == 'reservation';
-    //
-    // if (isReservation) {
-    //   // ✅ Untuk reservasi, gunakan grandTotal dari backend
-    //   total = orderData['grandTotal'] ?? orderData['totalPrice'] ?? orderData['total'] ?? 0;
-    //   subtotal = total; // Set subtotal sama dengan total untuk reservasi
-    //   discount = 0; // Tidak ada discount untuk reservasi
-    // } else {
-    //   // ✅ Untuk order biasa, hitung dari items
-    //   if (cartItems.isNotEmpty) {
-    //     for (var item in cartItems) {
-    //       subtotal += item.totalprice;
-    //     }
-    //   } else {
-    //     subtotal = orderData['subtotal'] ?? 0;
-    //   }
-    //   discount = orderData['discount'] ?? 0;
-    //   total = orderData['total'] ?? orderData['totalPrice'] ?? (subtotal - discount);
-    // }
-
-    // ✅ Untuk reservasi tanpa items, buat placeholder CartItem
-    bool isReservation = orderData['status']?.toLowerCase() == 'reserved' ||
-        orderData['orderType']?.toLowerCase() == 'reservation';
-
-    if (cartItems.isEmpty && isReservation) {
+    // ✅ PATCH: kalau cartItems kosong tapi order valid → buat placeholder
+    if (cartItems.isEmpty) {
       cartItems.add(CartItem(
-        id: 'reservation-placeholder',
-        name: 'Reservasi Meja',
+        id: 'placeholder',
+        name: orderData['orderType']?.toLowerCase() == 'reservation'
+            ? 'Reservasi Meja'
+            : 'Reservasi Tanpa Menu',
         imageUrl: '',
-        price: 0,
-        totalprice: 0,
+        price: total,
+        totalprice: total,
         quantity: 1,
         addons: [],
         toppings: [],
-        notes: 'Reservasi - Total biaya dari sistem',
+        notes: 'Auto-generated placeholder untuk order tanpa detail item',
       ));
     }
 
     return Order(
       id: orderData['_id'] ?? '',
-      orderId: orderData['order_id'] ?? orderData['orderId'] ?? '', // ✅ Gunakan order_id dari response
+      orderId: orderData['order_id'] ?? orderData['orderId'] ?? '',
       items: cartItems,
       orderType: getOrderType(orderData['orderType']),
       tableNumber: orderData['tableNumber'] ?? '',

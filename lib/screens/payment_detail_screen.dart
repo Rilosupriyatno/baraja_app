@@ -197,7 +197,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
         ];
         break;
       case 'bank_transfer':
-        title = 'Cara Bayar dengan Bank Transfer';
+        title = 'Cara Bayar dengan VA';
         instructions = [
           '1. Buka aplikasi mobile banking Anda',
           '2. Pilih menu Transfer > Virtual Account',
