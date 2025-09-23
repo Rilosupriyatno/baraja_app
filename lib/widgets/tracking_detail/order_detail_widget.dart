@@ -54,6 +54,7 @@ class OrderDetailWidget extends StatelessWidget {
       case 'settlement':
       case 'capture':
       case 'paid':
+      case 'Paid':
         return {
           'label': 'Lunas',
           'icon': Icons.check_circle,

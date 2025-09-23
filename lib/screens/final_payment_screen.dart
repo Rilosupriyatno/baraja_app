@@ -28,10 +28,10 @@ class _FinalPaymentScreenState extends State<FinalPaymentScreen> {
   final List<Map<String, dynamic>> paymentMethods = [
     {
       'id': 'cash',
-      'name': 'Tunai',
+      'name': 'Bayar di kasir',
       'icon': Icons.money,
       'color': Colors.green,
-      'description': 'Bayar tunai di kasir'
+      'description': 'Lakukan pembayaran di kasir'
     },
     // Method lain di-comment sementara
     /*

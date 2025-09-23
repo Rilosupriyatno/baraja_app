@@ -42,7 +42,8 @@ class StatusSectionWidget extends StatelessWidget {
     print('🔍 StatusSectionWidget - orderData["status"]: ${orderData!['orderStatus']}');
 
     // Prioritize order status if payment is successful
-    if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
+    if (paymentStatus == 'settlement' || paymentStatus == 'capture' ||
+        paymentStatus == 'paid' || paymentStatus == 'Paid') {
       return _getOrderStatusInfo(orderStatusValue);
     } else {
       return _getPaymentStatusInfo(paymentStatus);

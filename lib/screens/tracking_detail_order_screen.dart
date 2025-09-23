@@ -297,7 +297,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
       }
     });
 
-    if (['settlement', 'capture'].contains(data['transaction_status'])) {
+    if (['settlement', 'capture', 'paid', 'Paid'].contains(data['transaction_status'])) {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       orderProvider.updateOrderStatus(targetOrderId, OrderStatus.pending);
     }
@@ -374,7 +374,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
             finalIcon = Icons.access_time;
             break;
           case 'partial':
-            finalStatus = 'Menunggu Pelunasan';
+            finalStatus = 'Reservasi Diterima';
             finalColor = const Color(0xFFF59E0B);
             finalIcon = Icons.access_time;
             break;

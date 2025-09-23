@@ -101,7 +101,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
 
   bool _isPaid() {
     final status = paymentData?['status']?.toLowerCase() ?? '';
-    return status == 'settlement' || status == 'paid' || status == 'capture';
+    return status == 'settlement' || status == 'paid' || status == 'Paid' || status == 'capture';
   }
 
   String _formatCurrency(int amount) {
@@ -117,6 +117,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
         return 'Belum Lunas';
       case 'settlement':
       case 'paid':
+      case 'Paid':
       case 'capture':
         return 'Sudah Dibayar';
       case 'expire':
@@ -155,6 +156,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
         return Colors.deepOrange;
       case 'settlement':
       case 'paid':
+      case 'Paid':
       case 'capture':
         return const Color(0xFF077A4B);
       default:

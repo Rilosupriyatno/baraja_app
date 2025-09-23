@@ -126,7 +126,7 @@ class OrderTrackingHelper {
         };
       case 'partial':
         return {
-          'status': 'Menunggu Pelunasan',
+          'status': 'Reservasi Diterima',
           'description': 'Lakukan pelunasan di kasir',
           'color': const Color(0xFFF59E0B),
           'icon': Icons.access_time,

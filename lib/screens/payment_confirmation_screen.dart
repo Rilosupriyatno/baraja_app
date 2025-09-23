@@ -237,7 +237,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
       // Update order status based on transaction status
       if (data['transaction_status'] == 'settlement' ||
-          data['transaction_status'] == 'capture') {
+          data['transaction_status'] == 'capture' ||
+          data['transaction_status'] == 'paid' ||
+          data['transaction_status'] == 'Paid')  {
         if (mounted) {
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
