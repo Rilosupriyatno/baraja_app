@@ -7,10 +7,14 @@ import 'payment_row_widget.dart';
 
 class OrderDetailWidget extends StatelessWidget {
   final Map<String, dynamic> orderData;
+  final int taxAmount;
+  final List<Map<String, dynamic>> taxDetails;
 
   const OrderDetailWidget({
     super.key,
-    required this.orderData
+    required this.orderData,
+    this.taxAmount = 0,
+    this.taxDetails = const [],
   });
 
   // Method untuk mendapatkan status pembayaran dengan dukungan down payment
@@ -663,13 +667,34 @@ class OrderDetailWidget extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Show total only if not down payment or if items exist
-                if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
+                // Show total only if not down payment or if items exist
+                if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty) ...[
+                  PaymentRowWidget(
+                    label: 'Subtotal',
+                    value: formatCurrency(_getNumericValue(orderData['subtotal'] ?? orderData['grandTotal'])),
+                    icon: Icons.receipt,
+                    isTotal: false,
+                  ),
+
+                  // Tambahkan tax details section di sini:
+                  if (taxDetails.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...taxDetails.map((tax) => PaymentRowWidget(
+                      label: "${tax['name']} (${tax['percentage'].toStringAsFixed(0)}%)",
+                      value: "+ ${formatCurrency(tax['amount'].round())}",
+                      icon: Icons.receipt,
+                      isTotal: false,
+                    )),
+                  ],
+
+                  const SizedBox(height: 8),
                   PaymentRowWidget(
                     label: 'Total',
                     value: formatCurrency(_getNumericValue(orderData['grandTotal'])),
                     icon: Icons.receipt,
                     isTotal: true,
                   ),
+                ],
 
                 if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
                   const SizedBox(height: 16),

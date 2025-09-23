@@ -587,13 +587,21 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                         ),
 
                         // Order Details
+                        // Order Details
                         if (orderData != null)
                           SlideTransition(
                             position: _slideAnimation,
                             child: Container(
                               width: double.infinity,
                               color: Colors.white,
-                              child: OrderDetailWidget(orderData: orderData!),
+                              child: OrderDetailWidget(
+                                orderData: orderData!,
+                                // Tambahkan parameter berikut:
+                                taxAmount: orderData!['taxAmount'] ?? 0,
+                                taxDetails: (orderData!['taxDetails'] as List<dynamic>?)
+                                    ?.map((tax) => Map<String, dynamic>.from(tax))
+                                    .toList() ?? [],
+                              ),
                             ),
                           ),
                         // OrderType Section detail

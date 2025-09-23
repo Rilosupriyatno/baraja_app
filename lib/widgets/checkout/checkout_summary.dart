@@ -2,6 +2,7 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:baraja_app/widgets/checkout/payment_type_widget.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
+import '../../services/tex_service.dart'; // Import TaxCalculationResult from here
 
 class CheckoutSummary extends StatelessWidget {
   final int totalPrice;
@@ -9,9 +10,10 @@ class CheckoutSummary extends StatelessWidget {
   final String? voucherCode;
   final VoidCallback onCheckoutPressed;
   final bool isReservation;
-  final bool isOpenBill; // ✅ tambahan
+  final bool isOpenBill;
   final PaymentType? selectedPaymentType;
   final String? discountType;
+  final TaxCalculationResult? taxCalculation; // Now uses the class from tex_service.dart
 
   const CheckoutSummary({
     super.key,
@@ -20,17 +22,20 @@ class CheckoutSummary extends StatelessWidget {
     this.voucherCode,
     required this.onCheckoutPressed,
     this.isReservation = false,
-    this.isOpenBill = false, // ✅ default false
+    this.isOpenBill = false,
     this.selectedPaymentType,
     this.discountType,
+    this.taxCalculation,
   });
 
   @override
   Widget build(BuildContext context) {
     final int finalTotal = totalPrice - discount;
-    final int downPaymentAmount = (finalTotal * 0.5).round();
+    final int taxAmount = taxCalculation?.totalTaxAmount.round() ?? 0;
+    final int grandTotal = finalTotal + taxAmount;
+    final int downPaymentAmount = (grandTotal * 0.5).round();
 
-    int amountToPay = finalTotal;
+    int amountToPay = grandTotal;
     if (isReservation && selectedPaymentType == PaymentType.downPayment) {
       amountToPay = downPaymentAmount;
     }
@@ -61,6 +66,7 @@ class CheckoutSummary extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
+            // Subtotal
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -69,6 +75,7 @@ class CheckoutSummary extends StatelessWidget {
               ],
             ),
 
+            // Voucher discount (if applicable)
             if (voucherCode != null && discount > 0) ...[
               const SizedBox(height: 8),
               Row(
@@ -88,9 +95,31 @@ class CheckoutSummary extends StatelessWidget {
               ),
             ],
 
+            // Tax details (if applicable)
+            if (taxCalculation != null && taxCalculation!.taxDetails.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...taxCalculation!.taxDetails.map((tax) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${tax['name']} (${tax['percentage'].toStringAsFixed(0)}%)",
+                      style: const TextStyle(color: Colors.orange),
+                    ),
+                    Text(
+                      "+ ${formatCurrency(tax['amount'].round())}",
+                      style: const TextStyle(color: Colors.orange),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+
             const Divider(),
             const SizedBox(height: 8),
 
+            // Total after discount and tax
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -101,12 +130,13 @@ class CheckoutSummary extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  formatCurrency(finalTotal),
+                  formatCurrency(grandTotal),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
 
+            // Down payment amount (for reservations)
             if (isReservation && selectedPaymentType == PaymentType.downPayment) ...[
               const SizedBox(height: 8),
               Row(
@@ -134,6 +164,7 @@ class CheckoutSummary extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // Checkout button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

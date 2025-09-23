@@ -10,6 +10,7 @@ import '../models/reservation_data.dart';
 import '../models/voucher_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
+import '../services/tex_service.dart';
 import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
 import '../widgets/checkout/checkout_validator.dart';
@@ -78,6 +79,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Map<String, String> validationErrors = {};
   bool hasAttemptedSubmit = false;
 
+  final TaxService _taxService = TaxService();
+  TaxCalculationResult? _taxCalculation;
+  bool _taxesLoaded = false;
   // Scroll controller untuk auto scroll ke error
   final ScrollController _scrollController = ScrollController();
 
@@ -91,6 +95,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
+    _initializeTaxData();
 
     // Set default values
     selectedOrderType = OrderType.dineIn; // Default order type
@@ -117,6 +122,64 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
       setState(() {});
     });
+  }
+  Future<void> _initializeTaxData() async {
+    try {
+      await _taxService.getTaxesAndServices();
+      setState(() {
+        _taxesLoaded = true;
+      });
+      _calculateTaxes();
+    } catch (e) {
+      print('Error initializing tax data: $e');
+      setState(() {
+        _taxesLoaded = true; // Continue without taxes
+      });
+    }
+  }
+
+  void _calculateTaxes() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    if (!_taxesLoaded || outletId == null) {
+      setState(() {
+        _taxCalculation = null;
+      });
+      return;
+    }
+
+    final subtotal = cartProvider.totalPrice;
+    final discount = calculateDiscount(subtotal);
+    final finalTotal = subtotal - discount;
+
+    final taxCalculation = _taxService.calculateTaxes(
+      subtotal: finalTotal.toDouble(),
+      outletId: outletId!,
+      isReservation: cartProvider.isReservation,
+      isOpenBill: cartProvider.isOpenBill,
+    );
+
+    setState(() {
+      _taxCalculation = taxCalculation;
+    });
+  }
+
+  int calculateDiscount(int subtotal) {
+    if (selectedVoucher == null) return 0;
+
+    int discount = 0;
+    if (selectedVoucher!.discountType == "percentage") {
+      discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
+    } else if (selectedVoucher!.discountType == "fixed") {
+      discount = selectedVoucher!.discountAmount;
+    }
+
+    // Recalculate taxes when discount changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateTaxes();
+    });
+
+    return discount;
   }
 
   @override
@@ -199,17 +262,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   // Calculate the discount amount based on the selected voucher
-  int calculateDiscount(int subtotal) {
-    if (selectedVoucher == null) return 0;
-
-    if (selectedVoucher!.discountType == "percentage") {
-      final discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
-      return discount;
-    } else if (selectedVoucher!.discountType == "fixed") {
-      return selectedVoucher!.discountAmount;
-    }
-    return 0;
-  }
+  // int calculateDiscount(int subtotal) {
+  //   if (selectedVoucher == null) return 0;
+  //
+  //   if (selectedVoucher!.discountType == "percentage") {
+  //     final discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
+  //     return discount;
+  //   } else if (selectedVoucher!.discountType == "fixed") {
+  //     return selectedVoucher!.discountAmount;
+  //   }
+  //   return 0;
+  // }
 
 
   // Method untuk mengecek apakah area code memerlukan pilihan reservation type
@@ -277,23 +340,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final int subtotal = cartProvider.totalPrice;
         final int discount = calculateDiscount(subtotal);
         final int finalTotal = subtotal - discount;
-        for (var item in cartItems) {
-          print("CartItem: ${item.name} "
-              "| OutletId: $outletId "
-              "| OutletName: ${item.outletName}");
-        }
-        
-        print("ini adalah data open bill: ${cartProvider.openBillData}");
+        final int taxAmount = _taxCalculation?.totalTaxAmount.round() ?? 0;
+        final int grandTotal = finalTotal + taxAmount;
 
+        // Calculate down payment amount based on grand total (including tax)
+        final int downPaymentAmount = (grandTotal * 0.5).round();
 
-        // Calculate down payment amount (50% of final total)
-        final int downPaymentAmount = (finalTotal * 0.5).round();
+        // Recalculate taxes when cart changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_taxesLoaded) {
+            _calculateTaxes();
+          }
+        });
 
         // Auto-set reservation type to non-blocking if blocking is not available
+        // Update this check to use grandTotal instead of finalTotal
         if (cartProvider.isReservation &&
             cartProvider.reservationData != null &&
             _shouldShowReservationType(cartProvider.reservationData!.areaCode) &&
-            !_canSelectBlocking(cartProvider.reservationData!.areaCode, finalTotal) &&
+            !_canSelectBlocking(cartProvider.reservationData!.areaCode, grandTotal) &&
             selectedReservationType == ReservationType.blocking) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() {
@@ -301,7 +366,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             });
           });
         }
-
         return BaseScreenWrapper(
           customBackRoute: '/cart',
           canPop: false,
@@ -521,8 +585,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   voucherCode: selectedVoucherCode,
                   discountType: selectedVoucher?.discountType,
                   isReservation: cartProvider.isReservation,
-                  isOpenBill: cartProvider.isOpenBill, // ✅ tambahkan ini
+                  isOpenBill: cartProvider.isOpenBill,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
+                  taxCalculation: _taxCalculation, // Pass tax calculation
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan"); // ✅ debug
                     // Set flag bahwa user sudah mencoba submit
@@ -578,7 +643,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     final prefs = await SharedPreferences.getInstance();
                     final userId = prefs.getString('userId');
                     final userName = prefs.getString('userName') ?? 'Guest';
-                    int amountToPay = finalTotal;
+                    int amountToPay = grandTotal; // Use grandTotal instead of finalTotal
                     if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
                       amountToPay = downPaymentAmount;
                     }
@@ -644,6 +709,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         paymentDetails: paymentDetails,
                         subtotal: subtotal,
                         discount: discount,
+                        taxDetails: _taxCalculation?.taxDetails,
+                        totalTax: taxAmount,
                         voucherCode: selectedVoucherCode,
                         reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
                         openBillData: cartProvider.openBillData, // ✅ tambahkan ini
@@ -675,6 +742,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'subtotal': subtotal,
                         'discount': discount,
                         'total': finalTotal,
+                        'taxAmount': taxAmount,
+                        'taxDetails': _taxCalculation?.taxDetails ?? [],
                         'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
                         'amountToPay': amountToPay,
                         'voucherCode': selectedVoucherCode,

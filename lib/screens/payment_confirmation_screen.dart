@@ -36,6 +36,9 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int? downPaymentAmount;
   final int remainingPayment;
   final bool isDownPayment;
+  // Add tax-related parameters
+  final int? taxAmount;
+  final List<Map<String, dynamic>>? taxDetails;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -60,6 +63,9 @@ class PaymentConfirmationScreen extends StatefulWidget {
     this.downPaymentAmount,
     required this.remainingPayment,
     required this.isDownPayment,
+    // Add tax parameters
+    this.taxAmount,
+    this.taxDetails,
   });
 
   @override
@@ -74,7 +80,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   String? _errorMessage;
   bool _isListeningForPayment = false;
   bool _isCashPayment = false;
-  bool _isProcessing = false; // Add this flag to prevent duplicate processing
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -313,6 +319,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             remainingPayment: widget.remainingPayment,
             isDownPayment: widget.isDownPayment,
             reservationData: widget.reservationData,
+            // Add tax parameters
+            taxAmount: widget.taxAmount ?? 0,
+            taxDetails: widget.taxDetails ?? [],
           ),
         ),
       ),

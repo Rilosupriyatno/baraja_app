@@ -37,6 +37,10 @@ class UnifiedPaymentView extends StatefulWidget {
   final bool isDownPayment;
   final ReservationData? reservationData;
 
+  // Tax-related parameters
+  final int taxAmount;
+  final List<Map<String, dynamic>> taxDetails;
+
   const UnifiedPaymentView({
     super.key,
     required this.order,
@@ -58,6 +62,9 @@ class UnifiedPaymentView extends StatefulWidget {
     this.remainingPayment = 0,
     this.isDownPayment = false,
     this.reservationData,
+    // Tax parameters
+    this.taxAmount = 0,
+    this.taxDetails = const [],
   });
 
   @override
@@ -70,7 +77,6 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   String? _errorMessage;
   Map<String, dynamic>? _paymentData;
   String? _qrCodeUrl;
-
 
   final ConfirmService _confirmService = ConfirmService();
 
@@ -94,8 +100,6 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
       _apiCallCompleted = true; // untuk non-cash
     }
   }
-
-
 
   /// Process cash payment using ConfirmService
   Future<void> _processCashPayment() async {
@@ -194,6 +198,10 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate final total with tax
+    final finalTotal = widget.subtotal - widget.discount;
+    final grandTotal = finalTotal + widget.taxAmount;
+
     return Column(
       children: [
         // Status section (only for cash payments)
@@ -230,7 +238,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                 const SizedBox(height: 8),
                 _buildInfoItem(
                     'Total Pembayaran',
-                    formatCurrency(widget.isReservation ? widget.amountToPay : widget.total)
+                    formatCurrency(widget.isReservation ? widget.amountToPay : grandTotal)
                 ),
 
                 // Additional payment info for reservations
@@ -251,8 +259,6 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                 // Additional payment data from API response
                 if (_paymentData != null) ...[
                   const SizedBox(height: 8),
-                  // if (_paymentData!.containsKey('transaction_id'))
-                  //   _buildInfoItem('Transaction ID', _paymentData!['transaction_id'].toString()),
                   if (_paymentData!.containsKey('status'))
                     _buildInfoItem('Status', _paymentData!['status'].toString()),
                 ],
@@ -280,14 +286,11 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                   _buildInfoItem('Tanggal Reservasi', widget.reservationData!.formattedDate),
                   _buildInfoItem('Waktu Reservasi', widget.reservationData!.formattedTime),
                   _buildInfoItem('Jumlah Tamu', widget.reservationData!.personCount.toString()),
-                  // if (widget.reservationData!.specialRequest.isNotEmpty)
-                  //   _buildInfoItem('Permintaan Khusus', widget.reservationData!.specialRequest),
                 ],
-                // ✅ Outlet info (ambil dari item pertama)
+                // Outlet info (ambil dari item pertama)
                 if (widget.items.isNotEmpty) ...[
                   _buildInfoItem('Outlet', widget.items.first.outletName ?? '-'),
                 ],
-
 
                 const Divider(height: 32),
                 _buildSectionTitle('Detail Pesanan'),
@@ -296,15 +299,28 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                 const Divider(height: 32),
                 _buildSectionTitle('Rincian Biaya'),
                 _buildInfoItem('Subtotal', formatCurrency(widget.subtotal)),
+
+                // Voucher discount (if applicable)
                 if (widget.discount > 0) ...[
                   _buildInfoItem('Diskon', '- ${formatCurrency(widget.discount)}'),
                   if (widget.voucherCode != null && widget.voucherCode!.isNotEmpty)
                     _buildInfoItem('Voucher', widget.voucherCode!),
                 ],
+
+                // Tax details (if applicable)
+                if (widget.taxDetails.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...widget.taxDetails.map((tax) => _buildInfoItem(
+                    "${tax['name']} (${tax['percentage'].toStringAsFixed(0)}%)",
+                    "+ ${formatCurrency(tax['amount'].round())}",
+                    color: Colors.orange,
+                  )),
+                ],
+
                 const Divider(height: 16),
                 _buildInfoItem(
                     'Total',
-                    formatCurrency(widget.isReservation ? widget.amountToPay : widget.total),
+                    formatCurrency(widget.isReservation ? widget.amountToPay : grandTotal),
                     isBold: true
                 ),
               ],
@@ -475,6 +491,11 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   }
 
   Widget _buildPaymentInstructions() {
+    // Calculate final total with tax
+    final finalTotal = widget.subtotal - widget.discount;
+    final grandTotal = finalTotal + widget.taxAmount;
+    final totalToPay = widget.isReservation ? widget.amountToPay : grandTotal;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -516,7 +537,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
           ),
           const SizedBox(height: 8),
           Text(
-            '3. Bayar total sebesar ${formatCurrency(widget.isReservation ? widget.amountToPay : widget.total)} secara tunai',
+            '3. Bayar total sebesar ${formatCurrency(totalToPay)} secara tunai',
             style: const TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 8),
@@ -785,13 +806,26 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
     child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
   );
 
-  Widget _buildInfoItem(String label, String value, {bool isBold = false}) => Padding(
+  Widget _buildInfoItem(String label, String value, {bool isBold = false, Color? color}) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-        Text(value, style: TextStyle(fontSize: 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(
+            label,
+            style: TextStyle(
+                fontSize: 14,
+                color: color ?? Colors.grey[700]
+            )
+        ),
+        Text(
+            value,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: color
+            )
+        ),
       ],
     ),
   );

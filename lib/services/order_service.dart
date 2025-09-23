@@ -12,6 +12,8 @@ import '../models/reservation_data.dart';
 class OrderService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
+// Update the createOrder method in your order_service.dart
+
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
     required String userId,
@@ -32,6 +34,9 @@ class OrderService {
     ReservationType? reservationType,
     required Map<String, dynamic> paymentDetails,
     OpenBillData? openBillData,
+    // Add tax-related parameters
+    List<Map<String, dynamic>>? taxDetails,
+    int? totalTax,
   }) async {
     try {
       String? pickupTimeString;
@@ -47,6 +52,11 @@ class OrderService {
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
         'outlet': outletId ?? '67cbc9560f025d897d69f889',
+        // Add tax information
+        'taxDetails': taxDetails ?? [],
+        'totalTax': totalTax ?? 0,
+        'subtotal': subtotal,
+        'discount': discount,
       };
 
       if (voucherCode != null && voucherCode.isNotEmpty) {
