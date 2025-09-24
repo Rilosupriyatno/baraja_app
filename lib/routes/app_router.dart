@@ -5,9 +5,7 @@ import 'package:baraja_app/screens/auth_redirect_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
-import '../models/order_type.dart';
 import '../models/product.dart';
-import '../models/reservation_data.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/favorit_screen.dart';
 import '../screens/notification_screen.dart';
@@ -21,7 +19,6 @@ import '../screens/register_screen.dart';
 import '../screens/tracking_detail_order_screen.dart';
 import '../screens/voucher_screen.dart';
 import '../services/product_service.dart';
-import '../widgets/checkout/payment_type_widget.dart';
 import '../widgets/utils/navigation_bar.dart';
 
 class AppRouter {
@@ -254,7 +251,7 @@ class AppRouter {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>;
             return PaymentConfirmationScreen(
-              items: extra['items'],
+              items: (extra['items'] as List<dynamic>).cast<CartItem>(),
               userId: extra['userId'],
               userName: extra['userName'],
               orderType: extra['orderType'],
@@ -265,7 +262,7 @@ class AppRouter {
               subtotal: extra['subtotal'],
               discount: extra['discount'],
               total: extra['total'],
-              grandTotal: extra['grandTotal'], // ✅ TAMBAHKAN INI
+              grandTotal: extra['grandTotal'],
               paymentType: extra['paymentType'],
               amountToPay: extra['amountToPay'],
               voucherCode: extra['voucherCode'],
@@ -276,8 +273,8 @@ class AppRouter {
               downPaymentAmount: extra['downPaymentAmount'],
               remainingPayment: extra['remainingPayment'] ?? 0,
               isDownPayment: extra['isDownPayment'] ?? false,
-              taxAmount: extra['taxAmount'] ?? 0, // ✅ Sudah ada tapi pastikan diteruskan
-              taxDetails: extra['taxDetails'] ?? [], // ✅ Sudah ada tapi pastikan diteruskan
+              taxAmount: extra['taxAmount'] ?? 0,
+              taxDetails: (extra['taxDetails'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
             );
           },
         ),

@@ -7,15 +7,327 @@ import 'payment_row_widget.dart';
 
 class OrderDetailWidget extends StatelessWidget {
   final Map<String, dynamic> orderData;
-  final int taxAmount;
-  final List<Map<String, dynamic>> taxDetails;
 
   const OrderDetailWidget({
     super.key,
     required this.orderData,
-    this.taxAmount = 0,
-    this.taxDetails = const [],
   });
+
+//   Widget _buildVoucherSection(Map<String, dynamic> orderData) {
+//     final voucher = orderData['voucher'] as Map<String, dynamic>?;
+//
+//     if (voucher == null) {
+//       return const SizedBox.shrink();
+//     }
+//
+//     final discountAmount = _getNumericValue(voucher['discountAmount']);
+//     final voucherCode = voucher['code']?.toString() ?? '';
+//     final voucherName = voucher['name']?.toString() ?? '';
+//
+//     return Column(
+//       children: [
+//         // Voucher Section Header
+//         Row(
+//           children: [
+//             Container(
+//               padding: const EdgeInsets.all(8),
+//               decoration: BoxDecoration(
+//                 color: Colors.green.withOpacity(0.1),
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               child: const Icon(
+//                 Icons.local_offer,
+//                 color: Colors.green,
+//                 size: 20,
+//               ),
+//             ),
+//             const SizedBox(width: 12),
+//             const Text(
+//               'Voucher Diskon',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.w700,
+//                 color: Colors.black87,
+//                 letterSpacing: -0.5,
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: 16),
+//
+//         // Voucher Details Container
+//         Container(
+//           padding: const EdgeInsets.all(16),
+//           decoration: BoxDecoration(
+//             color: Colors.green.withOpacity(0.05),
+//             borderRadius: BorderRadius.circular(12),
+//             border: Border.all(
+//               color: Colors.green.withOpacity(0.2),
+//             ),
+//           ),
+//           child: Column(
+//             children: [
+//               // Voucher Code
+//               Container(
+//                 padding: const EdgeInsets.all(12),
+//                 decoration: BoxDecoration(
+//                   color: Colors.green.withOpacity(0.1),
+//                   borderRadius: BorderRadius.circular(8),
+//                   border: Border.all(
+//                     color: Colors.green.withOpacity(0.3),
+//                   ),
+//                 ),
+//                 child: Row(
+//                   children: [
+//                     const Icon(
+//                       Icons.confirmation_number,
+//                       size: 20,
+//                       color: Colors.green,
+//                     ),
+//                     const SizedBox(width: 12),
+//                     Expanded(
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text(
+//                             'Kode Voucher',
+//                             style: TextStyle(
+//                               fontSize: 12,
+//                               color: Colors.grey.shade600,
+//                               fontWeight: FontWeight.w500,
+//                             ),
+//                           ),
+//                           const SizedBox(height: 2),
+//                           Text(
+//                             voucherCode,
+//                             style: const TextStyle(
+//                               fontSize: 16,
+//                               fontWeight: FontWeight.w700,
+//                               color: Colors.green,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//
+//               // Voucher Name and Discount
+//               Container(
+//                 padding: const EdgeInsets.all(12),
+//                 decoration: BoxDecoration(
+//                   color: Colors.white,
+//                   borderRadius: BorderRadius.circular(8),
+//                   border: Border.all(
+//                     color: Colors.green.withOpacity(0.3),
+//                   ),
+//                 ),
+//                 child: Row(
+//                   children: [
+//                     const Icon(
+//                       Icons.discount,
+//                       size: 20,
+//                       color: Colors.green,
+//                     ),
+//                     const SizedBox(width: 12),
+//                     Expanded(
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text(
+//                             voucherName,
+//                             style: TextStyle(
+//                               fontSize: 14,
+//                               fontWeight: FontWeight.w600,
+//                               color: Colors.grey.shade700,
+//                             ),
+//                           ),
+//                           Text(
+//                             'Diskon Diterapkan',
+//                             style: TextStyle(
+//                               fontSize: 12,
+//                               color: Colors.grey.shade500,
+//                               fontWeight: FontWeight.w400,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     Text(
+//                       '-${formatCurrency(discountAmount)}',
+//                       style: const TextStyle(
+//                         fontSize: 16,
+//                         fontWeight: FontWeight.w700,
+//                         color: Colors.green,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//         const SizedBox(height: 20),
+//
+//         // Divider
+//         Container(
+//           height: 1,
+//           margin: const EdgeInsets.symmetric(horizontal: 0),
+//           decoration: BoxDecoration(
+//             gradient: LinearGradient(
+//               colors: [
+//                 Colors.transparent,
+//                 Colors.grey.shade200,
+//                 Colors.transparent,
+//               ],
+//             ),
+//           ),
+//         ),
+//         const SizedBox(height: 20),
+//       ],
+//     );
+//   }
+//
+// // Widget untuk menampilkan informasi tax
+//   Widget _buildTaxSection(Map<String, dynamic> orderData) {
+//     final taxAndServiceDetails = orderData['taxAndServiceDetails'] as List?;
+//     final totalBeforeDiscount = _getNumericValue(orderData['totalBeforeDiscount']);
+//     final totalAfterDiscount = _getNumericValue(orderData['totalAfterDiscount']);
+//
+//     if (taxAndServiceDetails == null || taxAndServiceDetails.isEmpty) {
+//       return const SizedBox.shrink();
+//     }
+//
+//     return Column(
+//       children: [
+//         // Tax Section Header
+//         Row(
+//           children: [
+//             Container(
+//               padding: const EdgeInsets.all(8),
+//               decoration: BoxDecoration(
+//                 color: Colors.blue.withOpacity(0.1),
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               child: const Icon(
+//                 Icons.receipt_long,
+//                 color: Colors.blue,
+//                 size: 20,
+//               ),
+//             ),
+//             const SizedBox(width: 12),
+//             const Text(
+//               'Pajak & Biaya Layanan',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.w700,
+//                 color: Colors.black87,
+//                 letterSpacing: -0.5,
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: 16),
+//
+//         // Tax Details Container
+//         Container(
+//           padding: const EdgeInsets.all(16),
+//           decoration: BoxDecoration(
+//             color: Colors.blue.withOpacity(0.05),
+//             borderRadius: BorderRadius.circular(12),
+//             border: Border.all(
+//               color: Colors.blue.withOpacity(0.2),
+//             ),
+//           ),
+//           child: Column(
+//             children: taxAndServiceDetails.map<Widget>((taxDetail) {
+//               final taxName = taxDetail['name']?.toString() ?? '';
+//               final taxAmount = _getNumericValue(taxDetail['amount']);
+//               final taxType = taxDetail['type']?.toString() ?? '';
+//
+//               // Calculate percentage based on total after discount (before tax)
+//               double percentage = 0.0;
+//               if (totalAfterDiscount > 0) {
+//                 percentage = (taxAmount / totalAfterDiscount) * 100;
+//               }
+//
+//               return Container(
+//                 margin: const EdgeInsets.only(bottom: 8),
+//                 padding: const EdgeInsets.all(12),
+//                 decoration: BoxDecoration(
+//                   color: Colors.white,
+//                   borderRadius: BorderRadius.circular(8),
+//                   border: Border.all(
+//                     color: Colors.blue.withOpacity(0.3),
+//                   ),
+//                 ),
+//                 child: Row(
+//                   children: [
+//                     Icon(
+//                       taxType == 'tax' ? Icons.account_balance : Icons.room_service,
+//                       size: 20,
+//                       color: Colors.blue,
+//                     ),
+//                     const SizedBox(width: 12),
+//                     Expanded(
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text(
+//                             taxName,
+//                             style: TextStyle(
+//                               fontSize: 14,
+//                               fontWeight: FontWeight.w600,
+//                               color: Colors.grey.shade700,
+//                             ),
+//                           ),
+//                           Text(
+//                             '${percentage.toStringAsFixed(1)}%',
+//                             style: TextStyle(
+//                               fontSize: 12,
+//                               color: Colors.grey.shade500,
+//                               fontWeight: FontWeight.w500,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     Text(
+//                       formatCurrency(taxAmount),
+//                       style: const TextStyle(
+//                         fontSize: 16,
+//                         fontWeight: FontWeight.w700,
+//                         color: Colors.blue,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               );
+//             }).toList(),
+//           ),
+//         ),
+//         const SizedBox(height: 20),
+//
+//         // Divider
+//         Container(
+//           height: 1,
+//           margin: const EdgeInsets.symmetric(horizontal: 0),
+//           decoration: BoxDecoration(
+//             gradient: LinearGradient(
+//               colors: [
+//                 Colors.transparent,
+//                 Colors.grey.shade200,
+//                 Colors.transparent,
+//               ],
+//             ),
+//           ),
+//         ),
+//         const SizedBox(height: 20),
+//       ],
+//     );
+//   }
 
   // Method untuk mendapatkan status pembayaran dengan dukungan down payment
   Map<String, dynamic> _getPaymentStatus(String? status, Map<String, dynamic>? paymentDetails) {
@@ -666,35 +978,64 @@ class OrderDetailWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Show total only if not down payment or if items exist
-                // Show total only if not down payment or if items exist
-                if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty) ...[
-                  PaymentRowWidget(
-                    label: 'Subtotal',
-                    value: formatCurrency(_getNumericValue(orderData['subtotal'] ?? orderData['grandTotal'])),
-                    icon: Icons.receipt,
-                    isTotal: false,
-                  ),
+                // Subtotal (before discount)
+                PaymentRowWidget(
+                  label: 'Subtotal',
+                  value: formatCurrency(_getNumericValue(orderData['totalBeforeDiscount'])),
+                  icon: Icons.calculate,
+                  isTotal: false,
+                ),
 
-                  // Tambahkan tax details section di sini:
-                  if (taxDetails.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ...taxDetails.map((tax) => PaymentRowWidget(
-                      label: "${tax['name']} (${tax['percentage'].toStringAsFixed(0)}%)",
-                      value: "+ ${formatCurrency(tax['amount'].round())}",
-                      icon: Icons.receipt,
-                      isTotal: false,
-                    )),
-                  ],
-
+                // Show voucher discount if exists
+                if (orderData['voucher'] != null) ...[
                   const SizedBox(height: 8),
                   PaymentRowWidget(
-                    label: 'Total',
-                    value: formatCurrency(_getNumericValue(orderData['grandTotal'])),
-                    icon: Icons.receipt,
-                    isTotal: true,
+                    label: 'Diskon (${orderData['voucher']['code']})',
+                    value: '-${formatCurrency(_getNumericValue(orderData['voucher']['discountAmount']))}',
+                    icon: Icons.local_offer,
+                    isTotal: false,
+                  ),
+                  const SizedBox(height: 8),
+                  PaymentRowWidget(
+                    label: 'Subtotal setelah diskon',
+                    value: formatCurrency(_getNumericValue(orderData['totalAfterDiscount'])),
+                    icon: Icons.price_check,
+                    isTotal: false,
                   ),
                 ],
+
+                // Show tax details
+                if (orderData['taxAndServiceDetails'] != null) ...[
+                  const SizedBox(height: 8),
+                  ...(orderData['taxAndServiceDetails'] as List).map<Widget>((taxDetail) {
+                    final taxAmount = _getNumericValue(taxDetail['amount']);
+                    final taxName = taxDetail['name']?.toString() ?? '';
+                    final totalAfterDiscount = _getNumericValue(orderData['totalAfterDiscount']);
+
+                    double percentage = 0.0;
+                    if (totalAfterDiscount > 0) {
+                      percentage = (taxAmount / totalAfterDiscount) * 100;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: PaymentRowWidget(
+                        label: '$taxName (${percentage.toStringAsFixed(1)}%)',
+                        value: formatCurrency(taxAmount),
+                        icon: Icons.account_balance,
+                        isTotal: false,
+                      ),
+                    );
+                  }),
+                ],
+
+                const SizedBox(height: 8),
+                PaymentRowWidget(
+                  label: 'Total',
+                  value: formatCurrency(_getNumericValue(orderData['grandTotal'])),
+                  icon: Icons.receipt,
+                  isTotal: true,
+                ),
 
                 if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
                   const SizedBox(height: 16),
@@ -754,7 +1095,7 @@ class OrderDetailWidget extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+          )
         ],
       ),
     );

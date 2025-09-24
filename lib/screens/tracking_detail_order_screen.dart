@@ -595,12 +595,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
                               width: double.infinity,
                               color: Colors.white,
                               child: OrderDetailWidget(
-                                orderData: orderData!,
-                                // Tambahkan parameter berikut:
-                                taxAmount: orderData!['taxAmount'] ?? 0,
-                                taxDetails: (orderData!['taxDetails'] as List<dynamic>?)
-                                    ?.map((tax) => Map<String, dynamic>.from(tax))
-                                    .toList() ?? [],
+                                orderData: orderData!
                               ),
                             ),
                           ),

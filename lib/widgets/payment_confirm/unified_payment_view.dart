@@ -199,8 +199,8 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
   @override
   Widget build(BuildContext context) {
     // Calculate final total with tax
-    final finalTotal = widget.subtotal - widget.discount;
-    final grandTotal = finalTotal + widget.taxAmount;
+    // final finalTotal = widget.subtotal - widget.discount;
+    // final grandTotal = finalTotal + widget.taxAmount;
     final finalTotalWithTax = widget.grandTotal;
 
     return Column(
