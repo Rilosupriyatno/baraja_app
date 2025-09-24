@@ -10,7 +10,7 @@ import '../models/reservation_data.dart';
 import '../models/voucher_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
-import '../services/tex_service.dart';
+import '../services/tax_service.dart';
 import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
 import '../widgets/checkout/checkout_validator.dart';

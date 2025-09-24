@@ -2,7 +2,7 @@ import 'package:baraja_app/theme/app_theme.dart';
 import 'package:baraja_app/widgets/checkout/payment_type_widget.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
-import '../../services/tex_service.dart'; // Import TaxCalculationResult from here
+import '../../services/tax_service.dart'; // Import TaxCalculationResult from here
 
 class CheckoutSummary extends StatelessWidget {
   final int totalPrice;
@@ -13,7 +13,7 @@ class CheckoutSummary extends StatelessWidget {
   final bool isOpenBill;
   final PaymentType? selectedPaymentType;
   final String? discountType;
-  final TaxCalculationResult? taxCalculation; // Now uses the class from tex_service.dart
+  final TaxCalculationResult? taxCalculation; // Now uses the class from tax_service.dart
 
   const CheckoutSummary({
     super.key,
