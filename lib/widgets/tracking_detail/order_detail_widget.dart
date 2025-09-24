@@ -1020,7 +1020,7 @@ class OrderDetailWidget extends StatelessWidget {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: PaymentRowWidget(
-                        label: '$taxName (${percentage.toStringAsFixed(1)}%)',
+                        label: '$taxName (${percentage.toStringAsFixed(0)}%)',
                         value: formatCurrency(taxAmount),
                         icon: Icons.account_balance,
                         isTotal: false,
