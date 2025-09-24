@@ -39,6 +39,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
   // Add tax-related parameters
   final int? taxAmount;
   final List<Map<String, dynamic>>? taxDetails;
+  final int grandTotal;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -66,6 +67,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     // Add tax parameters
     this.taxAmount,
     this.taxDetails,
+    required this.grandTotal,
   });
 
   @override
@@ -309,6 +311,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             subtotal: widget.subtotal,
             discount: widget.discount,
             total: widget.total,
+            grandTotal: widget.grandTotal,
             voucherCode: widget.voucherCode,
             items: widget.items,
             isCashPayment: _isCashPayment,

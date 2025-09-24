@@ -742,10 +742,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'subtotal': subtotal,
                         'discount': discount,
                         'total': finalTotal,
+                        // ✅ TAMBAHKAN INI - Tax data yang sebelumnya hilang
                         'taxAmount': taxAmount,
                         'taxDetails': _taxCalculation?.taxDetails ?? [],
+                        'grandTotal': grandTotal, // Total sudah termasuk tax
                         'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
-                        'amountToPay': amountToPay,
+                        'amountToPay': amountToPay, // Sudah menggunakan grandTotal untuk perhitungan
                         'voucherCode': selectedVoucherCode,
                         'id': orderResult['order']?['_id'] ?? '',
                         'orderId': orderResult['order']?['order_id'] ?? '',

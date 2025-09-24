@@ -251,32 +251,33 @@ class AppRouter {
         // Payment confirmation page
         GoRoute(
           path: '/paymentConfirmation',
-          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            final Map<String, dynamic> extras = state.extra as Map<String, dynamic>;
-
+            final extra = state.extra as Map<String, dynamic>;
             return PaymentConfirmationScreen(
-              items: (extras['items'] as List).cast<CartItem>(),
-              orderType: extras['orderType'] as OrderType,
-              tableNumber: extras['tableNumber'] as String,
-              deliveryAddress: extras['deliveryAddress'] as String,
-              pickupTime: extras['pickupTime'] as TimeOfDay?,
-              paymentDetails: (extras['paymentDetails'] as Map<String, String?>),
-              subtotal: extras['subtotal'] as int,
-              discount: extras['discount'] as int,
-              total: extras['total'] as int,
-              voucherCode: extras['voucherCode'] as String?,
-              orderId: extras['orderId'] as String,
-              id: extras['id'] as String,
-              userId: extras['userId'] as String?,
-              userName: extras['userName'] as String?,
-              paymentType: extras['paymentType'] as PaymentType?,
-              amountToPay: extras['amountToPay'] as int,
-              reservationData: extras['reservationData'] as ReservationData?,
-              isReservation: extras['isReservation'] as bool? ?? false,
-              downPaymentAmount: extras['downPaymentAmount'] as int? ?? 0,
-              remainingPayment: extras['remainingPayment'] as int? ?? 0,
-              isDownPayment: extras['isDownPayment'] as bool? ?? false,
+              items: extra['items'],
+              userId: extra['userId'],
+              userName: extra['userName'],
+              orderType: extra['orderType'],
+              tableNumber: extra['tableNumber'] ?? '',
+              deliveryAddress: extra['deliveryAddress'] ?? '',
+              pickupTime: extra['pickupTime'],
+              paymentDetails: extra['paymentDetails'],
+              subtotal: extra['subtotal'],
+              discount: extra['discount'],
+              total: extra['total'],
+              grandTotal: extra['grandTotal'], // ✅ TAMBAHKAN INI
+              paymentType: extra['paymentType'],
+              amountToPay: extra['amountToPay'],
+              voucherCode: extra['voucherCode'],
+              orderId: extra['orderId'],
+              id: extra['id'],
+              reservationData: extra['reservationData'],
+              isReservation: extra['isReservation'] ?? false,
+              downPaymentAmount: extra['downPaymentAmount'],
+              remainingPayment: extra['remainingPayment'] ?? 0,
+              isDownPayment: extra['isDownPayment'] ?? false,
+              taxAmount: extra['taxAmount'] ?? 0, // ✅ Sudah ada tapi pastikan diteruskan
+              taxDetails: extra['taxDetails'] ?? [], // ✅ Sudah ada tapi pastikan diteruskan
             );
           },
         ),

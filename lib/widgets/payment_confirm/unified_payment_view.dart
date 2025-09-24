@@ -25,10 +25,10 @@ class UnifiedPaymentView extends StatefulWidget {
   final int subtotal;
   final int discount;
   final int total;
+  final int grandTotal;
   final String? voucherCode;
   final List<CartItem> items;
   final bool isCashPayment;
-
   // Reservation-specific parameters
   final bool isReservation;
   final PaymentType? paymentType;
@@ -36,7 +36,6 @@ class UnifiedPaymentView extends StatefulWidget {
   final int remainingPayment;
   final bool isDownPayment;
   final ReservationData? reservationData;
-
   // Tax-related parameters
   final int taxAmount;
   final List<Map<String, dynamic>> taxDetails;
@@ -53,6 +52,7 @@ class UnifiedPaymentView extends StatefulWidget {
     required this.subtotal,
     required this.discount,
     required this.total,
+    required this.grandTotal,
     required this.voucherCode,
     required this.items,
     required this.isCashPayment,
@@ -201,6 +201,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
     // Calculate final total with tax
     final finalTotal = widget.subtotal - widget.discount;
     final grandTotal = finalTotal + widget.taxAmount;
+    final finalTotalWithTax = widget.grandTotal;
 
     return Column(
       children: [
@@ -236,9 +237,14 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                         : (widget.paymentDetails['bankName'] ?? 'Unknown')
                 ),
                 const SizedBox(height: 8),
+                // _buildInfoItem(
+                //     'Total Pembayaran',
+                //     formatCurrency(widget.isReservation ? widget.amountToPay : grandTotal)
+                // ),
+
                 _buildInfoItem(
                     'Total Pembayaran',
-                    formatCurrency(widget.isReservation ? widget.amountToPay : grandTotal)
+                    formatCurrency(widget.isReservation ? widget.amountToPay : finalTotalWithTax) // ✅ Gunakan finalTotalWithTax
                 ),
 
                 // Additional payment info for reservations
@@ -307,7 +313,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                     _buildInfoItem('Voucher', widget.voucherCode!),
                 ],
 
-                // Tax details (if applicable)
+                // Tax details (if applicable) - ✅ PASTIKAN INI DITAMPILKAN
                 if (widget.taxDetails.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...widget.taxDetails.map((tax) => _buildInfoItem(
@@ -320,7 +326,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
                 const Divider(height: 16),
                 _buildInfoItem(
                     'Total',
-                    formatCurrency(widget.isReservation ? widget.amountToPay : grandTotal),
+                    formatCurrency(widget.isReservation ? widget.amountToPay : finalTotalWithTax), // ✅ Gunakan finalTotalWithTax
                     isBold: true
                 ),
               ],
