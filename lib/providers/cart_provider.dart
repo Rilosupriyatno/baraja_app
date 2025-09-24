@@ -166,7 +166,7 @@ class CartProvider with ChangeNotifier {
   int get totalPrice {
     // Jika reservasi tanpa item → fallback harga default
     if (_isReservation && _items.isEmpty) {
-      return 100000;
+      return 25000;
     }
 
     // Hitung total semua item di cart

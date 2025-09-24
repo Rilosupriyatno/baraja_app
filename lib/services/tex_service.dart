@@ -108,14 +108,14 @@ class TaxService {
     List<Map<String, dynamic>> taxDetails = [];
 
     // Don't apply any tax for open bill orders
-    if (isOpenBill) {
-      return TaxCalculationResult(
-        ppnAmount: 0,
-        pb1Amount: 0,
-        totalTaxAmount: 0,
-        taxDetails: [],
-      );
-    }
+    // if (isOpenBill) {
+    //   return TaxCalculationResult(
+    //     ppnAmount: 0,
+    //     pb1Amount: 0,
+    //     totalTaxAmount: 0,
+    //     taxDetails: [],
+    //   );
+    // }
 
     for (TaxItem tax in _cachedTaxes!) {
       // Check if tax applies to this outlet

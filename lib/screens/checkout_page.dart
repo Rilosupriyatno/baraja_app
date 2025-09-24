@@ -104,6 +104,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Get actual data from CartProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      if (_isReservationWithoutMenu(cartProvider)) {
+        setState(() {
+          selectedPaymentType = PaymentType.fullPayment;
+        });
+      }
       if (cartProvider.items.isNotEmpty) {
         setState(() {
           outletId = cartProvider.items.first.outletId?.toString();
@@ -123,6 +128,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       setState(() {});
     });
   }
+  bool _isReservationWithoutMenu(CartProvider cartProvider) {
+    return cartProvider.isReservation &&
+        cartProvider.items.isEmpty &&
+        cartProvider.totalPrice == 25000;
+  }
   Future<void> _initializeTaxData() async {
     try {
       await _taxService.getTaxesAndServices();
@@ -138,10 +148,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  // Add these debug statements to your _calculateTaxes() method in checkout_page.dart
+
   void _calculateTaxes() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
+    print("🔍 DEBUG TAX CALCULATION:");
+    print("- _taxesLoaded: $_taxesLoaded");
+    print("- outletId: $outletId");
+    print("- isOpenBill: ${cartProvider.isOpenBill}");
+    print("- isReservation: ${cartProvider.isReservation}");
+
     if (!_taxesLoaded || outletId == null) {
+      print("❌ Tax calculation skipped - missing requirements");
       setState(() {
         _taxCalculation = null;
       });
@@ -152,12 +171,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final discount = calculateDiscount(subtotal);
     final finalTotal = subtotal - discount;
 
+    print("- subtotal: $subtotal");
+    print("- discount: $discount");
+    print("- finalTotal: $finalTotal");
+
     final taxCalculation = _taxService.calculateTaxes(
       subtotal: finalTotal.toDouble(),
       outletId: outletId!,
       isReservation: cartProvider.isReservation,
       isOpenBill: cartProvider.isOpenBill,
     );
+
+    print("- taxCalculation result: ${taxCalculation.totalTaxAmount}");
+    print("- taxDetails: ${taxCalculation.taxDetails}");
 
     setState(() {
       _taxCalculation = taxCalculation;
@@ -427,7 +453,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 padding: EdgeInsets.symmetric(vertical: 24.0),
                                 child: Center(
                                   child: Text(
-                                    "Reservasi tanpa menu (Rp100.000)",
+                                    "Reservasi tanpa menu (Rp25.000)",
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.black87,
@@ -531,16 +557,71 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                           // Payment Type Selection for Reservations - Moved here
                           if (cartProvider.isReservation) ...[
-                            ReservationPaymentTypeWidget(
-                              selectedType: selectedPaymentType,
-                              onChanged: (PaymentType type) {
-                                setState(() {
-                                  selectedPaymentType = type;
-                                });
-                              },
-                              totalAmount: finalTotal,
-                              downPaymentAmount: downPaymentAmount,
-                            ),
+                            // Jika reservasi tanpa menu, otomatis hide widget atau set ke full payment
+                            if (!_isReservationWithoutMenu(cartProvider))
+                              ReservationPaymentTypeWidget(
+                                selectedType: selectedPaymentType,
+                                onChanged: (PaymentType type) {
+                                  setState(() {
+                                    selectedPaymentType = type;
+                                  });
+                                },
+                                totalAmount: grandTotal,
+                                downPaymentAmount: downPaymentAmount,
+                              ),
+
+                            // Info box untuk reservasi tanpa menu
+                            if (_isReservationWithoutMenu(cartProvider))
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.payment,
+                                      color: Colors.blue.shade600,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Pembayaran Reservasi',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Biaya reservasi tanpa menu: ${_formatCurrency(25000)}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.blue.shade600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Pembayaran penuh diperlukan untuk mengkonfirmasi reservasi',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
                             const SizedBox(height: 24),
                           ],
 
@@ -643,9 +724,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     final prefs = await SharedPreferences.getInstance();
                     final userId = prefs.getString('userId');
                     final userName = prefs.getString('userName') ?? 'Guest';
-                    int amountToPay = grandTotal; // Use grandTotal instead of finalTotal
+                    int amountToPay = grandTotal;
                     if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
-                      amountToPay = downPaymentAmount;
+                      // Jika reservasi tanpa menu, selalu bayar full
+                      if (_isReservationWithoutMenu(cartProvider)) {
+                        amountToPay = grandTotal; // Always full payment for reservation without menu
+                      } else {
+                        amountToPay = downPaymentAmount;
+                      }
                     }
 
                     // Tampilkan loading indicator

@@ -64,7 +64,7 @@ class OrderService {
       }
 
       if (openBillData != null) {
-        orderData['isOpenBill'] = "true";
+        orderData['isOpenBill'] = true;
         orderData['openBillData'] = {
           'reservationId': openBillData.reservationId,
           'tableNumbers': openBillData.tableNumbers,
