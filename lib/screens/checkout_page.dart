@@ -16,12 +16,12 @@ import '../widgets/checkout/checkout_summary.dart';
 import '../widgets/checkout/checkout_validator.dart';
 import '../widgets/checkout/dine_in_info_widget.dart';
 import '../widgets/checkout/open_bill_info_widget.dart';
-import '../widgets/checkout/payment_type_widget.dart';
 import '../widgets/checkout/reservation_info_widget.dart';
 import '../widgets/checkout/order_type_selector_widget.dart';
 import '../widgets/checkout/reservation_payment_type_widget.dart';
 import '../widgets/checkout/reservation_type_selector_widget.dart';
 import '../widgets/checkout/voucher_widget.dart';
+import '../widgets/utils/payment_method_with_validation.dart';
 
 // Enum untuk tipe reservasi
 enum ReservationType { nonBlocking, blocking }

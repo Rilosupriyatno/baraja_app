@@ -2,6 +2,7 @@ import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:baraja_app/screens/reservation_screen.dart';
 import 'package:baraja_app/screens/scanner.dart';
 import 'package:baraja_app/screens/auth_redirect_page.dart';
+import 'package:baraja_app/widgets/utils/ticket_payment_instruction_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -16,6 +17,7 @@ import '../screens/payment_confirmation_screen.dart';
 import '../screens/payment_method_screen.dart';
 import '../screens/product_detail_screen.dart';
 import '../screens/register_screen.dart';
+import '../screens/ticket_payment_confirmation_screen.dart';
 import '../screens/tracking_detail_order_screen.dart';
 import '../screens/voucher_screen.dart';
 import '../services/product_service.dart';
@@ -225,10 +227,50 @@ class AppRouter {
         ),
 
         // Payment method selection page
+        // GoRoute(
+        //   path: '/paymentMethod',
+        //   parentNavigatorKey: _rootNavigatorKey,
+        //   builder: (context, state) => const PaymentMethodScreen(),
+        // ),
+        // Add these routes to your GoRouter configuration
+
         GoRoute(
           path: '/paymentMethod',
-          parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const PaymentMethodScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return PaymentMethodScreen(
+              source: extra?['source'],
+              eventData: extra?['eventData'],
+            );
+          },
+        ),
+
+        GoRoute(
+          path: '/ticketPaymentConfirmation',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>;
+            return TicketPaymentConfirmationScreen(
+              eventData: extra['eventData'],
+              paymentData: extra['paymentData'],
+            );
+          },
+        ),
+
+        GoRoute(
+          path: '/ticketPaymentInstructions',
+          builder: (context, state) {
+            // Ambil data dari extra
+            final extra = state.extra as Map<String, dynamic>?;
+            final paymentResult = extra?['paymentResult'];
+            final eventData = extra?['eventData'];
+            final paymentData = extra?['paymentData'];
+
+            return TicketPaymentInstructionsScreen(
+              paymentResult: paymentResult,
+              eventData: eventData,
+              paymentData: paymentData,
+            );
+          },
         ),
 
         GoRoute(

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import '../models/event_model.dart';
-import '../services/ticket_service.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -15,9 +14,7 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  bool _isLoading = false;
-
-  // Gold & Silver
+  // Gold & Silver colors
   Color get _goldColor => const Color(0xFFD4AF37);
   Color get _goldBackgroundColor => const Color(0xFFFFF8E1);
   Color get _silverColor => const Color(0xFF8E8E93);
@@ -214,13 +211,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ],
         ),
       ),
-      // Floating Action Button (Buy Ticket)
+      // Floating Action Button (Buy Ticket) - Updated to navigate to payment method selection
       floatingActionButton: !isFree
           ? Container(
         width: double.infinity,
         margin: const EdgeInsets.symmetric(horizontal: 24),
         child: ElevatedButton(
-          onPressed: _isLoading ? null : _handleBuyTicket,
+          onPressed: _handleBuyTicket,
           style: ElevatedButton.styleFrom(
             backgroundColor: _goldColor,
             foregroundColor: Colors.white,
@@ -230,18 +227,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             elevation: 4,
             shadowColor: _goldColor.withOpacity(0.3),
-            disabledBackgroundColor: Colors.grey.shade300,
           ),
-          child: _isLoading
-              ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          )
-              : const Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.shopping_cart, size: 20),
@@ -259,78 +246,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  Future<void> _handleBuyTicket() async {
-    setState(() => _isLoading = true);
+// Update the _handleBuyTicket method in your EventDetailScreen
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('userId');
-
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Anda harus login terlebih dahulu');
+  void _handleBuyTicket() {
+    // Navigate to payment method screen with event context
+    context.push('/paymentMethod', extra: {
+      'source': 'event', // This tells the payment method screen where it came from
+      'eventData': {
+        'id': widget.event.id,
+        'name': widget.event.name,
+        'price': widget.event.price,
+        'date': widget.event.date.toIso8601String(),
+        'location': widget.event.location,
+        'organizer': widget.event.organizer,
+        'category': widget.event.category,
       }
-
-      final ticketService = TicketService();
-      final result = await ticketService.buyTicket(
-        eventId: widget.event.id,
-        userId: userId,
-        quantity: 1,
-        paymentMethod: "bank_transfer",
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    result['message'] ?? 'Tiket berhasil dipesan!',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    e.toString().replaceAll('Exception: ', ''),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    });
   }
 
-  // 🔹 helper widgets
+  // Helper widgets (unchanged from original)
   Widget _placeholder() => Container(
     decoration: BoxDecoration(
       gradient: LinearGradient(

@@ -3,6 +3,7 @@ import '../models/event_model.dart';
 import '../services/event_service.dart';
 import '../widgets/event/event_card.dart';
 import 'event_detail_screen.dart';
+import 'ticket_history_screen.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key});
@@ -27,6 +28,33 @@ class _EventScreenState extends State<EventScreen> {
     });
   }
 
+  void _navigateToHistory() {
+    // TODO: Replace with actual user ID from your authentication system
+    const String userId = "67f2b12c155a5fb3ea2b4ae5"; // This should come from your user session/auth
+
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const TicketHistoryScreen(userId: userId),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,6 +71,18 @@ class _EventScreenState extends State<EventScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _navigateToHistory,
+            icon: const Icon(
+              Icons.history,
+              size: 24,
+            ),
+            tooltip: 'Riwayat Tiket',
+            splashRadius: 24,
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(

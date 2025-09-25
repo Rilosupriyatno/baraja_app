@@ -61,4 +61,28 @@ class Event {
       updatedAt: DateTime.parse(json['updatedAt']),
     );
   }
+
+  /// Tambahkan ini
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'description': description,
+      'location': location,
+      'date': date.toIso8601String(),
+      'price': price,
+      'organizer': organizer,
+      'contactEmail': contactEmail,
+      'imageUrl': imageUrl,
+      'category': category,
+      'tags': tags,
+      'status': status,
+      'capacity': capacity,
+      'attendees': attendees,
+      'privacy': privacy,
+      'terms': terms,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
 }

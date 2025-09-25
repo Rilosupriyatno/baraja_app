@@ -4,7 +4,14 @@ import '../services/payment_methode_service.dart';
 import '../widgets/utils/classic_app_bar.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
-  const PaymentMethodScreen({super.key});
+  final String? source; // 'checkout' atau 'event'
+  final Map<String, dynamic>? eventData; // Data event untuk ticket purchase
+
+  const PaymentMethodScreen({
+    super.key,
+    this.source,
+    this.eventData,
+  });
 
   @override
   State<PaymentMethodScreen> createState() => _PaymentMethodScreenState();
@@ -12,6 +19,7 @@ class PaymentMethodScreen extends StatefulWidget {
 
 class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   List<Map<String, dynamic>> paymentMethods = [];
+  Map<String, dynamic>? selectedMethod;
 
   @override
   void initState() {
@@ -32,60 +40,207 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     }
   }
 
+  String get _getTitle {
+    return widget.source == 'event' ? 'Pilih Metode Pembayaran Tiket' : 'Metode Pembayaran';
+  }
+
+  void _handleMethodSelection(Map<String, dynamic> method) {
+    if (widget.source == 'event') {
+      setState(() {
+        selectedMethod = method;
+      });
+    } else {
+      // Original behavior for checkout
+      final result = {
+        'payment_method': method['payment_method'],
+        'payment_method_name': method['payment_method_name'],
+        'name': method['name'],
+        'bank_code': method['bank_code'] ?? '',
+      };
+      context.pop(result);
+    }
+  }
+
+  void _proceedToTicketPayment() {
+    if (selectedMethod == null) return;
+
+    final paymentData = {
+      'payment_method': selectedMethod!['payment_method'],
+      'payment_method_name': selectedMethod!['payment_method_name'],
+      'name': selectedMethod!['name'],
+      'bank_code': selectedMethod!['bank_code'] ?? '',
+    };
+
+    // Navigate to ticket payment confirmation
+    context.push('/ticketPaymentConfirmation', extra: {
+      'eventData': widget.eventData,
+      'paymentData': paymentData,
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (paymentMethods.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        appBar: ClassicAppBar(title: _getTitle),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const ClassicAppBar(title: 'Metode Pembayaran'),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: paymentMethods.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final method = paymentMethods[index];
-
-          // Color color = Colors.grey;
-          // try {
-          //   color = Color(int.parse(method['color'].substring(1, 7), radix: 16) + 0xFF000000);
-          // } catch (_) {}
-
-          return ListTile(
-            leading: CircleAvatar(
-              // backgroundColor: color,
-              backgroundImage: AssetImage('assets/icons/${method['icon']}'),
-              // child: Icon(
-              //   _getIconData(method['icons']),
-              //   color: Colors.white,
-              //   size: 24,
-              // ),
-            ),
-            title: Text(
-              method['name'],
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
+      appBar: ClassicAppBar(title: _getTitle),
+      body: Column(
+        children: [
+          // Info card for event ticket purchase
+          if (widget.source == 'event' && widget.eventData != null) ...[
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.confirmation_number,
+                    color: Colors.blue.shade600,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pembelian Tiket Event',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                        Text(
+                          widget.eventData!['name'] ?? 'Event',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue.shade600,
+                          ),
+                        ),
+                        Text(
+                          'Harga: Rp ${widget.eventData!['price']?.toString() ?? '0'}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            subtitle: Text(method['payment_method_name']),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              final result = {
-                'payment_method': method['payment_method'],
-                'payment_method_name': method['payment_method_name'],
-                'name': method['name'],
-                'bank_code': method['bank_code'] ?? '',
-              };
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Pilih metode pembayaran untuk tiket Anda:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
 
-              context.pop(result);
-            },
-          );
-        },
+          // Payment methods list
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: paymentMethods.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final method = paymentMethods[index];
+                final isSelected = widget.source == 'event' &&
+                    selectedMethod?['payment_method'] == method['payment_method'];
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.blue.shade50 : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: isSelected ? Border.all(color: Colors.blue.shade300) : null,
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: AssetImage('assets/icons/${method['icon']}'),
+                    ),
+                    title: Text(
+                      method['name'],
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.blue.shade700 : Colors.black87,
+                      ),
+                    ),
+                    subtitle: Text(
+                      method['payment_method_name'],
+                      style: TextStyle(
+                        color: isSelected ? Colors.blue.shade600 : Colors.grey.shade600,
+                      ),
+                    ),
+                    trailing: widget.source == 'event'
+                        ? isSelected
+                        ? Icon(Icons.check_circle, color: Colors.blue.shade600)
+                        : const Icon(Icons.chevron_right)
+                        : const Icon(Icons.chevron_right),
+                    onTap: () => _handleMethodSelection(method),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
+
+      // Bottom button for event ticket purchase
+      bottomNavigationBar: widget.source == 'event'
+          ? Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 6,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: selectedMethod != null ? _proceedToTicketPayment : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: selectedMethod != null ? Colors.blue.shade600 : Colors.grey.shade300,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: selectedMethod != null ? 2 : 0,
+          ),
+          child: const Text(
+            'Lanjutkan Pembayaran',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      )
+          : null,
     );
   }
 }
