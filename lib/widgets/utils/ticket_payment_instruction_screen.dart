@@ -65,19 +65,27 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
   }
 
   void _goToTickets() {
-    // Navigate to user tickets screen
-    context.go('/tickets');
+    // Navigate to main screen with history tab (tickets)
+    context.go('/main', extra: {'initialTab': 3});
+  }
+
+  // Helper method to safely get nested values
+  dynamic _safeGet(Map<String, dynamic>? map, String key, [dynamic defaultValue]) {
+    return map?[key] ?? defaultValue;
   }
 
   Widget _buildVirtualAccountInstructions() {
-    final vaNumbers = widget.paymentResult['va_numbers'] as List?;
-    final permataVa = widget
-        .paymentResult['data']['permata_va_number'] as String?;
+    final vaNumbers = _safeGet(widget.paymentResult, 'va_numbers') as List?;
+    final permataVa = _safeGet(widget.paymentResult, 'permata_va_number') as String?;
 
     if (vaNumbers != null && vaNumbers.isNotEmpty) {
-      final vaData = vaNumbers[0];
-      final bank = vaData['bank'].toString().toUpperCase();
-      final vaNumber = vaData['va_number'].toString();
+      final vaData = vaNumbers[0] as Map<String, dynamic>?;
+      if (vaData == null) return const SizedBox.shrink();
+
+      final bank = (vaData['bank'] ?? '').toString().toUpperCase();
+      final vaNumber = (vaData['va_number'] ?? '').toString();
+
+      if (bank.isEmpty || vaNumber.isEmpty) return const SizedBox.shrink();
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +149,7 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
       );
     }
 
-    if (permataVa != null) {
+    if (permataVa != null && permataVa.isNotEmpty) {
       return _buildInstructionCard(
         title: 'Nomor Virtual Account Permata',
         content: Column(
@@ -188,14 +196,27 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
   }
 
   Widget _buildQRInstructions() {
-    final qrString = widget.paymentResult['data']['qr_string'] as String?;
+    final qrString = _safeGet(widget.paymentResult, 'qr_string') as String?;
+    final actions = _safeGet(widget.paymentResult, 'actions') as List?;
 
-    if (qrString == null) return const SizedBox.shrink();
+    if (qrString == null || qrString.isEmpty) return const SizedBox.shrink();
+
+    // Find QR code URL from actions
+    String? qrCodeUrl;
+    if (actions != null) {
+      for (var action in actions) {
+        if (action is Map<String, dynamic> &&
+            (action['name'] == 'generate-qr-code' || action['name'] == 'generate-qr-code-v2')) {
+          qrCodeUrl = action['url'];
+          break;
+        }
+      }
+    }
 
     return Column(
       children: [
         _buildInstructionCard(
-          title: 'QR Code',
+          title: 'QR Code QRIS',
           content: Column(
             children: [
               Container(
@@ -205,17 +226,114 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: const Text(
-                  '[QR Code akan ditampilkan di sini]',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic,
-                  ),
+                child: Column(
+                  children: [
+                    if (qrCodeUrl != null) ...[
+                      Image.network(
+                        qrCodeUrl,
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.qr_code, size: 48, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text(
+                                  'QR Code tidak dapat dimuat',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                      ),
+                    ] else ...[
+                      Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.qr_code, size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text(
+                              'QR Code tidak tersedia',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    // QR String (for debugging or manual entry)
+                    ExpansionTile(
+                      title: const Text(
+                        'QR String (untuk debugging)',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  qrString,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontFamily: 'monospace',
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => _copyToClipboard(qrString, 'QR String'),
+                                icon: const Icon(Icons.copy, size: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
-                'Scan QR Code di atas menggunakan aplikasi e-wallet Anda',
+                'Scan QR Code di atas menggunakan aplikasi e-wallet Anda (GoPay, OVO, DANA, LinkAja, ShopeePay)',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14),
               ),
@@ -228,10 +346,12 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
   }
 
   Widget _buildConvenienceStoreInstructions() {
-    final billKey = widget.paymentResult['data']['bill_key'] as String?;
-    final billerCode = widget.paymentResult['data']['biller_code'] as String?;
+    final billKey = _safeGet(widget.paymentResult, 'bill_key') as String?;
+    final billerCode = _safeGet(widget.paymentResult, 'biller_code') as String?;
 
-    if (billKey == null || billerCode == null) return const SizedBox.shrink();
+    if (billKey == null || billKey.isEmpty || billerCode == null || billerCode.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -342,11 +462,40 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
 
   @override
   Widget build(BuildContext context) {
+    // Add validation for required data
+    if (widget.paymentResult.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: const ClassicAppBar(title: 'Error'),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red),
+              SizedBox(height: 16),
+              Text(
+                'Data pembayaran tidak lengkap',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Silakan coba lagi atau hubungi customer service',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final paymentData = widget.paymentResult;
-    final paymentMethod = paymentData['payment_type'] ?? '';
-    final orderId = paymentData['order_id'] ?? '';
-    final amount = int.tryParse(paymentData['gross_amount']?.toString() ?? '0') ?? 0;
-    final expiryTime = paymentData['expiry_time'];
+    final paymentMethod = _safeGet(paymentData, 'payment_type', '') as String;
+    final orderId = _safeGet(paymentData, 'order_id', '') as String;
+    final amount = double.tryParse(_safeGet(paymentData, 'gross_amount', '0').toString())?.toInt() ?? 0;
+    final expiryTime = _safeGet(paymentData, 'expiry_time') as String?;
+
+    print("ini adalah widget.paymentResult : ${widget.paymentResult}");
+
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -362,13 +511,13 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
               backgroundColor: Colors.blue.shade50,
               content: Column(
                 children: [
-                  _buildDetailRow('Event', widget.eventData['name'] ?? ''),
+                  _buildDetailRow('Event', _safeGet(widget.eventData, 'name', 'Unknown Event') as String),
                   _buildDetailRow('Jumlah Tiket', '1 tiket'),
                   _buildDetailRow('Total Pembayaran', _formatCurrency(amount)),
                   _buildDetailRow('Metode Pembayaran',
-                      widget.paymentData['name'] ?? paymentMethod),
+                      _safeGet(widget.paymentData, 'name', paymentMethod) as String),
                   _buildDetailRow('Order ID', orderId),
-                  if (expiryTime != null)
+                  if (expiryTime != null && expiryTime.isNotEmpty)
                     _buildDetailRow('Batas Waktu', _formatDateTime(expiryTime)),
                 ],
               ),
@@ -377,10 +526,8 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
             const SizedBox(height: 20),
 
             // Payment Instructions based on method
-            if (paymentMethod ==
-                'bank_transfer') _buildVirtualAccountInstructions(),
-            if (paymentMethod == 'qris' ||
-                paymentMethod == 'gopay') _buildQRInstructions(),
+            if (paymentMethod == 'bank_transfer') _buildVirtualAccountInstructions(),
+            if (paymentMethod == 'qris' || paymentMethod == 'gopay') _buildQRInstructions(),
             if (paymentMethod == 'cstore') _buildConvenienceStoreInstructions(),
 
             const SizedBox(height: 20),

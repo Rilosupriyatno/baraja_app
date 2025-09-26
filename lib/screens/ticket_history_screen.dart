@@ -1,4 +1,6 @@
+import 'package:baraja_app/screens/ticket_payment_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/ticket_service.dart';
 
 class TicketHistoryScreen extends StatefulWidget {
@@ -29,16 +31,22 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
     });
   }
 
-
   Color _getStatusColorValue(String status) {
     switch (status.toLowerCase()) {
+      case 'settlement':
+      case 'capture':
+      case 'paid':
+        return Colors.green;
+      case 'partial':
+        return Colors.amber;
       case 'pending':
         return Colors.orange;
-      case 'paid':
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-      case 'failed':
+      case 'expire':
+      case 'unpaid':
+        return Colors.red;
+      case 'cancel':
+      case 'deny':
+      case 'failure':
         return Colors.red;
       default:
         return Colors.grey;
@@ -46,34 +54,66 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
   }
 
   String _getStatusText(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Menunggu Pembayaran';
+    final lower = status.toLowerCase();
+    String mapped;
+    switch (lower) {
+      case 'settlement':
+      case 'capture':
       case 'paid':
-        return 'Lunas';
-      case 'completed':
-        return 'Selesai';
-      case 'cancelled':
-        return 'Dibatalkan';
-      case 'failed':
-        return 'Gagal';
+        mapped = 'Lunas';
+        break;
+      case 'partial':
+        mapped = 'Menunggu Pelunasan';
+        break;
+      case 'pending':
+        mapped = 'Menunggu Pembayaran';
+        break;
+      case 'expire':
+      case 'unpaid':
+        mapped = 'Kadaluarsa';
+        break;
+      case 'cancel':
+        mapped = 'Dibatalkan';
+        break;
+      case 'deny':
+        mapped = 'Ditolak';
+        break;
+      case 'failure':
+        mapped = 'Gagal';
+        break;
       default:
-        return status;
+        mapped = status;
     }
+
+    debugPrint("Mapping status: raw='$status' -> mapped='$mapped'");
+    return mapped;
   }
 
   String _formatCurrency(int amount) {
     return 'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
   }
 
-  String _formatDate(String dateString) {
+  // String _formatDate(String dateString) {
+  //   try {
+  //     final DateTime date = DateTime.parse(dateString);
+  //     final months = [
+  //       'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+  //       'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
+  //     ];
+  //     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  //   } catch (e) {
+  //     return dateString;
+  //   }
+  // }
+
+  String _formatDateTime(String dateString) {
     try {
       final DateTime date = DateTime.parse(dateString);
       final months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
         'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
       ];
-      return '${date.day} ${months[date.month - 1]} ${date.year}';
+      return '${date.day} ${months[date.month - 1]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return dateString;
     }
@@ -185,10 +225,17 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
               itemBuilder: (context, index) {
                 final ticket = tickets[index];
                 final event = ticket['event'] as Map<String, dynamic>?;
+                final payment = ticket['payment_id'] as Map<String, dynamic>?;
 
                 if (event == null) {
                   return const SizedBox.shrink();
                 }
+
+                // Ambil status dari payment_id
+                final rawStatus = payment?['status'] ?? 'unknown';
+                final imageUrl = event['imageUrl'] ?? '';
+
+                debugPrint("Ticket ${ticket['_id']} raw status: $rawStatus");
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -199,197 +246,213 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
-                      _showTicketDetail(context, ticket);
+                      // Navigate to payment detail if pending, otherwise show ticket detail
+                      if (rawStatus.toLowerCase() == 'pending') {
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(
+                        //     builder: (context) => TicketPaymentDetailScreen(
+                        //       ticket: ticket,
+                        //     ),
+                        //   ),
+                        // ).then((_) => _refreshTickets());
+                      } else {
+                        _showTicketDetail(context, ticket);
+                      }
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Status Badge
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image section
+                        if (imageUrl.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(12),
+                              topRight: Radius.circular(12),
+                            ),
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                height: 120,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColorValue(ticket['status'] ?? 'unknown'),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _getStatusText(ticket['status'] ?? 'Unknown'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                              errorWidget: (context, url, error) => Container(
+                                height: 120,
+                                color: Colors.grey.shade200,
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey,
+                                  size: 40,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
 
-                          // Event Image and Info
-                          Row(
+                        // Content section
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Event Image
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
+                              // Status badge
+                              Align(
+                                alignment: Alignment.topRight,
                                 child: Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: Colors.grey.shade300,
-                                  child: event['imageUrl'] != null
-                                      ? Image.network(
-                                    event['imageUrl'],
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
-                                        Icons.event,
-                                        color: Colors.grey.shade600,
-                                      );
-                                    },
-                                  )
-                                      : Icon(
-                                    Icons.event,
-                                    color: Colors.grey.shade600,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColorValue(rawStatus),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    _getStatusText(rawStatus),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(height: 8),
 
-                              // Event Details
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event['name'] ?? 'Event Name',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
+                              // Event title
+                              Text(
+                                event['name'] ?? 'Nama Event Tidak Tersedia',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+
+                              // Event date and location
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      _formatDateTime(event['date'] ?? ''),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
                                       ),
-                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      event['location'] ?? 'Lokasi Tidak Tersedia',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on_outlined,
-                                          size: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            event['location'] ?? 'Location',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          event['date'] != null
-                                              ? _formatDate(event['date'])
-                                              : 'Date',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                              const SizedBox(height: 8),
 
-                          const SizedBox(height: 16),
+                              // Price and quantity info
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Pembayaran',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatCurrency(payment?['totalAmount'] ?? ticket['totalPrice'] ?? 0),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFD4AF37),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    '${ticket['quantity'] ?? 1} tiket',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
 
-                          // Ticket Details
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Jumlah Tiket",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
+                              // Show payment action for pending status
+                              if (rawStatus.toLowerCase() == 'pending') ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => TicketPaymentDetailScreen(
+                                            ticket: ticket,
+                                          ),
+                                        ),
+                                      ).then((_) => _refreshTickets());
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFD4AF37),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
-                                    Text(
-                                      "${ticket['quantity'] ?? 0} tiket",
-                                      style: const TextStyle(
-                                        fontSize: 14,
+                                    child: const Text(
+                                      'Bayar Sekarang',
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      "Total Harga",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatCurrency(ticket['totalPrice'] ?? 0),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFD4AF37),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
-
-                          const SizedBox(height: 8),
-
-                          // Purchase Date
-                          Text(
-                            "Dibeli pada ${ticket['createdAt'] != null ? _formatDate(ticket['createdAt']) : 'Unknown'}",
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -402,126 +465,160 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
   }
 
   void _showTicketDetail(BuildContext context, Map<String, dynamic> ticket) {
-    showModalBottomSheet(
+    final event = ticket['event'] as Map<String, dynamic>?;
+    final payment = ticket['payment_id'] as Map<String, dynamic>?;
+
+    if (event == null) return;
+
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (context) {
-        final event = ticket['event'] as Map<String, dynamic>?;
-
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          maxChildSize: 0.9,
-          minChildSize: 0.5,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              child: SingleChildScrollView(
-                controller: scrollController,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              minWidth: 280,
+              maxWidth: 400,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD4AF37),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Title
-                    const Text(
-                      "Detail Tiket",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Event Info
-                    if (event != null) ...[
-                      Text(
-                        event['name'] ?? 'Event Name',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event['name'] ?? 'Detail Tiket',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        event['description'] ?? 'No description',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Ticket Details
-                    _buildDetailRow("ID Tiket", ticket['_id'] ?? 'Unknown'),
-                    _buildDetailRow("Status", _getStatusText(ticket['status'] ?? 'Unknown')),
-                    _buildDetailRow("Jumlah Tiket", "${ticket['quantity'] ?? 0}"),
-                    _buildDetailRow("Total Harga", _formatCurrency(ticket['totalPrice'] ?? 0)),
-                    _buildDetailRow("Metode Pembayaran", ticket['paymentMethod'] ?? 'Unknown'),
-                    _buildDetailRow("Tanggal Pembelian", ticket['createdAt'] != null ? _formatDate(ticket['createdAt']) : 'Unknown'),
-
-                    if (event != null) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Detail Event",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDetailRow("Lokasi", event['location'] ?? 'Unknown'),
-                      _buildDetailRow("Tanggal Event", event['date'] != null ? _formatDate(event['date']) : 'Unknown'),
-                      _buildDetailRow("Penyelenggara", event['organizer'] ?? 'Unknown'),
-                      _buildDetailRow("Email Kontak", event['contactEmail'] ?? 'Unknown'),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Close Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
+                      IconButton(
                         onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD4AF37),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Event image
+                        if (event['imageUrl'] != null && event['imageUrl'].toString().isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: event['imageUrl'],
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorWidget: (context, url, error) => Container(
+                                height: 120,
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image_not_supported),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        _buildDetailRow("Lokasi", event['location'] ?? '-'),
+                        _buildDetailRow("Tanggal", _formatDateTime(event['date'] ?? '')),
+                        _buildDetailRow("Harga per Tiket", _formatCurrency(event['price'] ?? 0)),
+                        _buildDetailRow("Jumlah Tiket", "${ticket['quantity'] ?? 0}"),
+                        _buildDetailRow("Total Harga", _formatCurrency(ticket['totalPrice'] ?? 0)),
+
+                        const Divider(height: 24),
+
+                        Text(
+                          "Informasi Pembayaran",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
                           ),
                         ),
-                        child: const Text(
-                          "Tutup",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        const SizedBox(height: 8),
+
+                        _buildDetailRow("Metode Bayar", (payment?['method'] ?? '-').toString().toUpperCase()),
+                        _buildDetailRow("Status", _getStatusText(payment?['status'] ?? 'Unknown')),
+                        _buildDetailRow("Waktu Transaksi", payment?['transaction_time'] ?? '-'),
+
+                        if (payment?['payment_code'] != null)
+                          _buildDetailRow("Kode Pembayaran", payment?['payment_code'] ?? '-'),
+
+                        if (payment?['expiry_time'] != null && payment?['status'] == 'pending')
+                          _buildDetailRow("Berlaku Hingga", payment?['expiry_time'] ?? '-'),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Actions
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Tutup"),
                         ),
                       ),
-                    ),
-                  ],
+                      if (payment?['status'] == 'pending') ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => TicketPaymentDetailScreen(
+                                    ticket: ticket,
+                                  ),
+                                ),
+                              ).then((_) => _refreshTickets());
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                            ),
+                            child: const Text(
+                              "Bayar",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
         );
       },
     );

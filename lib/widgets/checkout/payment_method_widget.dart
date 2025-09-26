@@ -19,25 +19,30 @@ class PaymentMethodWidget extends StatelessWidget {
       BuildContext context,
       Map<String, dynamic> selectedPaymentData,
       ) {
-    final routeState = GoRouterState.of(context);
-    final extraData = routeState.extra as Map<String, dynamic>?;
+    try {
+      final routeState = GoRouterState.of(context);
+      final extraData = routeState.extra as Map<String, dynamic>?;
 
-    if (extraData != null) {
-      final source = extraData['source'] as String?;
+      if (extraData?.containsKey('source') == true) {
+        final source = extraData!['source'] as String?;
 
-      if (source == 'event') {
-        final eventData = extraData['eventData'] as Map<String, dynamic>;
-
-        context.pushReplacement('/ticketPaymentConfirmation', extra: {
-          'eventData': eventData,
-          'paymentData': selectedPaymentData,
-        });
-      } else if (source == 'checkout') {
-        context.pop(selectedPaymentData);
-      } else {
-        context.pop(selectedPaymentData);
+        if (source == 'event') {
+          final eventData = extraData['eventData'] as Map<String, dynamic>?;
+          if (eventData != null) {
+            context.pushReplacement('/ticketPaymentConfirmation', extra: {
+              'eventData': eventData,
+              'paymentData': selectedPaymentData,
+            });
+            return;
+          }
+        }
       }
-    } else {
+
+      // Fallback: return to previous screen
+      context.pop(selectedPaymentData);
+
+    } catch (e) {
+      debugPrint('Navigation error: $e');
       context.pop(selectedPaymentData);
     }
   }
