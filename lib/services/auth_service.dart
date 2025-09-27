@@ -9,10 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // final GoogleSignIn _googleSignIn = GoogleSignIn();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email'],
-    serverClientId: dotenv.env['WEB_CLIENT_ID'], // Web Client ID
+    serverClientId: dotenv.env['WEB_CLIENT_ID'],
   );
   final String? baseUrl = dotenv.env['BASE_URL'];
 
@@ -21,6 +20,128 @@ class AuthService with ChangeNotifier {
 
   Map<String, dynamic>? get user => _user;
   String? get jwtToken => _jwtToken;
+
+  // ==============================
+  // ROLE MANAGEMENT METHODS
+  // ==============================
+
+  /// Get user role name from the role object
+  String? getUserRole() {
+    if (_user == null) return null;
+
+    // Handle nested role object structure
+    if (_user!['role'] is Map<String, dynamic>) {
+      return _user!['role']['name'];
+    }
+
+    // Handle simple string role (backward compatibility)
+    return _user!['role'];
+  }
+
+  /// Get user role permissions
+  List<String> getUserPermissions() {
+    if (_user == null || _user!['role'] == null) return [];
+
+    if (_user!['role'] is Map<String, dynamic>) {
+      final permissions = _user!['role']['permissions'];
+      if (permissions is List) {
+        return List<String>.from(permissions);
+      }
+    }
+
+    return [];
+  }
+
+  /// Check if user has specific permission
+  bool hasPermission(String permission) {
+    return getUserPermissions().contains(permission);
+  }
+
+  /// Check if user is admin (any admin role)
+  bool isAdmin() {
+    final role = getUserRole();
+    return role != null && [
+      'superadmin',
+      'admin',
+      'marketing',
+      'jro',
+      'akuntan',
+      'inventory',
+      'operational',
+      'staff',
+      'cashier junior',
+      'cashier senior'
+    ].contains(role);
+  }
+
+  /// Check if user is customer
+  bool isCustomer() {
+    return getUserRole() == 'customer';
+  }
+
+  bool isJro() {
+    return getUserRole() == 'jro';
+  }
+
+  /// Check if user is any operational role
+  bool isOperationalRole() {
+    final role = getUserRole();
+    return role != null && [
+      'jro',
+      'operational',
+      'staff',
+      'cashier junior',
+      'cashier senior'
+    ].contains(role);
+  }
+
+  /// Check if user can manage reservations
+  bool canManageReservations() {
+    return hasPermission('manage_reservations') || isJro() || isAdmin();
+  }
+
+  /// Check if user can manage tables
+  bool canManageTables() {
+    return hasPermission('manage_tables') || isJro() || isAdmin();
+  }
+
+  /// Check if user can view reports
+  bool canViewReports() {
+    return hasPermission('view_reports') || isJro() || isMarketing() || isAdmin();
+  }
+
+  /// Check if user is marketing admin
+  bool isMarketing() {
+    return getUserRole() == 'marketing';
+  }
+
+  /// Check if user can manage promos
+  bool canManagePromo() {
+    return hasPermission('manage_promo');
+  }
+
+  /// Check if user can manage vouchers
+  bool canManageVouchers() {
+    return hasPermission('manage_vouchers');
+  }
+
+  /// Get user display name
+  String getUserDisplayName() {
+    if (_user == null) return 'Guest';
+    return _user!['name'] ?? _user!['username'] ?? 'User';
+  }
+
+  /// Get user outlet information
+  List<Map<String, dynamic>> getUserOutlets() {
+    if (_user == null || _user!['outlet'] == null) return [];
+
+    final outlets = _user!['outlet'];
+    if (outlets is List) {
+      return List<Map<String, dynamic>>.from(outlets);
+    }
+
+    return [];
+  }
 
   // ==============================
   // REGISTER DENGAN EMAIL DAN PASSWORD
@@ -41,12 +162,7 @@ class AuthService with ChangeNotifier {
       _user = responseData['user'];
       _jwtToken = responseData['token'];
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', _user?['_id'] ?? '');
-      await prefs.setString('username', _user?['username'] ?? '');
-      await prefs.setString('userRole', _user?['role'] ?? '');
-      await prefs.setString('token', _jwtToken!);
-
+      await _saveUserDataToPrefs();
       notifyListeners();
     } else {
       final errorData = jsonDecode(response.body);
@@ -88,17 +204,9 @@ class AuthService with ChangeNotifier {
         _user = responseData['user'];
         _jwtToken = responseData['token'];
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', _user?['_id'] ?? '');
-        await prefs.setString('username', _user?['username'] ?? '');
-        await prefs.setString('userRole', _user?['role'] ?? '');
-        await prefs.setString('token', _jwtToken!);
-        
-        print('ini adalah jwtToken $_jwtToken');
-
+        await _saveUserDataToPrefs();
         notifyListeners();
         _saveFcmToken();
-
       } else {
         final errorData = jsonDecode(response.body);
         throw Exception(errorData['message'] ?? 'Google login gagal');
@@ -120,51 +228,57 @@ class AuthService with ChangeNotifier {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-
-      // Extract user data and token
       _jwtToken = responseData['token'];
 
       // Remove token from user data if it exists
       final userData = Map<String, dynamic>.from(responseData);
       userData.remove('token');
       userData.remove('cashiers'); // Remove cashiers list if exists
-
       _user = userData;
 
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', _user?['_id'] ?? '');
-      await prefs.setString('username', _user?['username'] ?? '');
-      await prefs.setString('userRole', _user?['role'] ?? '');
-      await prefs.setString('token', _jwtToken!);
+      await _saveUserDataToPrefs();
 
       // If user is admin and has cashiers data, save it separately if needed
       if (responseData['cashiers'] != null) {
+        final prefs = await SharedPreferences.getInstance();
         await prefs.setString('cashiers', jsonEncode(responseData['cashiers']));
       }
 
       notifyListeners();
       _saveFcmToken();
-
     } else {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['message'] ?? 'Login gagal: ${response.body}');
     }
   }
 
-  // Tambahkan method debugging ini ke auth_service.dart
+  // ==============================
+  // HELPER METHOD TO SAVE USER DATA
+  // ==============================
+  Future<void> _saveUserDataToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', _user?['_id'] ?? '');
+    await prefs.setString('username', _user?['username'] ?? '');
+    await prefs.setString('userName', _user?['name'] ?? '');
+    await prefs.setString('userRole', getUserRole() ?? '');
+    await prefs.setString('token', _jwtToken!);
+
+    // Save permissions
+    await prefs.setStringList('userPermissions', getUserPermissions());
+
+    // Save full user data as JSON for complex access
+    await prefs.setString('userData', jsonEncode(_user));
+  }
 
   Future<void> _saveFcmToken() async {
     try {
-      print("🔄 Starting FCM token save process...");
+      print("📄 Starting FCM token save process...");
 
-      // Check if user is logged in
       if (_jwtToken == null) {
         print("❌ No JWT token available");
         return;
       }
 
-      // Request FCM permission first
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission(
         alert: true,
@@ -184,7 +298,7 @@ class AuthService with ChangeNotifier {
       }
 
       final fcmToken = await messaging.getToken();
-      print("🔑 FCM Token: ${fcmToken?.substring(0, 20)}..."); // Print partial token for debugging
+      print("🔑 FCM Token: ${fcmToken?.substring(0, 20)}...");
 
       if (fcmToken == null) {
         print("❌ FCM token is null");
@@ -248,7 +362,6 @@ class AuthService with ChangeNotifier {
     }
   }
 
-
   // ==============================
   // RESET PASSWORD
   // ==============================
@@ -296,7 +409,6 @@ class AuthService with ChangeNotifier {
           _user = data['user'];
           _jwtToken = storedToken;
           notifyListeners();
-
           return true;
         } else {
           // Token expired or invalid
@@ -330,6 +442,7 @@ class AuthService with ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _user = data['user'];
+        await _saveUserDataToPrefs();
         notifyListeners();
       } else {
         print('Failed to fetch profile: ${response.body}');
@@ -337,38 +450,6 @@ class AuthService with ChangeNotifier {
     } catch (e) {
       print('Error fetching user profile: $e');
     }
-  }
-
-  // ==============================
-  // GET USER ROLE
-  // ==============================
-  String? getUserRole() {
-    return _user?['role'];
-  }
-
-  // ==============================
-  // CHECK IF USER IS ADMIN
-  // ==============================
-  bool isAdmin() {
-    final role = getUserRole();
-    return role != null && [
-      'superadmin',
-      'admin',
-      'marketing',
-      'akuntan',
-      'inventory',
-      'operational',
-      'staff',
-      'cashier junior',
-      'cashier senior'
-    ].contains(role);
-  }
-
-  // ==============================
-  // CHECK IF USER IS CUSTOMER
-  // ==============================
-  bool isCustomer() {
-    return getUserRole() == 'customer';
   }
 
   // ==============================
@@ -389,7 +470,10 @@ class AuthService with ChangeNotifier {
       await prefs.remove('token');
       await prefs.remove('userId');
       await prefs.remove('username');
+      await prefs.remove('userName');
       await prefs.remove('userRole');
+      await prefs.remove('userPermissions');
+      await prefs.remove('userData');
       await prefs.remove('cashiers');
 
       notifyListeners();

@@ -1,8 +1,8 @@
-import 'package:baraja_app/screens/login_screen.dart';
-import 'package:baraja_app/widgets/utils/navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../screens/login_screen.dart';
+import '../widgets/utils/navigation_bar.dart';
 
 class AuthRedirectPage extends StatelessWidget {
   const AuthRedirectPage({super.key});
@@ -14,7 +14,12 @@ class AuthRedirectPage extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           final isLoggedIn = snapshot.data ?? false;
-          return isLoggedIn ? const MainNavigationBar() : const LoginScreen();
+          if (isLoggedIn) {
+            // Return the NavigationBarMenu which will determine the correct navigation based on role
+            return const NavigationBarMenu();
+          } else {
+            return const LoginScreen();
+          }
         }
         return const Scaffold(
           backgroundColor: Colors.white,
