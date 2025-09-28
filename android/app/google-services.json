@@ -21,6 +21,22 @@
             "package_name": "com.baraja.baraja_app",
             "certificate_hash": "5b5d5bb4404f9456f0c5857a8cdbbf6b0aeae6c8"
           }
+        },
+        {
+          "client_id": "449867052101-fnp6a4r9cgm8h1pdo4ggrn5jhhblg6be.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baraja.baraja_app",
+            "certificate_hash": "99ccf28b1f8c556e22da250e844c791ba43ff7c3"
+          }
+        },
+        {
+          "client_id": "449867052101-n5ruknfe09dv6h2uq6n1gp45jqqgp86f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baraja.baraja_app",
+            "certificate_hash": "c678270bc9a3669aaf8eebb3da5a9d249817fb5f"
+          }
         }
       ],
       "api_key": [
@@ -30,7 +46,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "449867052101-400fu2tf2bamdm5ojoneagdqk67rbpcu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

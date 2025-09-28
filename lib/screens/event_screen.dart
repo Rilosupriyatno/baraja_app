@@ -61,29 +61,21 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
     );
   }
 
-  void _navigateToCreateEvent() {
-    // Navigate to create event screen
-    Navigator.pushNamed(context, '/create-event');
-  }
-
-  void _navigateToEventManagement() {
-    // Navigate to event management screen
-    Navigator.pushNamed(context, '/event-management');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      // backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         title: Consumer<AuthService>(
           builder: (context, authService, _) {
             if (authService.isMarketing()) {
-              return const Text("Manajemen Event");
+              return const Text("Management Event", style: TextStyle(fontWeight: FontWeight.w600),);
             } else if (authService.isAdmin()) {
-              return const Text("Admin Event");
+              return const Text("Admin Event", style: TextStyle(fontWeight: FontWeight.w600),);
             } else {
-              return const Text("Event");
+              return const Text("Event", style: TextStyle(fontWeight: FontWeight.w600),);
             }
           },
         ),
@@ -97,69 +89,6 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
               icon: const Icon(Icons.history),
               tooltip: 'Riwayat Tiket',
               splashRadius: 24,
-            ),
-            marketingChild: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: _navigateToEventManagement,
-                  icon: const Icon(Icons.settings),
-                  tooltip: 'Kelola Event',
-                ),
-                IconButton(
-                  onPressed: _navigateToCreateEvent,
-                  icon: const Icon(Icons.add),
-                  tooltip: 'Buat Event Baru',
-                ),
-              ],
-            ),
-            adminChild: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'manage':
-                    _navigateToEventManagement();
-                    break;
-                  case 'create':
-                    _navigateToCreateEvent();
-                    break;
-                  case 'reports':
-                    Navigator.pushNamed(context, '/event-reports');
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'manage',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings, size: 20),
-                      SizedBox(width: 8),
-                      Text('Kelola Event'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'create',
-                  child: Row(
-                    children: [
-                      Icon(Icons.add, size: 20),
-                      SizedBox(width: 8),
-                      Text('Buat Event'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'reports',
-                  child: Row(
-                    children: [
-                      Icon(Icons.analytics, size: 20),
-                      SizedBox(width: 8),
-                      Text('Laporan Event'),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
           const SizedBox(width: 8),
@@ -302,37 +231,24 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
                     ),
                   );
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
+                  return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.event_busy,
                           size: 64,
                           color: Colors.grey,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        SizedBox(height: 16),
+                        Text(
                           "Belum ada event",
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // Show create button for marketing and admin
-                        ShowForRole(
-                          roles: const ['marketing', 'admin', 'superadmin'],
-                          child: ElevatedButton.icon(
-                            onPressed: _navigateToCreateEvent,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Buat Event Pertama'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD4AF37),
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
+                        SizedBox(height: 16),
                       ],
                     ),
                   );
@@ -379,93 +295,93 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
                             ),
 
                             // Admin/Marketing overlay with quick actions
-                            ShowForRole(
-                              roles: const ['marketing', 'admin', 'superadmin'],
-                              child: Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: PopupMenuButton<String>(
-                                    icon: const Icon(
-                                      Icons.more_horiz,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    color: Colors.white,
-                                    onSelected: (value) {
-                                      switch (value) {
-                                        case 'edit':
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/edit-event',
-                                            arguments: event,
-                                          );
-                                          break;
-                                        case 'duplicate':
-                                        // Duplicate event logic
-                                          break;
-                                        case 'analytics':
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/event-analytics',
-                                            arguments: event,
-                                          );
-                                          break;
-                                        case 'delete':
-                                          _showDeleteDialog(event);
-                                          break;
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.edit, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Edit'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'duplicate',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.copy, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Duplikat'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'analytics',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.analytics, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Analitik'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete, size: 16, color: Colors.red),
-                                            SizedBox(width: 8),
-                                            Text('Hapus', style: TextStyle(color: Colors.red)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // ShowForRole(
+                            //   roles: const ['marketing', 'admin', 'superadmin'],
+                            //   child: Positioned(
+                            //     top: 8,
+                            //     right: 8,
+                            //     child: Container(
+                            //       decoration: BoxDecoration(
+                            //         color: Colors.black.withOpacity(0.7),
+                            //         borderRadius: BorderRadius.circular(20),
+                            //       ),
+                            //       child: PopupMenuButton<String>(
+                            //         icon: const Icon(
+                            //           Icons.more_horiz,
+                            //           color: Colors.white,
+                            //           size: 20,
+                            //         ),
+                            //         color: Colors.white,
+                            //         onSelected: (value) {
+                            //           switch (value) {
+                            //             case 'edit':
+                            //               Navigator.pushNamed(
+                            //                 context,
+                            //                 '/edit-event',
+                            //                 arguments: event,
+                            //               );
+                            //               break;
+                            //             case 'duplicate':
+                            //             // Duplicate event logic
+                            //               break;
+                            //             case 'analytics':
+                            //               Navigator.pushNamed(
+                            //                 context,
+                            //                 '/event-analytics',
+                            //                 arguments: event,
+                            //               );
+                            //               break;
+                            //             case 'delete':
+                            //               _showDeleteDialog(event);
+                            //               break;
+                            //           }
+                            //         },
+                            //         itemBuilder: (context) => [
+                            //           const PopupMenuItem(
+                            //             value: 'edit',
+                            //             child: Row(
+                            //               children: [
+                            //                 Icon(Icons.edit, size: 16),
+                            //                 SizedBox(width: 8),
+                            //                 Text('Edit'),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: 'duplicate',
+                            //             child: Row(
+                            //               children: [
+                            //                 Icon(Icons.copy, size: 16),
+                            //                 SizedBox(width: 8),
+                            //                 Text('Duplikat'),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: 'analytics',
+                            //             child: Row(
+                            //               children: [
+                            //                 Icon(Icons.analytics, size: 16),
+                            //                 SizedBox(width: 8),
+                            //                 Text('Analitik'),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: 'delete',
+                            //             child: Row(
+                            //               children: [
+                            //                 Icon(Icons.delete, size: 16, color: Colors.red),
+                            //                 SizedBox(width: 8),
+                            //                 Text('Hapus', style: TextStyle(color: Colors.red)),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //         ],
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                       );
@@ -476,23 +392,6 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
             ),
           ),
         ],
-      ),
-
-      // Role-based floating action button
-      floatingActionButton: ShowForRole(
-        roles: const ['marketing', 'admin', 'superadmin'],
-        child: FloatingActionButton(
-          onPressed: _navigateToCreateEvent,
-          backgroundColor: context.isMarketing
-              ? const Color(0xFF6366F1)
-              : context.isAdmin
-              ? const Color(0xFFDC2626)
-              : const Color(0xFFD4AF37),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-          ),
-        ),
       ),
     );
   }
@@ -543,38 +442,6 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
           ),
         ],
       ),
-    );
-  }
-
-  void _showDeleteDialog(Event event) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Hapus Event'),
-          content: const Text('Apakah Anda yakin ingin menghapus event?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Delete event logic here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Event berhasil dihapus'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Hapus'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

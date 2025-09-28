@@ -288,15 +288,6 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Promo Management (Marketing specific)
-          PersistentTabConfig(
-            screen: const PromoManagementScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.local_offer, size: 35, color: Colors.white),
-              title: "Promo",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
           // Voucher Management (Marketing specific)
           PersistentTabConfig(
             screen: const VoucherManagementScreen(),
@@ -316,7 +307,7 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
             ),
           ),
         ],
-        navBarBuilder: (navBarConfig) => Style13BottomNavBar(
+        navBarBuilder: (navBarConfig) => Style1BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
             boxShadow: [
@@ -433,16 +424,6 @@ class _JroNavigationBarState extends State<JroNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Table Management (center with special styling)
-          PersistentTabConfig(
-            screen: const JroDashboardScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.table_restaurant, size: 35, color: Colors.white),
-              title: "Meja",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
-          // Reports
           PersistentTabConfig(
             screen: const JroDashboardScreen(),
             item: ItemConfig(
@@ -461,7 +442,7 @@ class _JroNavigationBarState extends State<JroNavigationBar> {
             ),
           ),
         ],
-        navBarBuilder: (navBarConfig) => Style13BottomNavBar(
+        navBarBuilder: (navBarConfig) => Style1BottomNavBar(
           navBarConfig: navBarConfig,
           navBarDecoration: const NavBarDecoration(
             boxShadow: [
