@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
+import '../../services/table_Service.dart';
 
 // Enum untuk sub-pilihan Take Away
 enum TakeAwayType { delivery, pickup }
@@ -33,15 +34,13 @@ class OrderTypeSelector extends StatefulWidget {
 }
 
 class _OrderTypeSelectorState extends State<OrderTypeSelector> {
-  TakeAwayType selectedTakeAwayType = TakeAwayType.delivery;
+  final TableService _tableService = TableService();
+  bool _isCheckingTable = false;
+  String? _tableError;
 
   @override
   void initState() {
     super.initState();
-    // Set initial take away type based on current selected order type
-    if (widget.selectedType == OrderType.pickup) {
-      selectedTakeAwayType = TakeAwayType.pickup;
-    }
   }
 
   TimeOfDay _getMinimumPickupTime() {
@@ -78,321 +77,332 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
     );
   }
 
-  bool _isTakeAwaySelected() {
-    return widget.selectedType == OrderType.delivery || widget.selectedType == OrderType.pickup;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Dine In Option (jika tidak disembunyikan)
-        if (!widget.hideDineInOption) ...[
-          _buildOrderTypeOption(
-            type: OrderType.dineIn,
-            title: 'Dine In',
-            subtitle: 'Makan di tempat',
-          ),
-        ],
+        // Tab-style Order Type Selector
+        _buildTabSelector(),
 
-        // Take Away Option
-        _buildTakeAwayOption(),
+        const SizedBox(height: 16),
+
+        // Content based on selected type
+        _buildSelectedContent(),
       ],
     );
   }
 
-  Widget _buildOrderTypeOption({
+  Widget _buildTabSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          // Pickup Tab
+          Expanded(
+            child: _buildTab(
+              type: OrderType.pickup,
+              label: 'Pickup',
+              subtitle: 'Order dan pickup di outlet',
+              isSelected: widget.selectedType == OrderType.pickup,
+            ),
+          ),
+
+          // Dine In Tab
+          if (!widget.hideDineInOption)
+            Expanded(
+              child: _buildTab(
+                type: OrderType.dineIn,
+                label: 'Dine-In',
+                subtitle: 'Makan Ditempat',
+                isSelected: widget.selectedType == OrderType.dineIn,
+                isDisabled: false, // Set true jika ingin disable
+              ),
+            ),
+
+          // Delivery Tab
+          Expanded(
+            child: _buildTab(
+              type: OrderType.delivery,
+              label: 'Delivery',
+              subtitle: 'Pesanan diantar kealamat',
+              isSelected: widget.selectedType == OrderType.delivery,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab({
     required OrderType type,
-    required String title,
+    required String label,
     required String subtitle,
+    required bool isSelected,
+    bool isDisabled = false,
   }) {
-    final isSelected = widget.selectedType == type;
+    final Color backgroundColor = isSelected
+        ? Colors.white
+        : Colors.transparent;
 
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: RadioListTile<OrderType>(
-            value: type,
-            groupValue: widget.selectedType,
-            onChanged: (OrderType? value) {
-              if (value != null) {
-                widget.onChanged(value);
-              }
-            },
-            title: Text(title),
-            subtitle: Text(subtitle),
-            activeColor: Theme.of(context).primaryColor,
-            tileColor: Colors.grey.shade50,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey.shade300,
-              ),
+    final Color textColor = isDisabled
+        ? Colors.grey.shade400
+        : (isSelected ? const Color(0xFF0E9658) : Colors.grey.shade700);
+
+    return GestureDetector(
+      onTap: isDisabled ? null : () {
+        widget.onChanged(type);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-          ),
+          ] : null,
         ),
-
-        // Input fields untuk Dine In
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          height: isSelected ? null : 0,
-          child: isSelected && type == OrderType.dineIn
-              ? Container(
-            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-            child: _buildDineInInput(),
-          )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTakeAwayOption() {
-    final isTakeAwaySelected = _isTakeAwaySelected();
-
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: InkWell(
-            onTap: () {
-              // Pilih take away type default (delivery) jika belum dipilih
-              if (!isTakeAwaySelected) {
-                selectedTakeAwayType = TakeAwayType.delivery;
-                widget.onChanged(OrderType.delivery);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isTakeAwaySelected
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey.shade300,
-                ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
-              child: Row(
-                children: [
-                  Radio<bool>(
-                    value: true,
-                    groupValue: isTakeAwaySelected,
-                    onChanged: (bool? value) {
-                      if (value == true && !isTakeAwaySelected) {
-                        selectedTakeAwayType = TakeAwayType.delivery;
-                        widget.onChanged(OrderType.delivery);
-                      }
-                    },
-                    activeColor: Theme.of(context).primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Take Away',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          'Pesan untuk dibawa pulang',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ),
-
-        // Sub-pilihan Take Away
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          height: isTakeAwaySelected ? null : 0,
-          child: isTakeAwaySelected
-              ? Container(
-            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-            child: _buildTakeAwaySubOptions(),
-          )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTakeAwaySubOptions() {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-
-        // Sub-pilihan Delivery
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: RadioListTile<TakeAwayType>(
-            value: TakeAwayType.delivery,
-            groupValue: selectedTakeAwayType,
-            onChanged: (TakeAwayType? value) {
-              if (value != null) {
-                setState(() {
-                  selectedTakeAwayType = value;
-                });
-                widget.onChanged(OrderType.delivery);
-              }
-            },
-            title: const Text('Delivery'),
-            subtitle: const Text('Antar ke alamat Anda'),
-            activeColor: Theme.of(context).primaryColor,
-            tileColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: selectedTakeAwayType == TakeAwayType.delivery
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey.shade300,
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: textColor.withOpacity(0.7),
+                fontSize: 10,
               ),
-            ),
-          ),
-        ),
-
-        // Input untuk Delivery
-        if (selectedTakeAwayType == TakeAwayType.delivery) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 22, right: 22, top: 8, bottom: 12),
-            child: TextFormField(
-              initialValue: widget.deliveryAddress,
-              decoration: InputDecoration(
-                labelText: 'Alamat Pengantaran',
-                hintText: 'Masukkan alamat lengkap',
-                border: const OutlineInputBorder(),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-              ),
+              textAlign: TextAlign.center,
               maxLines: 2,
-              onChanged: widget.onDeliveryAddressChanged,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
-
-        // Sub-pilihan Pickup
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: RadioListTile<TakeAwayType>(
-            value: TakeAwayType.pickup,
-            groupValue: selectedTakeAwayType,
-            onChanged: (TakeAwayType? value) {
-              if (value != null) {
-                setState(() {
-                  selectedTakeAwayType = value;
-                });
-                widget.onChanged(OrderType.pickup);
-              }
-            },
-            title: const Text('Pickup'),
-            subtitle: const Text('Ambil sendiri di resto (min. 5 menit dari sekarang)'),
-            activeColor: Theme.of(context).primaryColor,
-            tileColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: selectedTakeAwayType == TakeAwayType.pickup
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey.shade300,
-              ),
-            ),
-          ),
+          ],
         ),
-
-        // Input untuk Pickup
-        if (selectedTakeAwayType == TakeAwayType.pickup) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 22, right: 22, top: 8, bottom: 12),
-            child: InkWell(
-              onTap: () async {
-                final TimeOfDay minimumTime = _getMinimumPickupTime();
-                final TimeOfDay? time = await showTimePicker(
-                  context: context,
-                  initialTime: widget.pickupTime ?? minimumTime,
-                );
-                if (time != null) {
-                  if (_isValidPickupTime(time)) {
-                    widget.onPickupTimeChanged(time);
-                  } else {
-                    widget.onPickupTimeChanged(null);
-                    _showPickupTimeError(context);
-                  }
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: widget.pickupTime != null && _isValidPickupTime(widget.pickupTime!)
-                        ? Colors.grey.shade300
-                        : Colors.red.shade300,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                  color: widget.pickupTime != null && !_isValidPickupTime(widget.pickupTime!)
-                      ? Colors.red.shade50
-                      : Colors.grey.shade50,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.pickupTime != null
-                            ? 'Waktu: ${widget.pickupTime!.format(context)}'
-                            : 'Pilih waktu pengambilan',
-                        style: TextStyle(
-                          color: widget.pickupTime != null
-                              ? (_isValidPickupTime(widget.pickupTime!) ? Colors.black : Colors.red.shade700)
-                              : Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.access_time, color: Colors.grey.shade600),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 
-  Widget _buildDineInInput() {
+  Widget _buildSelectedContent() {
+    switch (widget.selectedType) {
+      case OrderType.dineIn:
+        return _buildDineInContent();
+      case OrderType.delivery:
+        return _buildDeliveryContent();
+      case OrderType.pickup:
+        return _buildPickupContent();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildDineInContent() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'Informasi Meja',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           initialValue: widget.tableNumber,
           decoration: InputDecoration(
             labelText: 'Nomor Meja',
             hintText: 'Masukkan nomor meja',
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            errorText: _tableError,
+            suffixIcon: _isCheckingTable
+                ? const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+                : _tableError == null && widget.tableNumber.isNotEmpty
+                ? const Icon(Icons.check_circle, color: Colors.green)
+                : null,
+          ),
+          onChanged: (value) {
+            widget.onTableNumberChanged(value);
+            // Debounce validation
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (value == widget.tableNumber) {
+                _validateTableNumber(value);
+              }
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDeliveryContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Informasi Pengiriman',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: widget.deliveryAddress,
+          decoration: InputDecoration(
+            labelText: 'Alamat Pengantaran',
+            hintText: 'Masukkan alamat lengkap',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             filled: true,
             fillColor: Colors.grey.shade50,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           ),
-          onChanged: widget.onTableNumberChanged,
+          maxLines: 3,
+          onChanged: widget.onDeliveryAddressChanged,
         ),
       ],
     );
+  }
+
+  Widget _buildPickupContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Informasi Pickup',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () async {
+            final TimeOfDay minimumTime = _getMinimumPickupTime();
+            final TimeOfDay? time = await showTimePicker(
+              context: context,
+              initialTime: widget.pickupTime ?? minimumTime,
+            );
+            if (time != null) {
+              if (_isValidPickupTime(time)) {
+                widget.onPickupTimeChanged(time);
+              } else {
+                widget.onPickupTimeChanged(null);
+                _showPickupTimeError(context);
+              }
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: widget.pickupTime != null && _isValidPickupTime(widget.pickupTime!)
+                    ? Colors.grey.shade300
+                    : Colors.red.shade300,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: widget.pickupTime != null && !_isValidPickupTime(widget.pickupTime!)
+                  ? Colors.red.shade50
+                  : Colors.grey.shade50,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Waktu Pengambilan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.pickupTime != null
+                            ? widget.pickupTime!.format(context)
+                            : 'Pilih waktu (min. 5 menit dari sekarang)',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: widget.pickupTime != null
+                              ? (_isValidPickupTime(widget.pickupTime!)
+                              ? Colors.black
+                              : Colors.red.shade700)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.access_time, color: Colors.grey.shade600),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _validateTableNumber(String tableNumber) async {
+    if (tableNumber.isEmpty) {
+      setState(() {
+        _tableError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingTable = true;
+      _tableError = null;
+    });
+
+    try {
+      final result = await _tableService.checkTableAvailability(tableNumber);
+
+      if (!result['isAvailable']) {
+        setState(() {
+          _tableError = result['message'] ?? 'Meja tidak tersedia';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _tableError = 'Gagal mengecek ketersediaan meja';
+      });
+    } finally {
+      setState(() {
+        _isCheckingTable = false;
+      });
+    }
   }
 }

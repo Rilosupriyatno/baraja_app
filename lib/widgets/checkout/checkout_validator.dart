@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
 import '../../providers/cart_provider.dart';
 import '../../screens/checkout_page.dart';
+import '../../services/table_Service.dart';
 
 class CheckoutValidator {
-  static Map<String, dynamic> validateForm({
+  static Future<Map<String, dynamic>> validateForm({
     required CartProvider cartProvider,
     required OrderType selectedOrderType,
     required String deliveryAddress,
@@ -21,7 +22,8 @@ class CheckoutValidator {
     required bool Function(TimeOfDay) isValidPickupTime,
     required TimeOfDay Function() getMinimumPickupTime,
     required String Function(TimeOfDay) formatTime,
-  }) {
+    required TableService tableService,
+  }) async {
     Map<String, String> errors = {};
     String? firstErrorKey;
 
@@ -73,6 +75,15 @@ class CheckoutValidator {
           if (tableNumber.trim().isEmpty) {
             errors['tableNumber'] = 'Nomor meja harus diisi';
             firstErrorKey ??= 'tableNumber';
+          }else{
+            try {
+              final result = await tableService.checkTableAvailability(tableNumber);
+              if (!result['isAvailable']) {
+                errors['tableNumber'] = result['message'] ?? 'Meja tidak tersedia';
+              }
+            } catch (e) {
+              errors['tableNumber'] = 'Gagal memvalidasi ketersediaan meja';
+            }
           }
           break;
         case OrderType.reservation:

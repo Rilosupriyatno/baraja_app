@@ -83,8 +83,8 @@ class CheckoutSummary extends StatelessWidget {
                 children: [
                   Text(
                     discountType == "percentage"
-                        ? "Diskon Voucher ($voucherCode%)"
-                        : "Diskon Voucher ($voucherCode)",
+                        ? "Kupon Diskon ($voucherCode%)"
+                        : "Kupon Diskon ($voucherCode)",
                     style: const TextStyle(color: Colors.green),
                   ),
                   Text(
@@ -181,8 +181,8 @@ class CheckoutSummary extends StatelessWidget {
                   isReservation && selectedPaymentType == PaymentType.downPayment
                       ? "Bayar Down Payment ${formatCurrency(amountToPay)}"
                       : isOpenBill
-                      ? "Checkout Open Bill ${formatCurrency(amountToPay)}"
-                      : "Checkout ${formatCurrency(amountToPay)}",
+                      ? "Bayar Open Bill ${formatCurrency(amountToPay)}"
+                      : "Bayar ${formatCurrency(amountToPay)}",
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

@@ -10,6 +10,7 @@ import '../models/reservation_data.dart';
 import '../models/voucher_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
+import '../services/table_Service.dart';
 import '../services/tax_service.dart';
 import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
@@ -80,6 +81,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   bool hasAttemptedSubmit = false;
 
   final TaxService _taxService = TaxService();
+  final TableService _tableService = TableService();
   TaxCalculationResult? _taxCalculation;
   bool _taxesLoaded = false;
   // Scroll controller untuk auto scroll ke error
@@ -670,14 +672,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   taxCalculation: _taxCalculation, // Pass tax calculation
                   onCheckoutPressed: () async {
-                    print("➡️ Tombol checkout ditekan"); // ✅ debug
-                    // Set flag bahwa user sudah mencoba submit
+                    print("➡️ Tombol checkout ditekan");
+
                     setState(() {
                       hasAttemptedSubmit = true;
                     });
 
-                    // Validasi komprehensif menggunakan method baru
-                    final validationResult = CheckoutValidator.validateForm(
+                    // ✅ FIX: Add await and tableService parameter
+                    final validationResult = await CheckoutValidator.validateForm(
                       cartProvider: cartProvider,
                       selectedOrderType: selectedOrderType,
                       deliveryAddress: deliveryAddress,
@@ -694,15 +696,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       isValidPickupTime: _isValidPickupTime,
                       getMinimumPickupTime: _getMinimumPickupTime,
                       formatTime: _formatTime,
+                      tableService: _tableService, // ✅ ADD THIS PARAMETER
                     );
-
 
                     if (!validationResult['isValid']) {
                       setState(() {
                         validationErrors = Map<String, String>.from(validationResult['errors']);
                       });
 
-                      // Show general error snackbar jika ada error umum
+                      // Show general error snackbar
                       if (validationErrors.containsKey('general')) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -713,7 +715,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         return;
                       }
 
-                      // Scroll ke field pertama yang error
+                      // Scroll to first error field
                       if (validationResult['firstErrorKey'] != null) {
                         _scrollToError(validationResult['firstErrorKey']);
                       }

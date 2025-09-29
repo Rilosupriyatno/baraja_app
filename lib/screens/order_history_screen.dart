@@ -102,8 +102,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     unselectedLabelColor: Colors.grey,
                     indicatorColor: AppTheme.primaryColor,
                     tabs: const [
-                      Tab(text: 'Process'),
-                      Tab(text: 'Done'),
+                      Tab(text: 'Berlangsung'),
+                      Tab(text: 'Selesai'),
                     ],
                   ),
                 ),

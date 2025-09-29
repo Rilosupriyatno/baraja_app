@@ -15,7 +15,7 @@ class ActionButtons extends StatelessWidget {
             child: _buildActionButton(
               context: context,
               icon: Icons.local_cafe,
-              label: 'All Menu',
+              label: 'Semua Menu',
               route: '/menu',
             ),
           ),
@@ -24,7 +24,7 @@ class ActionButtons extends StatelessWidget {
             child: _buildActionButton(
               context: context,
               icon: Icons.calendar_month,
-              label: 'Reserved',
+              label: 'Reservasi',
               route: '/reservation',
             ),
           ),
