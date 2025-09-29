@@ -101,16 +101,6 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
       padding: const EdgeInsets.all(4),
       child: Row(
         children: [
-          // Pickup Tab
-          Expanded(
-            child: _buildTab(
-              type: OrderType.pickup,
-              label: 'Pickup',
-              subtitle: 'Order dan pickup di outlet',
-              isSelected: widget.selectedType == OrderType.pickup,
-            ),
-          ),
-
           // Dine In Tab
           if (!widget.hideDineInOption)
             Expanded(
@@ -122,6 +112,16 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
                 isDisabled: false, // Set true jika ingin disable
               ),
             ),
+
+          // Pickup Tab
+          Expanded(
+            child: _buildTab(
+              type: OrderType.pickup,
+              label: 'Pickup',
+              subtitle: 'Order dan pickup di outlet',
+              isSelected: widget.selectedType == OrderType.pickup,
+            ),
+          ),
 
           // Delivery Tab
           Expanded(
