@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
 import '../../services/table_Service.dart';
 
-// Enum untuk sub-pilihan Take Away
-enum TakeAwayType { delivery, pickup }
-
 class OrderTypeSelector extends StatefulWidget {
   final OrderType selectedType;
   final Function(OrderType) onChanged;
@@ -99,38 +96,60 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
-      child: Row(
+      child: Column(
         children: [
-          // Dine In Tab
-          if (!widget.hideDineInOption)
-            Expanded(
-              child: _buildTab(
-                type: OrderType.dineIn,
-                label: 'Dine-In',
-                subtitle: 'Makan Ditempat',
-                isSelected: widget.selectedType == OrderType.dineIn,
-                isDisabled: false, // Set true jika ingin disable
-              ),
-            ),
+          // Row pertama: Dine-In, Take Away
+          Row(
+            children: [
+              // Dine In Tab
+              if (!widget.hideDineInOption)
+                Expanded(
+                  child: _buildTab(
+                    type: OrderType.dineIn,
+                    label: 'Dine-In',
+                    subtitle: 'Makan Ditempat',
+                    isSelected: widget.selectedType == OrderType.dineIn,
+                  ),
+                ),
 
-          // Pickup Tab
-          Expanded(
-            child: _buildTab(
-              type: OrderType.pickup,
-              label: 'Pickup',
-              subtitle: 'Order dan pickup di outlet',
-              isSelected: widget.selectedType == OrderType.pickup,
-            ),
+              // Take Away Tab
+              Expanded(
+                child: _buildTab(
+                  type: OrderType.takeAway,
+                  label: 'Take Away',
+                  subtitle: 'Beli dan bawa pulang',
+                  isSelected: widget.selectedType == OrderType.takeAway,
+                ),
+              ),
+            ],
           ),
 
-          // Delivery Tab
-          Expanded(
-            child: _buildTab(
-              type: OrderType.delivery,
-              label: 'Delivery',
-              subtitle: 'Pesanan diantar kealamat',
-              isSelected: widget.selectedType == OrderType.delivery,
-            ),
+          const SizedBox(height: 4),
+
+          // Row kedua: Pickup, Delivery
+          Row(
+            children: [
+              // Pickup Tab
+              Expanded(
+                child: _buildTab(
+                  type: OrderType.pickup,
+                  label: 'Pickup',
+                  subtitle: 'Pesan dulu, ambil nanti',
+                  isSelected: widget.selectedType == OrderType.pickup,
+                ),
+              ),
+
+              // Delivery Tab - DISABLED
+              Expanded(
+                child: _buildTab(
+                  type: OrderType.delivery,
+                  label: 'Delivery',
+                  subtitle: 'Segera Datang',
+                  isSelected: widget.selectedType == OrderType.delivery,
+                  isDisabled: true, // ✅ DISABLED
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -205,6 +224,8 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
         return _buildDeliveryContent();
       case OrderType.pickup:
         return _buildPickupContent();
+      case OrderType.takeAway:
+        return _buildTakeAwayContent();
       default:
         return const SizedBox.shrink();
     }
@@ -249,7 +270,6 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
           ),
           onChanged: (value) {
             widget.onTableNumberChanged(value);
-            // Debounce validation
             Future.delayed(const Duration(milliseconds: 500), () {
               if (value == widget.tableNumber) {
                 _validateTableNumber(value);
@@ -261,29 +281,125 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
     );
   }
 
+  Widget _buildTakeAwayContent() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.shopping_bag_outlined,
+            color: Colors.green.shade700,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Take Away',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Pesanan akan disiapkan dan dapat langsung dibawa pulang',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ UPDATED - Delivery Content dengan status disabled
   Widget _buildDeliveryContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Info Banner
+        Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.orange.shade700,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fitur Delivery Segera Datang',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Layanan pengantaran sedang dalam tahap persiapan dan akan segera tersedia',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Disabled Delivery Address Field
         const Text(
           'Informasi Pengiriman',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
+            color: Colors.grey,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
+          enabled: false, // ✅ DISABLED
           initialValue: widget.deliveryAddress,
           decoration: InputDecoration(
             labelText: 'Alamat Pengantaran',
-            hintText: 'Masukkan alamat lengkap',
+            hintText: 'Fitur belum tersedia',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: Colors.grey.shade200, // ✅ Abu-abu untuk menunjukkan disabled
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            suffixIcon: Icon(
+              Icons.lock_outline,
+              color: Colors.grey.shade500,
+            ),
           ),
           maxLines: 3,
           onChanged: widget.onDeliveryAddressChanged,

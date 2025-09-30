@@ -594,6 +594,8 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
         return 'Pengantaran';
       case OrderType.pickup:
         return 'Ambil Sendiri';
+      case OrderType.takeAway:
+        return 'Take Away';  // ✅ Added
       case OrderType.reservation:
         return 'Reservasi';
     }

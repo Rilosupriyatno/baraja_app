@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -99,7 +100,10 @@ class TicketService {
 
       if (response.statusCode == 200) {
         // Handle the enhanced API response structure
-        print("ini adalah getUserTicket $responseBody");
+        debugPrint(
+          const JsonEncoder.withIndent('  ').convert(responseBody),
+          wrapWidth: 1024,
+        );
         if (responseBody is Map<String, dynamic> &&
             responseBody['success'] == true &&
             responseBody['data'] is List) {

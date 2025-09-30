@@ -28,7 +28,6 @@ class CheckoutValidator {
     String? firstErrorKey;
 
     // Validasi keranjang kosong
-// Validasi keranjang kosong
     if (cartProvider.items.isEmpty && !cartProvider.isReservation) {
       return {
         'isValid': false,
@@ -37,8 +36,7 @@ class CheckoutValidator {
       };
     }
 
-
-    // ✅ Skip validasi untuk open bill
+    // Skip validasi untuk open bill
     if (cartProvider.isOpenBill) {
       return {
         'isValid': true,
@@ -60,6 +58,7 @@ class CheckoutValidator {
             firstErrorKey ??= 'deliveryAddress';
           }
           break;
+
         case OrderType.pickup:
           if (pickupTime == null) {
             errors['pickupTime'] = 'Waktu pengambilan harus dipilih';
@@ -71,11 +70,12 @@ class CheckoutValidator {
             firstErrorKey ??= 'pickupTime';
           }
           break;
+
         case OrderType.dineIn:
           if (tableNumber.trim().isEmpty) {
             errors['tableNumber'] = 'Nomor meja harus diisi';
             firstErrorKey ??= 'tableNumber';
-          }else{
+          } else {
             try {
               final result = await tableService.checkTableAvailability(tableNumber);
               if (!result['isAvailable']) {
@@ -86,9 +86,15 @@ class CheckoutValidator {
             }
           }
           break;
+
+        case OrderType.takeAway:
+        // Take Away tidak memerlukan validasi tambahan
+        // Karena tidak perlu nomor meja, alamat, atau waktu pickup
+          break;
+
         case OrderType.reservation:
-        // TODO: Handle this case.
-          throw UnimplementedError();
+        // Tidak perlu validasi di sini karena sudah di-handle di bawah
+          break;
       }
     }
 

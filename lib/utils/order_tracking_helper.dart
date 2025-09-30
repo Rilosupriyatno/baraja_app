@@ -17,6 +17,8 @@ class OrderTrackingHelper {
         return 'Pengantaran';
       case OrderType.pickup:
         return 'Ambil Sendiri';
+      case OrderType.takeAway:
+        return 'Take Away';
       case OrderType.reservation:
         return 'Reservasi';
     }
@@ -64,14 +66,23 @@ class OrderTrackingHelper {
           'showPulse': true,
         };
       case 'Ready':
-        String statusText = orderType == OrderType.delivery
-            ? 'Pesanan siap diantar'
-            : 'Pesanan siap diambil';
+        String statusText;
+        String description;
+
+        if (orderType == OrderType.delivery) {
+          statusText = 'Pesanan siap diantar';
+          description = 'Kurir akan segera mengantarkan pesanan Anda';
+        } else if (orderType == OrderType.takeAway) {
+          statusText = 'Pesanan siap dibawa';
+          description = 'Silakan ambil pesanan Anda di kasir';
+        } else {
+          statusText = 'Pesanan siap diambil';
+          description = 'Silakan ambil pesanan Anda';
+        }
+
         return {
           'status': statusText,
-          'description': orderType == OrderType.delivery
-              ? 'Kurir akan segera mengantarkan pesanan Anda'
-              : 'Silakan ambil pesanan Anda',
+          'description': description,
           'color': const Color(0xFF10B981),
           'icon': Icons.check_circle,
           'showPulse': true,
@@ -172,6 +183,9 @@ class OrderTrackingHelper {
       case OrderStatus.onTheWay:
         return 'Pesanan Anda sedang dalam perjalanan';
       case OrderStatus.ready:
+        if (orderType == OrderType.takeAway) {
+          return 'Pesanan siap dibawa pulang';
+        }
         return 'Pesanan Anda siap untuk diambil';
       case OrderStatus.completed:
         return 'Pesanan Anda telah selesai';
@@ -213,6 +227,7 @@ class OrderTrackingHelper {
       case OrderStatus.waiting:
         return OrderStatus.processing;
       case OrderStatus.processing:
+      // Take Away dan Pickup langsung ke Ready, Delivery ke OnTheWay
         return orderType == OrderType.delivery
             ? OrderStatus.onTheWay
             : OrderStatus.ready;

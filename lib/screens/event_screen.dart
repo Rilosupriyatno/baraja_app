@@ -42,7 +42,7 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-        TicketHistoryScreen(userId: userId),
+            TicketHistoryScreen(userId: userId),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
@@ -64,7 +64,7 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.white, // Background putih
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -100,8 +100,19 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
           RoleBasedWidget(
             marketingChild: Container(
               width: double.infinity,
+              margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
-              color: const Color(0xFF6366F1),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
                   const Row(
@@ -135,8 +146,19 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
             ),
             adminChild: Container(
               width: double.infinity,
+              margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
-              color: const Color(0xFFDC2626),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDC2626),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
                   const Row(
@@ -174,7 +196,7 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
           ShowForRole(
             roles: const ['marketing', 'admin', 'superadmin'],
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   Expanded(
@@ -265,124 +287,137 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
                       final event = events[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Stack(
-                          children: [
-                            EventCard(
-                              event: event,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation, secondaryAnimation) =>
-                                        EventDetailScreen(event: event),
-                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      const begin = Offset(1.0, 0.0);
-                                      const end = Offset.zero;
-                                      const curve = Curves.easeInOut;
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              EventCard(
+                                event: event,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) =>
+                                          EventDetailScreen(event: event),
+                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                        const begin = Offset(1.0, 0.0);
+                                        const end = Offset.zero;
+                                        const curve = Curves.easeInOut;
 
-                                      var tween = Tween(begin: begin, end: end).chain(
-                                        CurveTween(curve: curve),
-                                      );
+                                        var tween = Tween(begin: begin, end: end).chain(
+                                          CurveTween(curve: curve),
+                                        );
 
-                                      return SlideTransition(
-                                        position: animation.drive(tween),
-                                        child: child,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
+                                        return SlideTransition(
+                                          position: animation.drive(tween),
+                                          child: child,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
 
-                            // Admin/Marketing overlay with quick actions
-                            // ShowForRole(
-                            //   roles: const ['marketing', 'admin', 'superadmin'],
-                            //   child: Positioned(
-                            //     top: 8,
-                            //     right: 8,
-                            //     child: Container(
-                            //       decoration: BoxDecoration(
-                            //         color: Colors.black.withOpacity(0.7),
-                            //         borderRadius: BorderRadius.circular(20),
-                            //       ),
-                            //       child: PopupMenuButton<String>(
-                            //         icon: const Icon(
-                            //           Icons.more_horiz,
-                            //           color: Colors.white,
-                            //           size: 20,
-                            //         ),
-                            //         color: Colors.white,
-                            //         onSelected: (value) {
-                            //           switch (value) {
-                            //             case 'edit':
-                            //               Navigator.pushNamed(
-                            //                 context,
-                            //                 '/edit-event',
-                            //                 arguments: event,
-                            //               );
-                            //               break;
-                            //             case 'duplicate':
-                            //             // Duplicate event logic
-                            //               break;
-                            //             case 'analytics':
-                            //               Navigator.pushNamed(
-                            //                 context,
-                            //                 '/event-analytics',
-                            //                 arguments: event,
-                            //               );
-                            //               break;
-                            //             case 'delete':
-                            //               _showDeleteDialog(event);
-                            //               break;
-                            //           }
-                            //         },
-                            //         itemBuilder: (context) => [
-                            //           const PopupMenuItem(
-                            //             value: 'edit',
-                            //             child: Row(
-                            //               children: [
-                            //                 Icon(Icons.edit, size: 16),
-                            //                 SizedBox(width: 8),
-                            //                 Text('Edit'),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //           const PopupMenuItem(
-                            //             value: 'duplicate',
-                            //             child: Row(
-                            //               children: [
-                            //                 Icon(Icons.copy, size: 16),
-                            //                 SizedBox(width: 8),
-                            //                 Text('Duplikat'),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //           const PopupMenuItem(
-                            //             value: 'analytics',
-                            //             child: Row(
-                            //               children: [
-                            //                 Icon(Icons.analytics, size: 16),
-                            //                 SizedBox(width: 8),
-                            //                 Text('Analitik'),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //           const PopupMenuItem(
-                            //             value: 'delete',
-                            //             child: Row(
-                            //               children: [
-                            //                 Icon(Icons.delete, size: 16, color: Colors.red),
-                            //                 SizedBox(width: 8),
-                            //                 Text('Hapus', style: TextStyle(color: Colors.red)),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //         ],
-                            //       ),
-                            //     ),
-                            //   ),
-                            // ),
-                          ],
+                              // Admin/Marketing overlay with quick actions
+                              // ShowForRole(
+                              //   roles: const ['marketing', 'admin', 'superadmin'],
+                              //   child: Positioned(
+                              //     top: 8,
+                              //     right: 8,
+                              //     child: Container(
+                              //       decoration: BoxDecoration(
+                              //         color: Colors.black.withOpacity(0.7),
+                              //         borderRadius: BorderRadius.circular(20),
+                              //       ),
+                              //       child: PopupMenuButton<String>(
+                              //         icon: const Icon(
+                              //           Icons.more_horiz,
+                              //           color: Colors.white,
+                              //           size: 20,
+                              //         ),
+                              //         color: Colors.white,
+                              //         onSelected: (value) {
+                              //           switch (value) {
+                              //             case 'edit':
+                              //               Navigator.pushNamed(
+                              //                 context,
+                              //                 '/edit-event',
+                              //                 arguments: event,
+                              //               );
+                              //               break;
+                              //             case 'duplicate':
+                              //             // Duplicate event logic
+                              //               break;
+                              //             case 'analytics':
+                              //               Navigator.pushNamed(
+                              //                 context,
+                              //                 '/event-analytics',
+                              //                 arguments: event,
+                              //               );
+                              //               break;
+                              //             case 'delete':
+                              //               _showDeleteDialog(event);
+                              //               break;
+                              //           }
+                              //         },
+                              //         itemBuilder: (context) => [
+                              //           const PopupMenuItem(
+                              //             value: 'edit',
+                              //             child: Row(
+                              //               children: [
+                              //                 Icon(Icons.edit, size: 16),
+                              //                 SizedBox(width: 8),
+                              //                 Text('Edit'),
+                              //               ],
+                              //             ),
+                              //           ),
+                              //           const PopupMenuItem(
+                              //             value: 'duplicate',
+                              //             child: Row(
+                              //               children: [
+                              //                 Icon(Icons.copy, size: 16),
+                              //                 SizedBox(width: 8),
+                              //                 Text('Duplikat'),
+                              //               ],
+                              //             ),
+                              //           ),
+                              //           const PopupMenuItem(
+                              //             value: 'analytics',
+                              //             child: Row(
+                              //               children: [
+                              //                 Icon(Icons.analytics, size: 16),
+                              //                 SizedBox(width: 8),
+                              //                 Text('Analitik'),
+                              //               ],
+                              //             ),
+                              //           ),
+                              //           const PopupMenuItem(
+                              //             value: 'delete',
+                              //             child: Row(
+                              //               children: [
+                              //                 Icon(Icons.delete, size: 16, color: Colors.red),
+                              //                 SizedBox(width: 8),
+                              //                 Text('Hapus', style: TextStyle(color: Colors.red)),
+                              //               ],
+                              //             ),
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ),
+                              //   ),
+                              // ),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -409,9 +444,9 @@ class _EventScreenState extends State<EventScreen> with RoleCheckMixin {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),

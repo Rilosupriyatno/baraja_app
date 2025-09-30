@@ -77,6 +77,11 @@ class OrderService {
         orderData['tableNumber'] = tableNumber;
       }
 
+      if (orderType.toString().split('.').last == 'takeAway') {
+        // Take away tidak memerlukan informasi tambahan khusus
+        // Mirip dengan dine-in tapi tanpa table number
+      }
+
       if (orderType.toString().split('.').last == 'delivery' &&
           deliveryAddress != null &&
           deliveryAddress.isNotEmpty) {
@@ -273,6 +278,10 @@ class OrderService {
         case 'dine-in':
         case 'dinein':
           return OrderType.dineIn;
+        case 'takeaway':
+        case 'take-away':
+        case 'take away':
+          return OrderType.takeAway; // ✅ BARU
         case 'reservation':
           return OrderType.reservation;
         default:

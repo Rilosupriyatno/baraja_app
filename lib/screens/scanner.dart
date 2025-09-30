@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 // Import Menu Screen
 import 'menu_screen.dart'; // Sesuaikan dengan path yang benar
+import '../../services/table_Service.dart'; // Import TableService
 
 class QRScanner extends StatefulWidget {
   const QRScanner({super.key});
@@ -18,11 +19,13 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final TableService _tableService = TableService();
   bool isFlashOn = false;
   bool isFrontCamera = false;
   bool isPaused = false;
   bool _isVisible = true;
   bool _isProcessingResult = false; // Flag untuk mencegah multiple navigation
+  bool _isValidating = false; // Flag untuk status validasi
 
   @override
   bool get wantKeepAlive => true;
@@ -99,23 +102,130 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     controller!.resumeCamera();
   }
 
+  // Fungsi untuk extract table number dari URL
+  String? _extractTableNumberFromUrl(String qrData) {
+    try {
+      // Parse sebagai URI
+      final uri = Uri.parse(qrData);
+
+      // Cek apakah ada parameter 'table'
+      if (uri.queryParameters.containsKey('table')) {
+        return uri.queryParameters['table'];
+      }
+
+      // Jika tidak ada parameter table, return null
+      return null;
+    } catch (e) {
+      log('Error parsing QR URL: $e');
+      return null;
+    }
+  }
+
+  // Fungsi untuk memvalidasi table number melalui API
+  Future<bool> _validateTableNumber(String tableNumber) async {
+    try {
+      setState(() {
+        _isValidating = true;
+      });
+
+      final result = await _tableService.checkTableAvailability(tableNumber);
+
+      setState(() {
+        _isValidating = false;
+      });
+
+      // Cek apakah meja tersedia
+      if (result['isAvailable'] == true) {
+        return true;
+      } else {
+        // Tampilkan error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Meja tidak tersedia'),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      setState(() {
+        _isValidating = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memvalidasi meja: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
   // Fungsi untuk memproses hasil QR dan navigasi ke Menu
-  void _processQRResult(String qrData) {
+  Future<void> _processQRResult(String qrData) async {
     if (_isProcessingResult) return; // Mencegah multiple processing
 
     setState(() {
       _isProcessingResult = true;
     });
 
-    // Parse QR data - asumsi format QR adalah table number (contoh: "A01", "B02", dll)
-    String tableNumber = qrData.toUpperCase().trim();
+    // Extract table number dari URL
+    String? tableNumber = _extractTableNumberFromUrl(qrData);
 
-    // Validasi format table number (opsional)
-    if (_isValidTableNumber(tableNumber)) {
-      // Pause camera sebelum navigasi
-      controller?.pauseCamera();
+    if (tableNumber == null) {
+      // Jika bukan URL atau tidak ada parameter table, coba gunakan langsung sebagai table number
+      tableNumber = qrData.toUpperCase().trim();
 
-      // Navigasi ke Menu Screen dengan parameter
+      // Validasi format table number (opsional)
+      if (!_isValidTableNumber(tableNumber)) {
+        setState(() {
+          _isProcessingResult = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Format QR Code tidak valid: $qrData'),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Clear result untuk scan ulang
+        setState(() {
+          result = null;
+        });
+        return;
+      }
+    }
+
+    // Validasi table number melalui API
+    final isValid = await _validateTableNumber(tableNumber);
+
+    if (!isValid) {
+      setState(() {
+        _isProcessingResult = false;
+        result = null;
+      });
+      return;
+    }
+
+    // Pause camera sebelum navigasi
+    controller?.pauseCamera();
+
+    // Navigasi ke Menu Screen dengan parameter
+    if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => MenuScreen(
@@ -125,26 +235,6 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
           ),
         ),
       );
-    } else {
-      // Reset processing flag jika QR tidak valid
-      setState(() {
-        _isProcessingResult = false;
-      });
-
-      // Tampilkan error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('QR Code tidak valid: $qrData'),
-          backgroundColor: Colors.red[600],
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
-      // Clear result untuk scan ulang
-      setState(() {
-        result = null;
-      });
     }
   }
 
@@ -186,19 +276,21 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
             // Scan line animation (optional)
             if (!isPaused) _buildScanLine(),
 
-            // Processing overlay
-            if (_isProcessingResult)
+            // Processing/Validating overlay
+            if (_isProcessingResult || _isValidating)
               Container(
                 color: Colors.black.withOpacity(0.7),
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16),
+                      const CircularProgressIndicator(color: Colors.white),
+                      const SizedBox(height: 16),
                       Text(
-                        'Memproses QR Code...',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        _isValidating
+                            ? 'Memvalidasi meja...'
+                            : 'Memproses QR Code...',
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ],
                   ),
@@ -286,7 +378,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        result!.code ?? 'No data',
+                        _extractTableNumberFromUrl(result!.code ?? '') ?? result!.code ?? 'No data',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -298,7 +390,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: _isProcessingResult ? null : () {
+                              onPressed: (_isProcessingResult || _isValidating) ? null : () {
                                 _processQRResult(result!.code ?? '');
                               },
                               style: ElevatedButton.styleFrom(
@@ -314,7 +406,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton(
-                            onPressed: _isProcessingResult ? null : () {
+                            onPressed: (_isProcessingResult || _isValidating) ? null : () {
                               setState(() {
                                 result = null;
                               });
@@ -386,7 +478,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            onPressed: _isProcessingResult ? null : onPressed,
+            onPressed: (_isProcessingResult || _isValidating) ? null : onPressed,
             icon: Icon(icon, color: Colors.white, size: 24),
             padding: const EdgeInsets.all(12),
           ),
@@ -507,14 +599,14 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
     });
 
     controller.scannedDataStream.listen((scanData) {
-      if (mounted && !_isProcessingResult) {
+      if (mounted && !_isProcessingResult && !_isValidating) {
         setState(() {
           result = scanData;
         });
 
         // Auto-process QR result setelah 1 detik
         Future.delayed(const Duration(seconds: 1), () {
-          if (mounted && result != null && !_isProcessingResult) {
+          if (mounted && result != null && !_isProcessingResult && !_isValidating) {
             _processQRResult(result!.code ?? '');
           }
         });
@@ -544,7 +636,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _toggleFlash() async {
-    if (_isProcessingResult) return;
+    if (_isProcessingResult || _isValidating) return;
     await controller?.toggleFlash();
     final status = await controller?.getFlashStatus();
     if (mounted) {
@@ -555,7 +647,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _flipCamera() async {
-    if (_isProcessingResult) return;
+    if (_isProcessingResult || _isValidating) return;
     await controller?.flipCamera();
     setState(() {
       isFrontCamera = !isFrontCamera;
@@ -563,7 +655,7 @@ class QRScannerState extends State<QRScanner> with WidgetsBindingObserver, Autom
   }
 
   void _togglePause() async {
-    if (_isProcessingResult) return;
+    if (_isProcessingResult || _isValidating) return;
     if (isPaused) {
       await controller?.resumeCamera();
     } else {

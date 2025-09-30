@@ -356,7 +356,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } else if (cartProvider.isOpenBill){
       return "Konfirmasi Open Bill";
     } else {
-      return "Mau makan dimana?";
+      // Cek selected order type untuk non-fixed modes
+      switch (selectedOrderType) {
+        case OrderType.takeAway:
+          return "Konfirmasi Pesanan Take Away";
+        case OrderType.delivery:
+          return "Konfirmasi Pesanan Delivery";
+        case OrderType.pickup:
+          return "Konfirmasi Pesanan Pickup";
+        case OrderType.dineIn:
+          return "Konfirmasi Pesanan Dine In";
+        default:
+          return "Mau makan dimana?";
+      }
     }
   }
 
