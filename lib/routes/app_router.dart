@@ -1,8 +1,8 @@
-import 'package:baraja_app/screens/checkout_page.dart';
-import 'package:baraja_app/screens/reservation_screen.dart';
-import 'package:baraja_app/screens/scanner.dart';
-import 'package:baraja_app/screens/auth_redirect_page.dart';
-import 'package:baraja_app/widgets/utils/ticket_payment_instruction_screen.dart';
+import 'package:baraja_amphitheater_app/screens/checkout_page.dart';
+import 'package:baraja_amphitheater_app/screens/reservation_screen.dart';
+import 'package:baraja_amphitheater_app/screens/scanner.dart';
+import 'package:baraja_amphitheater_app/screens/auth_redirect_page.dart';
+import 'package:baraja_amphitheater_app/widgets/utils/ticket_payment_instruction_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';

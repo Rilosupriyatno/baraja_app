@@ -1,7 +1,7 @@
-import 'package:baraja_app/screens/marketing_dashboard_screen.dart';
-import 'package:baraja_app/screens/order_history_screen.dart';
-import 'package:baraja_app/screens/scanner.dart';
-import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_amphitheater_app/screens/marketing_dashboard_screen.dart';
+import 'package:baraja_amphitheater_app/screens/order_history_screen.dart';
+import 'package:baraja_amphitheater_app/screens/scanner.dart';
+import 'package:baraja_amphitheater_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';

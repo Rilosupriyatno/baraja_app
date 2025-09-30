@@ -1,5 +1,5 @@
-import 'package:baraja_app/theme/app_theme.dart';
-import 'package:baraja_app/widgets/checkout/reservation_payment_type_widget.dart';
+import 'package:baraja_amphitheater_app/theme/app_theme.dart';
+import 'package:baraja_amphitheater_app/widgets/checkout/reservation_payment_type_widget.dart';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
 import '../../services/tax_service.dart'; // Import TaxCalculationResult from here

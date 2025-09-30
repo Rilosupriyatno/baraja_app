@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_amphitheater_app/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'instruction_step.dart';
 

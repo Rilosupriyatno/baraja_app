@@ -34,7 +34,7 @@ if (versionPropsFile.exists()) {
 }
 
 android {
-    namespace = "com.baraja.baraja_app"
+    namespace = "com.baraja.baraja_amphitheater_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -48,7 +48,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.baraja.baraja_app"
+        applicationId = "com.baraja.baraja_amphitheater_app"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
 

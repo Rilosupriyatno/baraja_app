@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_amphitheater_app/theme/app_theme.dart';
 
 /// Widget untuk memilih menu utama (Makanan atau Minuman)
 class MenuSelector extends StatelessWidget {

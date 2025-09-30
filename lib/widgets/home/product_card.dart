@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_app/models/product.dart';
+import 'package:baraja_amphitheater_app/models/product.dart';
 // Remove the go_router import since we're not using navigation anymore
 // import 'package:go_router/go_router.dart';
 import '../../utils/currency_formatter.dart';

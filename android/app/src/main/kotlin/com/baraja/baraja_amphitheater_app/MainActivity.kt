@@ -1,4 +1,4 @@
-package com.baraja.baraja_app
+package com.baraja.baraja_amphitheater_app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,4 +1,4 @@
-import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
+import 'package:baraja_amphitheater_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import '../models/voucher_item.dart';
 import '../theme/app_theme.dart';

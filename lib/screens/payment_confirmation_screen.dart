@@ -1,4 +1,4 @@
-import 'package:baraja_app/utils/base_screen_wrapper.dart';
+import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/socket_service.dart';

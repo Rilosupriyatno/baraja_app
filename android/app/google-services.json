@@ -8,6 +8,55 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:449867052101:android:fe922726885547c2c29f2c",
+        "android_client_info": {
+          "package_name": "com.baraja.baraja_amphitheater_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "449867052101-9p553vj10is04orn3ob8dehrtv7ht6k8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baraja.baraja_amphitheater_app",
+            "certificate_hash": "99ccf28b1f8c556e22da250e844c791ba43ff7c3"
+          }
+        },
+        {
+          "client_id": "449867052101-c0kcm75nrc2o2s1su2lh1a1mt8ihb3ru.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baraja.baraja_amphitheater_app",
+            "certificate_hash": "c678270bc9a3669aaf8eebb3da5a9d249817fb5f"
+          }
+        },
+        {
+          "client_id": "449867052101-lctav81lqqius00v1e9cbhaqj81o579h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baraja.baraja_amphitheater_app",
+            "certificate_hash": "5b5d5bb4404f9456f0c5857a8cdbbf6b0aeae6c8"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2lCdO8OnEJikK20UDhf8qWS-JlNSGaIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "449867052101-400fu2tf2bamdm5ojoneagdqk67rbpcu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:449867052101:android:963e5936bb1a845bc29f2c",
         "android_client_info": {
           "package_name": "com.baraja.baraja_app"

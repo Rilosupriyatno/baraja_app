@@ -54,10 +54,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB2lCdO8OnEJikK20UDhf8qWS-JlNSGaIo',
-    appId: '1:449867052101:android:963e5936bb1a845bc29f2c',
+    appId: '1:449867052101:android:fe922726885547c2c29f2c',
     messagingSenderId: '449867052101',
     projectId: 'baraja-coffee',
     databaseURL: 'https://baraja-coffee-default-rtdb.firebaseio.com',
     storageBucket: 'baraja-coffee.firebasestorage.app',
   );
+
 }
