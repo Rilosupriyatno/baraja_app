@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
-import '../../services/table_Service.dart';
+import '../../services/table_service.dart';
 
 class OrderTypeSelector extends StatefulWidget {
   final OrderType selectedType;

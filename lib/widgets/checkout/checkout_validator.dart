@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/order_type.dart';
 import '../../providers/cart_provider.dart';
 import '../../screens/checkout_page.dart';
-import '../../services/table_Service.dart';
+import '../../services/table_service.dart';
 
 class CheckoutValidator {
   static Future<Map<String, dynamic>> validateForm({

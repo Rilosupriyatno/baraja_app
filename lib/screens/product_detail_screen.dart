@@ -116,7 +116,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                   Container(
                     height: 200,
                     width: double.infinity,
-                    color: product.imageColor ?? Colors.grey.shade300,
+                    color: Colors.white,
                     child: product.imageUrl.isNotEmpty &&
                         product.imageUrl != 'https://placehold.co/1920x1080/png'
                         ? Image.network(
@@ -126,7 +126,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                       height: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
                         return Image.asset(
-                          'assets/images/product_default_image.jpeg',
+                          'assets/images/product_default_image.png',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
@@ -134,7 +134,7 @@ class ProductDetailScreenState extends State<ProductDetailScreen> {
                       },
                     )
                         : Image.asset(
-                      'assets/images/product_default_image.jpeg',
+                      'assets/images/product_default_image.png',
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,

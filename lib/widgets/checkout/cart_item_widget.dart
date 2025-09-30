@@ -43,10 +43,14 @@ class CartItemWidget extends StatelessWidget {
               Container(
                 width: 70,
                 height: 70,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey.shade200,
+                decoration: const BoxDecoration(
+                  color: Colors.white, // ✅ selalu putih
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
                 ),
+
                 clipBehavior: Clip.antiAlias,
                 child: item.imageUrl.isNotEmpty
                     ? Image.network(
@@ -56,7 +60,7 @@ class CartItemWidget extends StatelessWidget {
                   height: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
                     return Image.asset(
-                      'assets/images/product_default_image.jpeg',
+                      'assets/images/product_default_image.png',
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
@@ -64,7 +68,7 @@ class CartItemWidget extends StatelessWidget {
                   },
                 )
                     : Image.asset(
-                  'assets/images/product_default_image.jpeg',
+                  'assets/images/product_default_image.png',
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,

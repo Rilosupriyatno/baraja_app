@@ -264,10 +264,14 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                     height: 200,
                     width: double.infinity,
                     margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: product.imageColor ?? Colors.grey.shade300,
+                    decoration: const BoxDecoration(
+                      color: Colors.white, // ✅ selalu putih
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
                     ),
+
                     clipBehavior: Clip.antiAlias,
                     child: product.imageUrl.isNotEmpty &&
                         product.imageUrl != 'https://placehold.co/1920x1080/png'
@@ -276,13 +280,13 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Image.asset(
-                          'assets/images/product_default_image.jpeg',
+                          'assets/images/product_default_image.png',
                           fit: BoxFit.cover,
                         );
                       },
                     )
                         : Image.asset(
-                      'assets/images/product_default_image.jpeg',
+                      'assets/images/product_default_image.png',
                       fit: BoxFit.cover,
                     ),
                   ),

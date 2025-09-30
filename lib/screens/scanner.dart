@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 // Import Menu Screen
 import 'menu_screen.dart'; // Sesuaikan dengan path yang benar
-import '../../services/table_Service.dart'; // Import TableService
+import '../../services/table_service.dart'; // Import TableService
 
 class QRScanner extends StatefulWidget {
   const QRScanner({super.key});

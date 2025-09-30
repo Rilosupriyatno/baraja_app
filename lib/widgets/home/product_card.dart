@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
 // Remove the go_router import since we're not using navigation anymore
 // import 'package:go_router/go_router.dart';
-import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart';
 import '../../screens/product_detail_modal.dart'; // Import the new modal
 
@@ -124,9 +123,9 @@ class ProductCard extends StatelessWidget {
                   flex: 2,
                   child: Container(
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: product.imageColor ?? AppTheme.primaryColor,
-                      borderRadius: const BorderRadius.only(
+                    decoration: const BoxDecoration(
+                      color: Colors.white, // ✅ selalu putih
+                      borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(12),
                         topRight: Radius.circular(12),
                       ),
@@ -144,7 +143,7 @@ class ProductCard extends StatelessWidget {
                             height: double.infinity,
                             errorBuilder: (context, error, stackTrace) {
                               return Image.asset(
-                                'assets/images/product_default_image.jpeg',
+                                'assets/images/product_default_image.png',
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: double.infinity,
@@ -152,7 +151,7 @@ class ProductCard extends StatelessWidget {
                             },
                           )
                               : Image.asset(
-                            'assets/images/product_default_image.jpeg',
+                            'assets/images/product_default_image.png',
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,

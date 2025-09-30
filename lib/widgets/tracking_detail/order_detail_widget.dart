@@ -1106,32 +1106,30 @@ class OrderDetailWidget extends StatelessWidget {
   Widget _buildItemImage(Map<String, dynamic> item) {
     final imageUrl = item['imageUrl']?.toString();
 
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        imageUrl != 'https://placehold.co/1920x1080/png') {
-      return Image.network(
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.white, // ✅ selalu putih
+      child: (imageUrl != null &&
+          imageUrl.isNotEmpty &&
+          imageUrl != 'https://placehold.co/1920x1080/png')
+          ? Image.network(
         imageUrl,
         fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
         errorBuilder: (context, error, stackTrace) {
           return Image.asset(
-            'assets/images/product_default_image.jpeg',
+            'assets/images/product_default_image.png',
             fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
           );
         },
-      );
-    } else {
-      return Image.asset(
-        'assets/images/product_default_image.jpeg',
+      )
+          : Image.asset(
+        'assets/images/product_default_image.png',
         fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-      );
-    }
+      ),
+    );
   }
+
 
   List<Widget> _buildAddonsSection(Map<String, dynamic> item) {
     final addons = item['addons'];

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 // import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
 import '../../screens/product_detail_modal.dart';
-import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
 
 class MenuProductCard extends StatelessWidget {
@@ -116,7 +115,7 @@ class MenuProductCard extends StatelessWidget {
                 width: double.infinity,
                 height: 120,
                 decoration: const BoxDecoration(
-                  color: AppTheme.primaryColor,
+                  color: Colors.white, // ✅ selalu putih
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
@@ -134,7 +133,7 @@ class MenuProductCard extends StatelessWidget {
                           height: double.infinity,
                           errorBuilder: (context, error, stackTrace) {
                             return Image.asset(
-                              'assets/images/product_default_image.jpeg',
+                              'assets/images/product_default_image.png',
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: double.infinity,
@@ -142,7 +141,7 @@ class MenuProductCard extends StatelessWidget {
                           },
                         )
                             : Image.asset(
-                          'assets/images/product_default_image.jpeg',
+                          'assets/images/product_default_image.png',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,

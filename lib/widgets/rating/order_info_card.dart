@@ -95,6 +95,7 @@ class OrderInfoCard extends StatelessWidget {
       width: 60,
       height: 60,
       decoration: BoxDecoration(
+        color: Colors.white, // ✅ selalu putih
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -114,18 +115,19 @@ class OrderInfoCard extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Image.asset(
-              'assets/images/product_default_image.jpeg',
+              'assets/images/product_default_image.png',
               fit: BoxFit.cover,
             );
           },
         )
             : Image.asset(
-          'assets/images/product_default_image.jpeg',
+          'assets/images/product_default_image.png',
           fit: BoxFit.cover,
         ),
       ),
     );
   }
+
 
   Widget _buildProductDetails(Map<String, dynamic> item) {
     return Column(

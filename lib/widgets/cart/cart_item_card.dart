@@ -63,38 +63,32 @@ class CartItemCard extends StatelessWidget {
               // Product image
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  item.imageUrl,
+                child: Container(
+                  color: Colors.white, // ✅ background putih selalu
                   width: 80,
                   height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: Image.asset(
-                        'assets/images/product_default_image.jpeg',
+                  child: Image.network(
+                    item.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/product_default_image.png',
                         fit: BoxFit.cover,
-                      ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: Center(
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
                               (loadingProgress.expectedTotalBytes ?? 1)
                               : null,
                         ),
-                      ),
-                    );
-                  },
-                )
-                ,
+                      );
+                    },
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
 

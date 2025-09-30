@@ -273,10 +273,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
               Container(
                 width: 70,
                 height: 70,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[100],
+                decoration: const BoxDecoration(
+                  color: Colors.white, // ✅ selalu putih
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
                 ),
+
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: firstItem.imageUrl.isNotEmpty &&
@@ -288,7 +292,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     height: double.infinity,
                     errorBuilder: (context, error, stackTrace) {
                       return Image.asset(
-                        'assets/images/product_default_image.jpeg',
+                        'assets/images/product_default_image.png',
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
@@ -296,7 +300,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                     },
                   )
                       : Image.asset(
-                    'assets/images/product_default_image.jpeg',
+                    'assets/images/product_default_image.png',
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,

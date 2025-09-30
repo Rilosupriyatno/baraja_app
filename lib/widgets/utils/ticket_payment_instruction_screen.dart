@@ -66,7 +66,7 @@ class _TicketPaymentInstructionsScreenState extends State<TicketPaymentInstructi
 
   void _goToTickets() {
     // Navigate to main screen with history tab (tickets)
-    context.go('/main', extra: {'initialTab': 3});
+    context.go('/main', extra: {'initialTab': 1});
   }
 
   // Helper method to safely get nested values
