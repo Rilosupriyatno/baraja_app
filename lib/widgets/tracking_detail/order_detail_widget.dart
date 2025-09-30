@@ -987,14 +987,32 @@ class OrderDetailWidget extends StatelessWidget {
                 ),
 
                 // Show voucher discount if exists
+                // Show voucher discount if exists
                 if (orderData['voucher'] != null) ...[
                   const SizedBox(height: 8),
-                  PaymentRowWidget(
-                    label: 'Diskon (${orderData['voucher']['code']})',
-                    value: '-${formatCurrency(_getNumericValue(orderData['voucher']['discountAmount']))}',
-                    icon: Icons.local_offer,
-                    isTotal: false,
-                  ),
+                      () {
+                    final voucher = orderData['voucher'] as Map<String, dynamic>;
+                    final voucherCode = voucher['code']?.toString() ?? '';
+                    final discountType = voucher['discountType']?.toString() ?? 'fixed';
+                    final discountAmount = _getNumericValue(voucher['discountAmount']);
+
+                    // Calculate actual discount in rupiah
+                    final totalBeforeDiscount = _getNumericValue(orderData['totalBeforeDiscount']);
+                    final actualDiscount = discountType == 'percentage'
+                        ? (totalBeforeDiscount * discountAmount / 100).round()
+                        : discountAmount.round();
+
+                    final labelText = discountType == 'percentage'
+                        ? 'Kupon Diskon ($voucherCode${discountAmount.toStringAsFixed(0)}%)'
+                        : 'Kupon Diskon ($voucherCode)';
+
+                    return PaymentRowWidget(
+                      label: labelText,
+                      value: '-${formatCurrency(actualDiscount)}',
+                      icon: Icons.local_offer,
+                      isTotal: false,
+                    );
+                  }(),
                   const SizedBox(height: 8),
                   PaymentRowWidget(
                     label: 'Subtotal setelah diskon',

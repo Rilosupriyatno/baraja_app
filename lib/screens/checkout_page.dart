@@ -84,6 +84,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final TableService _tableService = TableService();
   TaxCalculationResult? _taxCalculation;
   bool _taxesLoaded = false;
+
+  // Variables untuk track perubahan dan mencegah infinite loop
+  int? _lastCalculatedSubtotal;
+  int? _lastCalculatedDiscount;
+  String? _lastCalculatedOutletId;
+
   // Scroll controller untuk auto scroll ke error
   final ScrollController _scrollController = ScrollController();
 
@@ -100,12 +106,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
     _initializeTaxData();
 
     // Set default values
-    selectedOrderType = OrderType.dineIn; // Default order type
-    tableNumber = ""; // Default table number
+    selectedOrderType = OrderType.dineIn;
+    tableNumber = "";
 
-    // Get actual data from CartProvider
+    // Get actual data from CartProvider and setup listener
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+      // Add listener untuk track perubahan cart
+      cartProvider.addListener(_onCartChanged);
+
       if (_isReservationWithoutMenu(cartProvider)) {
         setState(() {
           selectedPaymentType = PaymentType.fullPayment;
@@ -116,25 +126,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
           outletId = cartProvider.items.first.outletId?.toString();
         });
       }
+
       // Set initial order type based on the current context
       if (cartProvider.isReservation) {
         // For reservations, we'll use a special handling in the UI
-        // No need to set tableNumber for reservations
       } else if (cartProvider.isDineIn && cartProvider.tableNumber != null) {
         selectedOrderType = OrderType.dineIn;
         tableNumber = cartProvider.tableNumber!;
       } else {
-        // For delivery or pickup, tableNumber remains an empty string
         tableNumber = "";
       }
+
+      // Initial tax calculation
+      if (_taxesLoaded) {
+        _calculateTaxes();
+      }
+
       setState(() {});
     });
   }
+
+  // Listener untuk perubahan cart
+  void _onCartChanged() {
+    if (_taxesLoaded && mounted) {
+      _calculateTaxes();
+    }
+  }
+
   bool _isReservationWithoutMenu(CartProvider cartProvider) {
     return cartProvider.isReservation &&
         cartProvider.items.isEmpty &&
         cartProvider.totalPrice == 25000;
   }
+
   Future<void> _initializeTaxData() async {
     try {
       await _taxService.getTaxesAndServices();
@@ -145,27 +169,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } catch (e) {
       print('Error initializing tax data: $e');
       setState(() {
-        _taxesLoaded = true; // Continue without taxes
+        _taxesLoaded = true;
       });
     }
   }
 
-  // Add these debug statements to your _calculateTaxes() method in checkout_page.dart
-
   void _calculateTaxes() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    print("🔍 DEBUG TAX CALCULATION:");
-    print("- _taxesLoaded: $_taxesLoaded");
-    print("- outletId: $outletId");
-    print("- isOpenBill: ${cartProvider.isOpenBill}");
-    print("- isReservation: ${cartProvider.isReservation}");
-
     if (!_taxesLoaded || outletId == null) {
-      print("❌ Tax calculation skipped - missing requirements");
-      setState(() {
-        _taxCalculation = null;
-      });
+      if (_taxCalculation != null) {
+        setState(() {
+          _taxCalculation = null;
+        });
+      }
       return;
     }
 
@@ -173,6 +190,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final discount = calculateDiscount(subtotal);
     final finalTotal = subtotal - discount;
 
+    // Check if values have actually changed to prevent unnecessary recalculation
+    if (_lastCalculatedSubtotal == subtotal &&
+        _lastCalculatedDiscount == discount &&
+        _lastCalculatedOutletId == outletId) {
+      return; // Skip if nothing changed
+    }
+
+    print("🔍 DEBUG TAX CALCULATION:");
+    print("- _taxesLoaded: $_taxesLoaded");
+    print("- outletId: $outletId");
+    print("- isOpenBill: ${cartProvider.isOpenBill}");
+    print("- isReservation: ${cartProvider.isReservation}");
     print("- subtotal: $subtotal");
     print("- discount: $discount");
     print("- finalTotal: $finalTotal");
@@ -186,6 +215,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     print("- taxCalculation result: ${taxCalculation.totalTaxAmount}");
     print("- taxDetails: ${taxCalculation.taxDetails}");
+
+    // Update last calculated values
+    _lastCalculatedSubtotal = subtotal;
+    _lastCalculatedDiscount = discount;
+    _lastCalculatedOutletId = outletId;
 
     setState(() {
       _taxCalculation = taxCalculation;
@@ -202,16 +236,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
       discount = selectedVoucher!.discountAmount;
     }
 
-    // Recalculate taxes when discount changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _calculateTaxes();
-    });
-
     return discount;
   }
 
   @override
   void dispose() {
+    // Remove listener sebelum dispose
+    try {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.removeListener(_onCartChanged);
+    } catch (e) {
+      // Ignore error if provider is already disposed
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -244,25 +280,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
           targetKey!.currentContext!,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
-          alignment: 0.1, // Scroll sedikit ke atas dari field
+          alignment: 0.1,
         );
       });
     }
   }
 
-  // Helper method untuk mendapatkan waktu minimum pickup (5 menit dari sekarang)
   TimeOfDay _getMinimumPickupTime() {
     final now = DateTime.now();
     final minimumTime = now.add(const Duration(minutes: 5));
     return TimeOfDay.fromDateTime(minimumTime);
   }
 
-  // Helper method untuk mengecek apakah waktu pickup valid
   bool _isValidPickupTime(TimeOfDay selectedTime) {
     final now = DateTime.now();
     final minimumTime = now.add(const Duration(minutes: 5));
 
-    // Convert TimeOfDay to DateTime untuk perbandingan
     final selectedDateTime = DateTime(
       now.year,
       now.month,
@@ -274,14 +307,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
   }
 
-  // Helper method untuk format waktu
   String _formatTime(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
-  // Helper method untuk format currency
   String _formatCurrency(int amount) {
     return amount.toString().replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -289,36 +320,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  // Calculate the discount amount based on the selected voucher
-  // int calculateDiscount(int subtotal) {
-  //   if (selectedVoucher == null) return 0;
-  //
-  //   if (selectedVoucher!.discountType == "percentage") {
-  //     final discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
-  //     return discount;
-  //   } else if (selectedVoucher!.discountType == "fixed") {
-  //     return selectedVoucher!.discountAmount;
-  //   }
-  //   return 0;
-  // }
-
-
-  // Method untuk mengecek apakah area code memerlukan pilihan reservation type
   bool _shouldShowReservationType(String? areaCode) {
     return areaCode == 'A' || areaCode == 'B';
   }
 
-  // Method untuk mengecek apakah blocking bisa dipilih berdasarkan total dan area code
   bool _canSelectBlocking(String? areaCode, int totalAmount) {
     if (areaCode == 'A') {
-      return totalAmount >= 3000000; // Rp. 3.000.000 untuk area A
+      return totalAmount >= 3000000;
     } else if (areaCode == 'B') {
-      return totalAmount >= 2000000; // Rp. 2.000.000 untuk area B
+      return totalAmount >= 2000000;
     }
     return false;
   }
 
-  // Method untuk mendapatkan minimum amount untuk blocking
   int _getMinimumAmountForBlocking(String? areaCode) {
     if (areaCode == 'A') {
       return 3000000;
@@ -328,7 +342,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return 0;
   }
 
-  // Format tampilan metode pembayaran
   String get displayedPaymentMethod {
     if (selectedPaymentMethodName == null ||
         selectedPaymentMethodName!.isEmpty) {
@@ -340,14 +353,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return selectedPaymentMethodName!;
   }
 
-  // Method untuk menentukan apakah order type selector harus ditampilkan
-// Method untuk menentukan apakah order type selector harus ditampilkan
   bool _shouldShowOrderTypeSelector(CartProvider cartProvider) {
-    // Jangan tampilkan selector jika dalam mode reservasi, dine-in, atau open bill
     return !cartProvider.isReservation && !cartProvider.isDineIn && !cartProvider.isOpenBill;
   }
 
-  // Method untuk mendapatkan title section berdasarkan mode
   String _getOrderTypeTitle(CartProvider cartProvider) {
     if (cartProvider.isReservation) {
       return "Konfirmasi Pesanan Reservasi";
@@ -356,7 +365,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } else if (cartProvider.isOpenBill){
       return "Konfirmasi Open Bill";
     } else {
-      // Cek selected order type untuk non-fixed modes
       switch (selectedOrderType) {
         case OrderType.takeAway:
           return "Konfirmasi Pesanan Take Away";
@@ -383,18 +391,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final int taxAmount = _taxCalculation?.totalTaxAmount.round() ?? 0;
         final int grandTotal = finalTotal + taxAmount;
 
-        // Calculate down payment amount based on grand total (including tax)
         final int downPaymentAmount = (grandTotal * 0.5).round();
 
-        // Recalculate taxes when cart changes
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_taxesLoaded) {
-            _calculateTaxes();
-          }
-        });
-
         // Auto-set reservation type to non-blocking if blocking is not available
-        // Update this check to use grandTotal instead of finalTotal
         if (cartProvider.isReservation &&
             cartProvider.reservationData != null &&
             _shouldShowReservationType(cartProvider.reservationData!.areaCode) &&
@@ -406,6 +405,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             });
           });
         }
+
         return BaseScreenWrapper(
           customBackRoute: '/cart',
           canPop: false,
@@ -418,7 +418,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
             resizeToAvoidBottomInset: true,
             body: Column(
               children: [
-                // Konten utama dengan scroll
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _scrollController,
@@ -428,10 +427,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
 
-                          // Reservation info at the top
                           if (cartProvider.isReservation && cartProvider.reservationData != null)
                             ReservationInfoWidget(data: cartProvider.reservationData!),
-
 
                           if (cartProvider.isReservation && cartProvider.reservationData != null)
                             ReservationTypeSelectorWidget(
@@ -449,16 +446,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 });
                               },
                             ),
+
                           if (cartProvider.isOpenBill && cartProvider.openBillData != null)
                             OpenBillInfoWidget(openBillData: cartProvider.openBillData!),
 
-
-                          // Dine-in info at the top
                           if (cartProvider.isDineIn)
                             const DineInInfoWidget(),
-
-
-
 
                           // Daftar Item Keranjang
                           if (cartItems.isEmpty)
@@ -499,7 +492,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                           const SizedBox(height: 24),
 
-                          // Pemilihan Tipe Pesanan - Conditional Display
                           Text(
                             _getOrderTypeTitle(cartProvider),
                             style: const TextStyle(
@@ -518,7 +510,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Enhanced Order Type Selector with inline validation
                             OrderTypeSelectorWithValidation(
                               selectedType: selectedOrderType,
                               onChanged: (type) => setState(() => selectedOrderType = type),
@@ -533,7 +524,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ),
 
                           ] else ...[
-                            // Show fixed order type info untuk reservasi/dine-in
                             Container(
                               margin: const EdgeInsets.only(top: 8),
                               padding: const EdgeInsets.all(12),
@@ -569,9 +559,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           ],
                           const SizedBox(height: 24),
 
-                          // Payment Type Selection for Reservations - Moved here
                           if (cartProvider.isReservation) ...[
-                            // Jika reservasi tanpa menu, otomatis hide widget atau set ke full payment
                             if (!_isReservationWithoutMenu(cartProvider))
                               ReservationPaymentTypeWidget(
                                 selectedType: selectedPaymentType,
@@ -584,7 +572,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 downPaymentAmount: downPaymentAmount,
                               ),
 
-                            // Info box untuk reservasi tanpa menu
                             if (_isReservationWithoutMenu(cartProvider))
                               Container(
                                 padding: const EdgeInsets.all(16),
@@ -639,7 +626,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             const SizedBox(height: 24),
                           ],
 
-                          // Enhanced Payment Method Widget with inline validation
                           PaymentMethodWithValidation(
                             displayedPaymentMethod: displayedPaymentMethod,
                             errorMessage: hasAttemptedSubmit ? validationErrors['paymentMethod'] : null,
@@ -661,9 +647,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             onVoucherSelected: (Voucher voucher) {
                               setState(() {
                                 selectedVoucher = voucher;
-                                selectedVoucherCode = voucher.code; // ✅ tambahkan ini
+                                selectedVoucherCode = voucher.code;
                                 discountAmount = calculateDiscount(subtotal);
                               });
+                              // Trigger tax recalculation after voucher changes
+                              _calculateTaxes();
                             },
                           ),
                           const SizedBox(height: 24),
@@ -673,7 +661,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                 ),
 
-                // Updated Checkout Summary without payment type widget
                 CheckoutSummary(
                   totalPrice: subtotal,
                   discount: discount,
@@ -682,7 +669,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   isReservation: cartProvider.isReservation,
                   isOpenBill: cartProvider.isOpenBill,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
-                  taxCalculation: _taxCalculation, // Pass tax calculation
+                  taxCalculation: _taxCalculation,
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan");
 
@@ -690,7 +677,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       hasAttemptedSubmit = true;
                     });
 
-                    // ✅ FIX: Add await and tableService parameter
                     final validationResult = await CheckoutValidator.validateForm(
                       cartProvider: cartProvider,
                       selectedOrderType: selectedOrderType,
@@ -708,7 +694,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       isValidPickupTime: _isValidPickupTime,
                       getMinimumPickupTime: _getMinimumPickupTime,
                       formatTime: _formatTime,
-                      tableService: _tableService, // ✅ ADD THIS PARAMETER
+                      tableService: _tableService,
                     );
 
                     if (!validationResult['isValid']) {
@@ -716,7 +702,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         validationErrors = Map<String, String>.from(validationResult['errors']);
                       });
 
-                      // Show general error snackbar
                       if (validationErrors.containsKey('general')) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -727,7 +712,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         return;
                       }
 
-                      // Scroll to first error field
                       if (validationResult['firstErrorKey'] != null) {
                         _scrollToError(validationResult['firstErrorKey']);
                       }
@@ -740,15 +724,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     final userName = prefs.getString('userName') ?? 'Guest';
                     int amountToPay = grandTotal;
                     if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
-                      // Jika reservasi tanpa menu, selalu bayar full
                       if (_isReservationWithoutMenu(cartProvider)) {
-                        amountToPay = grandTotal; // Always full payment for reservation without menu
+                        amountToPay = grandTotal;
                       } else {
                         amountToPay = downPaymentAmount;
                       }
                     }
 
-                    // Tampilkan loading indicator
                     showDialog(
                       context: context,
                       barrierDismissible: false,
@@ -770,7 +752,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'addons': item.addons,
                         'toppings': item.toppings,
                         'notes': item.notes,
-                        'outletId': item.outletId,       // ✅ tambahkan
+                        'outletId': item.outletId,
                         'outletName': item.outletName,
                       })
                           .toList();
@@ -782,20 +764,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'bankCode': selectedBankCode,
                       };
 
-                      // Determine order type based on current context
                       OrderType finalOrderType;
                       if (cartProvider.isReservation) {
                         finalOrderType = OrderType.reservation;
                       } else if (cartProvider.isDineIn) {
                         finalOrderType = OrderType.dineIn;
                       } else if (cartProvider.isOpenBill) {
-                        // For open bill, it's essentially a dine-in order for an existing reservation
                         finalOrderType = OrderType.dineIn;
                       } else {
                         finalOrderType = selectedOrderType;
                       }
+
                       print("✅ sebelum createOrder : Memulai pembuatan pesanan...");
-                      // Create order with payment type information for reservations
+
                       final orderResult = await orderService.createOrder(
                         items: items,
                         userId: userId ?? 'guest',
@@ -813,21 +794,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         totalTax: taxAmount,
                         voucherCode: selectedVoucherCode,
                         reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
-                        openBillData: cartProvider.openBillData, // ✅ tambahkan ini
-                        // PERBAIKAN: Pastikan reservationType dikirim dengan kondisi yang benar
+                        openBillData: cartProvider.openBillData,
                         reservationType: cartProvider.isReservation &&
                             cartProvider.reservationData != null &&
                             _shouldShowReservationType(cartProvider.reservationData!.areaCode)
                             ? selectedReservationType
-                            : null, // Kirim null jika tidak applicable
+                            : null,
                       );
 
                       print("✅ createOrder berhasil: $orderResult");
+                      print("➡️ ini adalah voucher code: $selectedVoucherCode");
 
                       Navigator.of(context).pop();
 
-                      // Navigate to payment confirmation with payment type data
-                      // Update the extra data for navigation to include open bill info
                       final extraData = {
                         'items': List.from(cartItems),
                         'userId': userId,
@@ -842,25 +821,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'subtotal': subtotal,
                         'discount': discount,
                         'total': finalTotal,
-                        // ✅ TAMBAHKAN INI - Tax data yang sebelumnya hilang
                         'taxAmount': taxAmount,
                         'taxDetails': _taxCalculation?.taxDetails ?? [],
-                        'grandTotal': grandTotal, // Total sudah termasuk tax
+                        'grandTotal': grandTotal,
                         'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
-                        'amountToPay': amountToPay, // Sudah menggunakan grandTotal untuk perhitungan
+                        'amountToPay': amountToPay,
                         'voucherCode': selectedVoucherCode,
                         'id': orderResult['order']?['_id'] ?? '',
                         'orderId': orderResult['order']?['order_id'] ?? '',
                       };
 
-// Add open bill specific data
                       if (cartProvider.isOpenBill && cartProvider.openBillData != null) {
                         extraData['isOpenBill'] = true;
                         extraData['openBillData'] = cartProvider.openBillData;
                         extraData['existingReservation'] = orderResult['existingReservation'];
                       }
 
-// Add reservation and payment type data if applicable
                       if (cartProvider.isReservation && cartProvider.reservationData != null) {
                         extraData['reservationData'] = cartProvider.reservationData;
                         extraData['isReservation'] = true;

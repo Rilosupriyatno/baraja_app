@@ -103,7 +103,8 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 
       final result = await _orderService.getOrderForTracking(widget.id);
 
-      print('📦 API Result: $result');
+      debugPrint('📦 API Result: $result', wrapWidth: 1024);
+
 
       if (result['success']) {
         final data = result['data'];

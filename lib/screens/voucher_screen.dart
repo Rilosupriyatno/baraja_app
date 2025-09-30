@@ -1,5 +1,6 @@
 import 'package:baraja_amphitheater_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/voucher_item.dart';
 import '../theme/app_theme.dart';
 import '../services/voucher_service.dart';
@@ -29,6 +30,7 @@ class _VoucherScreenState extends State<VoucherScreen> {
   bool _isLoading = true;
 
   @override
+
   void initState() {
     super.initState();
     selectedVoucherCode = widget.appliedVoucherCode;
@@ -37,7 +39,10 @@ class _VoucherScreenState extends State<VoucherScreen> {
 
   Future<void> fetchVouchers() async {
     try {
-      final vouchers = await VoucherService().fetchVouchers();
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+
+      final vouchers = await VoucherService().fetchVouchers(userId: userId);
       setState(() {
         _vouchers = vouchers;
         _isLoading = false;

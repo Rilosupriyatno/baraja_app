@@ -1,6 +1,7 @@
 import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/socket_service.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -8,6 +9,7 @@ import '../models/order_type.dart';
 import '../models/reservation_data.dart';
 import '../providers/order_provider.dart';
 import '../services/confirm_service.dart';
+import '../services/voucher_service.dart';
 import '../widgets/checkout/reservation_payment_type_widget.dart';
 import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
@@ -142,7 +144,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     final confirmService = ConfirmService();
 
     try {
-      // Send order (works for both cash and digital payments)
       final response = await confirmService.sendOrder(
         newOrder,
         isDownPayment: widget.isDownPayment,
@@ -157,11 +158,15 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         });
 
         if (response.success) {
-          // Add order to provider
           final orderProvider = Provider.of<OrderProvider>(context, listen: false);
           orderProvider.addOrder(newOrder);
 
           print('Payment processed successfully for order: ${widget.orderId}');
+
+          // 🆕 Mark voucher as used for cash payments
+          if (_isCashPayment) {
+            await _markVoucherAsUsedIfApplicable();
+          }
 
           // For non-cash payments, setup socket connection
           if (!_isCashPayment) {
@@ -216,12 +221,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         setState(() {
           // Update the payment response with new transaction status
           if (_paymentResponse != null && _paymentResponse!.data != null) {
-            // Create a mutable copy of the data
             final updatedData = Map<String, dynamic>.from(_paymentResponse!.data!);
-
             updatedData['transaction_status'] = data['transaction_status'];
 
-            // Update other fields if they exist in the update
             if (data.containsKey('fraud_status')) {
               updatedData['fraud_status'] = data['fraud_status'];
             }
@@ -229,7 +231,6 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
               updatedData['status_message'] = data['status_message'];
             }
 
-            // Create new PaymentResult with updated data
             _paymentResponse = PaymentResult(
               success: _paymentResponse!.success,
               message: _paymentResponse!.message,
@@ -242,19 +243,56 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       }
 
       print('Payment status updated to: ${data['transaction_status']}');
+      // 🆕 Mark voucher as used when payment is successful
+      _markVoucherAsUsedIfApplicable();
 
-      // Update order status based on transaction status
+      // 🆕 Mark voucher as used when payment is successful
+
       if (data['transaction_status'] == 'settlement' ||
           data['transaction_status'] == 'capture' ||
           data['transaction_status'] == 'paid' ||
-          data['transaction_status'] == 'Paid')  {
+          data['transaction_status'] == 'Paid') {
+
+        print('✅ Payment successful, processing voucher and order update...');
+
         if (mounted) {
-          final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-          orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
+          try {
+            // Update order status
+            final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+            orderProvider.updateOrderStatus(widget.id, OrderStatus.pending);
+            print('✅ Order status updated to pending');
+          } catch (e) {
+            print('❌ Error updating order status: $e');
+          }
+
+          // 🆕 Mark voucher as used if voucher was applied
+
+        } else {
+          print('⚠️ Widget unmounted, cannot mark voucher as used');
         }
       }
-    } else {
-      print('Received payment update for different order: ${data['order_id']}');
+    }
+  }
+
+// 🆕 New method to mark voucher as used
+  Future<void> _markVoucherAsUsedIfApplicable() async {
+
+    if (widget.voucherCode != null &&
+        widget.voucherCode!.isNotEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('userId');
+
+        debugPrint('Attempting to mark voucher as used: ${widget.voucherCode} for user: $userId');
+
+        if (userId != null) {
+          // Kirim voucherId, bukan order ID
+          await VoucherService().markVoucherAsUsed(widget.voucherCode!, userId);
+          print('✅ Voucher ${widget.voucherCode} (ID: ${widget.voucherCode}) marked as used');
+        }
+      } catch (e) {
+        print('❌ Error marking voucher as used: $e');
+      }
     }
   }
 

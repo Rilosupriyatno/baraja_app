@@ -53,13 +53,43 @@ class VoucherItem extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          voucher.name,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: isDisabled ? Colors.grey : Colors.black,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                voucher.name,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDisabled ? Colors.grey : Colors.black,
+                                ),
+                              ),
+                            ),
+                            // Badge untuk oneTimeUse
+                            if (voucher.oneTimeUse)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.orange.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Sekali Pakai',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -75,7 +105,7 @@ class VoucherItem extends StatelessWidget {
                             Text(
                               voucher.discountType == "percentage"
                                   ? "${voucher.discountAmount}%"
-                                  : "Rp ${voucher.discountAmount}",
+                                  : "Rp ${NumberFormat('#,###', 'id_ID').format(voucher.discountAmount)}",
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -127,6 +157,8 @@ class Voucher {
   final bool isActive;
   final DateTime validFrom;
   final DateTime validTo;
+  final bool oneTimeUse; // 🆕 Field baru untuk one-time use
+  final List<dynamic> applicableOutlets;
 
   Voucher({
     required this.id,
@@ -138,6 +170,8 @@ class Voucher {
     required this.isActive,
     required this.validFrom,
     required this.validTo,
+    this.oneTimeUse = false, // Default false
+    this.applicableOutlets = const [],
   });
 
   factory Voucher.fromJson(Map<String, dynamic> json) {
@@ -151,6 +185,8 @@ class Voucher {
       isActive: json['isActive'] ?? true,
       validFrom: DateTime.parse(json['validFrom']),
       validTo: DateTime.parse(json['validTo']),
+      oneTimeUse: json['oneTimeUse'] ?? false, // 🆕 Parse dari JSON
+      applicableOutlets: json['applicableOutlets'] ?? [],
     );
   }
 }
