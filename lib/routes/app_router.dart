@@ -9,6 +9,8 @@ import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/favorit_screen.dart';
+import '../screens/jro_management_reservation_screen.dart';
+import '../screens/jro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/login_screen.dart';
@@ -337,6 +339,23 @@ class AppRouter {
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const ReservationScreen(),
         ),
+
+        GoRoute(
+          path: '/jro-reservation-management',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) {
+            final args = state.extra as Map<String, dynamic>?;
+            final filter = args?['filter'];
+            return JroReservationManagementScreen(filter: filter);
+          },
+        ),
+
+        GoRoute(
+          path: '/jro-table-availability',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const JroTableAvailabilityScreen(),
+        ),
+
       ],
     );
   }

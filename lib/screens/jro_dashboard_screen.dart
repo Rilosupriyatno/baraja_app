@@ -1,7 +1,8 @@
-// jro_dashboard_screen.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/jro_service.dart';
 import '../widgets/utils/role_based_widget.dart';
 
 class JroDashboardScreen extends StatefulWidget {
@@ -11,187 +12,252 @@ class JroDashboardScreen extends StatefulWidget {
   State<JroDashboardScreen> createState() => _JroDashboardScreenState();
 }
 
-class _JroDashboardScreenState extends State<JroDashboardScreen> with RoleCheckMixin {
-  final Map<String, dynamic> _dashboardStats = {};
+class _JroDashboardScreenState extends State<JroDashboardScreen>
+    with RoleCheckMixin {
+  final JROService _jroService = JROService();
+  Map<String, dynamic> _dashboardStats = {};
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _loadDashboardStats();
+  }
+
+  Future<void> _loadDashboardStats() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _jroService.getDashboardStats();
+
+      if (result['success']) {
+        setState(() {
+          _dashboardStats = result['data'];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result['error'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error loading dashboard: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         title: Consumer<AuthService>(
           builder: (context, authService, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Dashboard JRO',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Hai, ${authService.getUserDisplayName()}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+            return const Text(
+              'Dashboard JRO',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+                color: Colors.black,
+              ),
             );
           },
         ),
-        backgroundColor: const Color(0xFF2E8B57), // Sea green for JRO
-        foregroundColor: Colors.white,
+        centerTitle: true,
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () {
-              // Navigate to notifications
-            },
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifikasi',
+            onPressed: _loadDashboardStats,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            splashRadius: 24,
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _loadDashboardStats,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+            ? _buildErrorState()
+            : _buildDashboardContent(),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'Terjadi kesalahan',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadDashboardStats,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      children: [
+        _buildWelcomeCard(),
+        const SizedBox(height: 24),
+        const Text(
+          'Statistik Reservasi',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildStatsGrid(),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E8B57),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Row(
             children: [
-              // Welcome Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2E8B57), Color(0xFF228B22)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
+              Icon(
+                Icons.restaurant_menu,
+                color: Colors.white,
+                size: 24,
+              ),
+              SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.restaurant_menu,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Sistem Manajemen Reservasi',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Juru Rawat Operations',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Kelola reservasi, meja, dan operasional restoran dengan efisien',
+                    Text(
+                      'JRO Dashboard',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // Quick Stats
-              const Text(
-                'Statistik Hari Ini',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Stats Grid
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.2,
-                children: [
-                  _buildStatCard(
-                    title: 'Total Reservasi',
-                    value: '${_dashboardStats['totalReservations'] ?? 0}',
-                    icon: Icons.event_seat,
-                    color: const Color(0xFF3B82F6),
-                    onTap: () => _navigateToReservations(),
-                  ),
-                  _buildStatCard(
-                    title: 'Menunggu',
-                    value: '${_dashboardStats['pendingReservations'] ?? 0}',
-                    icon: Icons.schedule,
-                    color: const Color(0xFFF59E0B),
-                    onTap: () => _navigateToReservations(status: 'pending'),
-                  ),
-                  _buildStatCard(
-                    title: 'Sedang Berlangsung',
-                    value: '${_dashboardStats['activeReservations'] ?? 0}',
-                    icon: Icons.dining,
-                    color: const Color(0xFF10B981),
-                    onTap: () => _navigateToReservations(status: 'active'),
-                  ),
-                  _buildStatCard(
-                    title: 'Meja Tersedia',
-                    value: '${_dashboardStats['availableTables'] ?? 0}',
-                    icon: Icons.table_restaurant,
-                    color: const Color(0xFF8B5CF6),
-                    onTap: () => _navigateToTableManagement(),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Kelola reservasi, meja, dan operasional restoran dengan efisien',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.35,
+      children: [
+        _buildStatCard(
+          title: 'Riwayat Reservasi',
+          value: '${_dashboardStats['allReservations'] ?? 0}',
+          icon: Icons.history,
+          color: const Color(0xFF6366F1),
+          onTap: () => _navigateToReservations(),
         ),
-      );
+        _buildStatCard(
+          title: 'Menunggu',
+          value: '${_dashboardStats['pendingReservations'] ?? 0}',
+          icon: Icons.schedule,
+          color: const Color(0xFFF59E0B),
+          onTap: () => _navigateToReservations(status: 'pending'),
+        ),
+        _buildStatCard(
+          title: 'Berlangsung',
+          value: '${_dashboardStats['activeReservations'] ?? 0}',
+          icon: Icons.dining,
+          color: const Color(0xFF10B981),
+          onTap: () => _navigateToReservations(status: 'active'),
+        ),
+        _buildStatCard(
+          title: 'Selesai',
+          value: '${_dashboardStats['completedReservations'] ?? 0}',
+          icon: Icons.check_circle,
+          color: const Color(0xFF059669),
+          onTap: () => _navigateToReservations(status: 'completed'),
+        ),
+        _buildStatCard(
+          title: 'Batal',
+          value: '${_dashboardStats['cancelledReservations'] ?? 0}',
+          icon: Icons.cancel,
+          color: const Color(0xFFEF4444),
+          onTap: () => _navigateToReservations(status: 'cancelled'),
+        ),
+        _buildStatCard(
+          title: 'Meja Tersedia',
+          value: '${_dashboardStats['availableTables'] ?? 0}',
+          icon: Icons.table_restaurant,
+          color: const Color(0xFF8B5CF6),
+          onTap: () => _navigateToTableManagement(),
+        ),
+      ],
+    );
   }
 
   Widget _buildStatCard({
@@ -204,38 +270,31 @@ class _JroDashboardScreenState extends State<JroDashboardScreen> with RoleCheckM
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 28,
-              ),
+            Icon(
+              icon,
+              color: color,
+              size: 24,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               value,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -244,9 +303,8 @@ class _JroDashboardScreenState extends State<JroDashboardScreen> with RoleCheckM
             Text(
               title,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: Colors.grey,
-                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
             ),
@@ -256,21 +314,14 @@ class _JroDashboardScreenState extends State<JroDashboardScreen> with RoleCheckM
     );
   }
 
-
-
-
-
-
   void _navigateToReservations({String? status}) {
-    Navigator.pushNamed(
-      context,
-      '/reservation-management',
-      arguments: {'filter': status},
+    context.push(
+      '/jro-reservation-management',
+      extra: {'filter': status},
     );
   }
 
   void _navigateToTableManagement() {
-    Navigator.pushNamed(context, '/table-management');
+    context.push('/jro-table-availability');
   }
-
 }

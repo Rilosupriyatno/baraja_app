@@ -416,22 +416,22 @@ class _JroNavigationBarState extends State<JroNavigationBar> {
             ),
           ),
           // Reservation Management
-          PersistentTabConfig(
-            screen: const JroDashboardScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.event_seat),
-              title: "Reservasi",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
-          PersistentTabConfig(
-            screen: const JroDashboardScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.analytics),
-              title: "Laporan",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
+          // PersistentTabConfig(
+          //   screen: const JroDashboardScreen(),
+          //   item: ItemConfig(
+          //     icon: const Icon(Icons.event_seat),
+          //     title: "Reservasi",
+          //     activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+          //   ),
+          // ),
+          // PersistentTabConfig(
+          //   screen: const JroDashboardScreen(),
+          //   item: ItemConfig(
+          //     icon: const Icon(Icons.analytics),
+          //     title: "Laporan",
+          //     activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+          //   ),
+          // ),
           // Profile
           PersistentTabConfig(
             screen: const ProfileScreen(),

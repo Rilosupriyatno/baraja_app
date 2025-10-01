@@ -1,36 +1,141 @@
+//plugins {
+//    id "com.android.application"
+//    id "kotlin-android"
+//    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+//    id "dev.flutter.flutter-gradle-plugin"
+//}
+//
+//def keystoreProperties = new Properties()
+//def keystorePropertiesFile = rootProject.file("key.properties")
+//if (keystorePropertiesFile.exists()) {
+//    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+//}
+//
+//// ✅ Auto-increment versionCode pakai file version.properties
+//def versionPropsFile = file("version.properties")
+//def _versionCode = 1
+//def _versionName = "1.0.0"
+//
+//if (versionPropsFile.exists()) {
+//    def Properties versionProps = new Properties()
+//    versionProps.load(new FileInputStream(versionPropsFile))
+//    _versionCode = (versionProps['VERSION_CODE'] ?: "1").toInteger() + 1
+//    _versionName = versionProps['VERSION_NAME'] ?: "1.0.0"
+//    versionProps['VERSION_CODE'] = _versionCode.toString()
+//    versionProps['VERSION_NAME'] = _versionName
+//    versionProps.store(new FileOutputStream(versionPropsFile), null)
+//} else {
+//    def Properties versionProps = new Properties()
+//    versionProps['VERSION_CODE'] = "1"
+//    versionProps['VERSION_NAME'] = "1.0.0"
+//    versionProps.store(new FileOutputStream(versionPropsFile), null)
+//    _versionCode = 1
+//    _versionName = "1.0.0"
+//}
+//
+//android {
+//    namespace = "com.baraja.baraja_amphitheater_app"
+//    compileSdk = flutter.compileSdkVersion
+//    ndkVersion = flutter.ndkVersion
+//
+//    compileOptions {
+//        sourceCompatibility = JavaVersion.VERSION_1_8
+//        targetCompatibility = JavaVersion.VERSION_1_8
+//    }
+//
+//    kotlinOptions {
+//        jvmTarget = JavaVersion.VERSION_1_8
+//    }
+//
+//    defaultConfig {
+//        applicationId = "com.baraja.baraja_amphitheater_app"
+//        minSdk = 23
+//        targetSdk = flutter.targetSdkVersion
+//
+//        // ✅ gunakan variabel yang sudah didefinisikan
+//        versionCode _versionCode
+//        versionName _versionName
+//    }
+//
+//    signingConfigs {
+//        release {
+//            keyAlias keystoreProperties['keyAlias']
+//            keyPassword keystoreProperties['keyPassword']
+//            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+//            storePassword keystoreProperties['storePassword']
+//        }
+//    }
+//
+//    buildTypes {
+//        release {
+//            signingConfig signingConfigs.release
+//            shrinkResources false
+//            minifyEnabled false
+//        }
+//    }
+//}
+//
+//flutter {
+//    source = "../.."
+//}
+//
+//dependencies {
+//    implementation platform('com.google.firebase:firebase-bom:32.2.3')
+//    implementation 'com.google.firebase:firebase-analytics'
+//    implementation 'com.google.firebase:firebase-messaging'
+//}
+//
+//apply plugin: 'com.android.application'
+//apply plugin: 'com.google.gms.google-services'
+//
+//// ✅ Fixed: Copy file instead of rename, so Flutter can find the original
+//tasks.whenTaskAdded { task ->
+//    if (task.name == "bundleRelease") {
+//        task.doLast {
+//            def appName = "baraja_amphiteater_app"
+//            def buildDir = "${project.buildDir}/outputs/bundle/release"
+//            def originalFile = file("${buildDir}/app-release.aab")
+//            def renamedFile = file("${buildDir}/${appName}-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})-release.aab")
+//
+//            if (originalFile.exists()) {
+//                // Copy instead of rename, so Flutter can find the original file
+//                java.nio.file.Files.copy(
+//                        originalFile.toPath(),
+//                        renamedFile.toPath(),
+//                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+//                )
+//                println "✅ AAB copied to: ${renamedFile.name}"
+//                println "✅ Original AAB preserved at: ${originalFile.name}"
+//            }
+//        }
+//    }
+//
+//    if (task.name == "assembleRelease") {
+//        task.doLast {
+//            def appName = "baraja_amphiteater_app"
+//            def buildDir = "${project.buildDir}/outputs/apk/release"
+//            def originalFile = file("${buildDir}/app-release.apk")
+//            def renamedFile = file("${buildDir}/${appName}-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})-release.apk")
+//
+//            if (originalFile.exists()) {
+//                // Copy instead of rename, so Flutter can find the original file
+//                java.nio.file.Files.copy(
+//                        originalFile.toPath(),
+//                        renamedFile.toPath(),
+//                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+//                )
+//                println "✅ APK copied to: ${renamedFile.name}"
+//                println "✅ Original APK preserved at: ${originalFile.name}"
+//            }
+//        }
+//    }
+//}
+
 plugins {
     id "com.android.application"
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
-}
-
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
-// ✅ Auto-increment versionCode pakai file version.properties
-def versionPropsFile = file("version.properties")
-def _versionCode = 1
-def _versionName = "1.0.0"
-
-if (versionPropsFile.exists()) {
-    def Properties versionProps = new Properties()
-    versionProps.load(new FileInputStream(versionPropsFile))
-    _versionCode = (versionProps['VERSION_CODE'] ?: "1").toInteger() + 1
-    _versionName = versionProps['VERSION_NAME'] ?: "1.0.0"
-    versionProps['VERSION_CODE'] = _versionCode.toString()
-    versionProps['VERSION_NAME'] = _versionName
-    versionProps.store(new FileOutputStream(versionPropsFile), null)
-} else {
-    def Properties versionProps = new Properties()
-    versionProps['VERSION_CODE'] = "1"
-    versionProps['VERSION_NAME'] = "1.0.0"
-    versionProps.store(new FileOutputStream(versionPropsFile), null)
-    _versionCode = 1
-    _versionName = "1.0.0"
 }
 
 android {
@@ -48,29 +153,21 @@ android {
     }
 
     defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.baraja.baraja_amphitheater_app"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
-
-        // ✅ gunakan variabel yang sudah didefinisikan
-        versionCode _versionCode
-        versionName _versionName
-    }
-
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
-        }
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            shrinkResources false
-            minifyEnabled false
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.debug
         }
     }
 }
@@ -80,53 +177,12 @@ flutter {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:32.2.3')
+    implementation platform('com.google.firebase:firebase-bom:32.2.3') // Gunakan versi terbaru dari Firebase BOM
     implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.firebase:firebase-messaging' // Tambahkan ini jika menggunakan FCM
 }
+
+
 
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
-
-// ✅ Fixed: Copy file instead of rename, so Flutter can find the original
-tasks.whenTaskAdded { task ->
-    if (task.name == "bundleRelease") {
-        task.doLast {
-            def appName = "baraja_amphiteater_app"
-            def buildDir = "${project.buildDir}/outputs/bundle/release"
-            def originalFile = file("${buildDir}/app-release.aab")
-            def renamedFile = file("${buildDir}/${appName}-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})-release.aab")
-
-            if (originalFile.exists()) {
-                // Copy instead of rename, so Flutter can find the original file
-                java.nio.file.Files.copy(
-                        originalFile.toPath(),
-                        renamedFile.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-                println "✅ AAB copied to: ${renamedFile.name}"
-                println "✅ Original AAB preserved at: ${originalFile.name}"
-            }
-        }
-    }
-
-    if (task.name == "assembleRelease") {
-        task.doLast {
-            def appName = "baraja_amphiteater_app"
-            def buildDir = "${project.buildDir}/outputs/apk/release"
-            def originalFile = file("${buildDir}/app-release.apk")
-            def renamedFile = file("${buildDir}/${appName}-v${android.defaultConfig.versionName}(${android.defaultConfig.versionCode})-release.apk")
-
-            if (originalFile.exists()) {
-                // Copy instead of rename, so Flutter can find the original file
-                java.nio.file.Files.copy(
-                        originalFile.toPath(),
-                        renamedFile.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                )
-                println "✅ APK copied to: ${renamedFile.name}"
-                println "✅ Original APK preserved at: ${originalFile.name}"
-            }
-        }
-    }
-}
