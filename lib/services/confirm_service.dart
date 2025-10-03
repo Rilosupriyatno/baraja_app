@@ -22,7 +22,7 @@ class ConfirmService {
         paymentData = {
           "payment_type": paymentType,
           "order_id": order.orderId,
-          "gross_amount": order.total,
+          "gross_amount": order.total + (order.taxAmount ?? 0), // Sertakan tax jika ada
         };
       } else {
         // Untuk payment type lainnya (bank_transfer, gopay, qris, dll)
@@ -30,7 +30,7 @@ class ConfirmService {
           "payment_type": paymentType,
           "transaction_details": {
             "order_id": order.orderId,
-            "gross_amount": order.total,
+            "gross_amount": order.total + (order.taxAmount ?? 0), // Sertakan tax jika ada
           },
         };
 

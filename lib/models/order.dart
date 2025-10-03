@@ -27,6 +27,7 @@ class Order {
   final String? voucherCode;
   final DateTime orderTime;
   OrderStatus status;
+  final int? taxAmount;
 
   Order({
     required this.id,
@@ -43,6 +44,7 @@ class Order {
     required this.orderTime,
     this.status = OrderStatus.pending,
     required this.paymentDetails,
+    this.taxAmount
   });
 
   // Convert to Map for storage
@@ -72,6 +74,7 @@ class Order {
       'voucherCode': voucherCode,
       'orderTime': orderTime.toIso8601String(),
       'status': status.toString(),
+      'taxAmount': taxAmount,
     };
   }
 

@@ -119,6 +119,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       voucherCode: widget.voucherCode,
       orderTime: DateTime.now(),
       status: OrderStatus.processing,
+      taxAmount: widget.taxAmount ?? 0,
     );
 
     // Defer the payment handling until after the build phase
