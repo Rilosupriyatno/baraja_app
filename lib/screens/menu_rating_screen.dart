@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../services/rating_service.dart';
 import '../widgets/rating/existing_rating_info.dart';
@@ -28,6 +29,11 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
   bool isLoading = true;
   Map<String, dynamic>? existingRating;
 
+  // Google Place ID
+  static const String googlePlaceId = 'ChIJ7Sa1NADjbi4R3L5OBuXuuJ4';
+  // URL Google Maps untuk tempat Anda
+  static const String googleMapsUrl = 'https://www.google.com/maps/place/Baraja+Coffee+Amphitheater/@-6.7104235,108.5357765,17z/data=!3m1!4b1!4m6!3m5!1s0x2e6ee30034b526ed:0x9eb8eee5064ebedc!8m2!3d-6.7104288!4d108.5383514!16s%2Fg%2F11y2hk0g0l?entry=ttu&g_ep=EgoyMDI1MTAwMS4wIKXMDSoASAFQAw%3D%3D';
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +44,343 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
   void dispose() {
     _reviewController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showGoogleReviewDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  AppTheme.barajaPrimary.primaryColor.withOpacity(0.02),
+                ],
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: 48,
+                    color: AppTheme.barajaPrimary.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                const Text(
+                  'Terima Kasih! 🎉',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+
+                // Description
+                Text(
+                  'Rating Anda sangat berarti bagi kami. Mau bantu kami lebih lagi dengan memberi rating di Google?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+
+                // Buttons
+                Column(
+                  children: [
+                    // Yes Button
+                    Container(
+                      width: double.infinity,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.barajaPrimary.primaryColor,
+                            AppTheme.barajaPrimary.primaryColor.withOpacity(0.8),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _openGoogleReview();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/icons/google.png', // Anda perlu menambahkan icon Google
+                              width: 20,
+                              height: 20,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.open_in_new,
+                                  color: Colors.white,
+                                  size: 20,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Beri Rating di Google',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // No Button
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pop(true);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Lain kali saja',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openGoogleReview() async {
+    // List of URL alternatives to try - URUTAN PENTING!
+    final urls = [
+      // URL 1: Direct link ke halaman Google Maps (akan buka di section reviews)
+      googleMapsUrl,
+
+      // URL 2: Google Maps dengan Place ID - Buka halaman place
+      'https://www.google.com/maps/search/?api=1&query=Baraja%20Coffee%20Amphitheater&query_place_id=$googlePlaceId',
+
+      // URL 3: Simple Google Maps link
+      'https://maps.google.com/?q=Baraja+Coffee+Amphitheater',
+
+      // URL 4: Geo URI untuk fallback
+      'geo:-6.7104288,108.5383514?q=Baraja+Coffee+Amphitheater',
+    ];
+
+    bool success = false;
+    String? errorMessage;
+
+    for (String url in urls) {
+      try {
+        print('🔗 Trying URL: $url');
+        final uri = Uri.parse(url);
+
+        // Coba launch dengan mode yang berbeda
+        try {
+          // Try 1: platformDefault - biarkan sistem yang tentukan
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          );
+
+          if (launched) {
+            print('✅ Successfully launched with platformDefault: $url');
+            success = true;
+
+            if (mounted) {
+              await Future.delayed(const Duration(milliseconds: 500));
+              Navigator.of(context).pop(true);
+            }
+            break;
+          }
+        } catch (e1) {
+          print('⚠️ platformDefault failed, trying externalApplication: $e1');
+
+          // Try 2: externalApplication
+          try {
+            final launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+
+            if (launched) {
+              print('✅ Successfully launched with externalApplication: $url');
+              success = true;
+
+              if (mounted) {
+                await Future.delayed(const Duration(milliseconds: 500));
+                Navigator.of(context).pop(true);
+              }
+              break;
+            }
+          } catch (e2) {
+            print('⚠️ externalApplication failed, trying inAppWebView: $e2');
+
+            // Try 3: inAppWebView sebagai fallback terakhir
+            try {
+              final launched = await launchUrl(
+                uri,
+                mode: LaunchMode.inAppWebView,
+              );
+
+              if (launched) {
+                print('✅ Successfully launched with inAppWebView: $url');
+                success = true;
+
+                if (mounted) {
+                  await Future.delayed(const Duration(milliseconds: 500));
+                  Navigator.of(context).pop(true);
+                }
+                break;
+              }
+            } catch (e3) {
+              errorMessage = 'All launch modes failed: $e3';
+              print('❌ All launch modes failed for $url: $e3');
+            }
+          }
+        }
+      } catch (e) {
+        errorMessage = e.toString();
+        print('❌ Failed to launch $url: $e');
+        continue;
+      }
+    }
+
+    if (!success && mounted) {
+      print('❌ All URLs failed. Last error: $errorMessage');
+
+      // Show error message in SnackBar untuk debugging
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak dapat membuka Google Maps\nError: $errorMessage'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      // Jika semua URL gagal, tampilkan dialog alternatif
+      await Future.delayed(const Duration(milliseconds: 500));
+      _showManualGoogleReviewDialog();
+    }
+  }
+
+  Future<void> _showManualGoogleReviewDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Buka Google Maps',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Untuk memberi rating di Google, silakan:',
+                style: TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '1. Buka aplikasi Google Maps\n2. Cari "Baraja Coffee"\n3. Scroll ke bawah\n4. Tap "Write a review"',
+                style: TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Atau cari tempat kami di Google Maps',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Mengerti'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _submitRating() async {
@@ -136,15 +479,23 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
       );
 
       if (result['success']) {
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(existingRating != null
                 ? 'Rating berhasil diperbarui. Terima kasih!'
                 : 'Rating berhasil dikirim. Terima kasih!'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
-        Navigator.of(context).pop(true);
+
+        // Wait for snackbar to show, then show Google Review dialog
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted) {
+          await _showGoogleReviewDialog();
+        }
       } else {
         throw Exception(result['message'] ?? 'Gagal mengirim rating');
       }
