@@ -138,6 +138,35 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def getVersionCode() {
+    def versionPropsFile = file('version.properties')
+
+    if (versionPropsFile.canRead()) {
+        def Properties versionProps = new Properties()
+        versionProps.load(new FileInputStream(versionPropsFile))
+        def code = versionProps['VERSION_CODE'].toInteger()
+        return code
+    } else {
+        return 1
+    }
+}
+
+def incrementVersionCode() {
+    def versionPropsFile = file('version.properties')
+    def code = 1
+
+    if (versionPropsFile.canRead()) {
+        def Properties versionProps = new Properties()
+        versionProps.load(new FileInputStream(versionPropsFile))
+        code = versionProps['VERSION_CODE'].toInteger() + 1
+    }
+
+    Properties versionProps = new Properties()
+    versionProps['VERSION_CODE'] = code.toString()
+    versionProps.store(versionPropsFile.newWriter(), null)
+    return code
+}
+
 android {
     namespace = "com.baraja.baraja_amphitheater_app"
     compileSdk = flutter.compileSdkVersion
@@ -153,20 +182,17 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.baraja.baraja_amphitheater_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+
+        // Auto increment versionCode
+        versionCode = incrementVersionCode()
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
         }
     }
@@ -186,3 +212,38 @@ dependencies {
 
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
+
+
+afterEvaluate {
+    def appName = "baraja_amphitheater_app"
+
+    android.applicationVariants.all { variant ->
+        if (variant.buildType.name == "release") {
+            variant.outputs.all { output ->
+                def versionName = variant.versionName
+                def versionCode = variant.versionCode
+                def newName = "${appName}-v${versionName}(${versionCode})-${variant.buildType.name}.apk"
+
+                // Lokasi output APK default
+                def outputDir = "${buildDir}/outputs/apk/${variant.buildType.name}"
+                def originalFile = output.outputFile
+
+                // Setelah build selesai → duplikat dan rename
+                tasks.named("assemble${variant.name.capitalize()}").configure { task ->
+                    task.doLast {
+                        def newFile = file("${outputDir}/${newName}")
+                        copy {
+                            from originalFile
+                            into outputDir
+                            rename { fileName ->
+                                newName
+                            }
+                        }
+                        println("✅ APK berhasil digandakan dan diganti nama menjadi: ${newFile}")
+                    }
+                }
+            }
+        }
+    }
+}
+
