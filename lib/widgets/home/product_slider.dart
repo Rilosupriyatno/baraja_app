@@ -50,16 +50,17 @@ class _ProductSliderState extends State<ProductSlider> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 1.0),
-            child: Text(
-              widget.title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+          if (widget.title.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 1.0),
+              child: Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 10),
           const SizedBox(
             height: 210,
@@ -74,16 +75,18 @@ class _ProductSliderState extends State<ProductSlider> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 1.0),
-          child: Text(
-            widget.title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+        // Hanya tampilkan title jika tidak kosong
+        if (widget.title.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 1.0),
+            child: Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 10),
         SizedBox(
           height: 210,

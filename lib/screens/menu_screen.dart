@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/reservation_data.dart';
@@ -28,7 +29,7 @@ class MenuScreen extends StatefulWidget {
     this.isDineIn = false,
     this.tableNumber,
     this.isOpenBill = false,
-    this.openBillData, // ✅
+    this.openBillData,
   });
 
   @override
@@ -36,20 +37,14 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  // Instance ProductService
   final ProductService _productService = ProductService();
 
-  // Data produk dan kategori
   List<Product> _allProducts = [];
   Map<String, List<Category>> _categoriesMap = {};
 
-  // Selected menu (Makanan atau Minuman)
   String selectedMenu = 'Makanan';
-
-  // Selected sub-menu
   String selectedSubMenu = '';
 
-  // Loading state
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -60,7 +55,6 @@ class _MenuScreenState extends State<MenuScreen> {
     print(widget.reservationData);
     print("ini adalah data open bill: ${widget.openBillData}");
 
-    // Set context in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
@@ -69,12 +63,11 @@ class _MenuScreenState extends State<MenuScreen> {
       } else if (widget.isDineIn && widget.tableNumber != null) {
         cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
       } else if (widget.isOpenBill && widget.openBillData != null) {
-        cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData); // ✅
+        cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData);
       }
     });
   }
 
-  // Fungsi untuk memuat produk dari API
   Future<void> _loadProducts() async {
     try {
       setState(() {
@@ -82,18 +75,12 @@ class _MenuScreenState extends State<MenuScreen> {
         _errorMessage = '';
       });
 
-      // Ambil semua produk dari service
       final products = await _productService.getProducts();
 
       setState(() {
         _allProducts = products;
-
-        // Buat map kategori dari produk yang diterima
         _generateCategoriesMap(products);
-
-        // Set default selection berdasarkan data yang tersedia
         _setInitialSelections();
-
         _isLoading = false;
       });
     } catch (e) {
@@ -105,9 +92,36 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // SOLUSI 1: Ubah fungsi _determineMainCategory untuk menerima Product object
+  // Dummy products untuk skeleton
+  List<Product> _getDummyProducts() {
+    return List.generate(
+      6,
+          (index) => Product(
+        id: 'dummy_$index',
+        name: 'Loading Product Name',
+        category: 'Loading',
+        mainCategory: 'Loading',
+        subCategory: 'Loading',
+        imageUrl: '',
+        originalPrice: 50000.0,
+        discountPrice: 45000.0,
+        description: 'Loading description',
+        discountPercentage: '10%',
+        toppings: [],
+        addons: [],
+        averageRating: 4.5,
+        reviewCount: 100,
+        availableAt: [
+          Outlet(
+            outletId: 'dummy_outlet',
+            name: 'Loading Outlet',
+          ),
+        ],
+      ),
+    );
+  }
+
   String _determineMainCategory(Product product) {
-    // Prioritas 1: Gunakan mainCategory dari JSON jika ada
     if (product.mainCategory.isNotEmpty) {
       String mainCat = product.mainCategory.toLowerCase();
       if (mainCat == 'minuman' || mainCat == 'minuman dingin' ||
@@ -119,7 +133,6 @@ class _MenuScreenState extends State<MenuScreen> {
       }
     }
 
-    // Prioritas 2: Gunakan category field jika mainCategory tidak membantu
     String categoryName = '';
     if (product.category is Map && product.category['name'] != null) {
       categoryName = product.category['name'].toString();
@@ -127,7 +140,6 @@ class _MenuScreenState extends State<MenuScreen> {
       categoryName = product.category;
     }
 
-    // Klasifikasi berdasarkan nama kategori
     if (categoryName.toLowerCase().contains('minuman') ||
         categoryName.toLowerCase().contains('drink') ||
         categoryName.toLowerCase().contains('coffee') ||
@@ -138,7 +150,6 @@ class _MenuScreenState extends State<MenuScreen> {
       return 'Makanan';
     }
 
-    // Prioritas 3: Klasifikasi berdasarkan nama produk
     String productName = product.name.toLowerCase();
     if (productName.contains('es ') || productName.contains('teh ') ||
         productName.contains('kopi ') || productName.contains('jus ') ||
@@ -146,32 +157,24 @@ class _MenuScreenState extends State<MenuScreen> {
       return 'Minuman';
     }
 
-    return 'Makanan'; // Default fallback
+    return 'Makanan';
   }
 
-// UPDATE: Fungsi _generateCategoriesMap menggunakan SOLUSI 1
   void _generateCategoriesMap(List<Product> products) {
     try {
-      // Temporary map untuk menyimpan kategori yang unik
       Map<String, Set<String>> tempCategoriesMap = {};
 
-      // Kumpulkan semua subCategory berdasarkan mainCategory
       for (var product in products) {
-        // Gunakan fungsi yang sudah diperbaiki - langsung pass product object
         String mainCategory = _determineMainCategory(product);
-
-        // Ambil subCategory dari product service response
         String subCategory = _extractSubCategory(product);
 
         if (!tempCategoriesMap.containsKey(mainCategory)) {
           tempCategoriesMap[mainCategory] = <String>{};
         }
 
-        // Tambahkan subCategory ke mainCategory
         tempCategoriesMap[mainCategory]!.add(subCategory);
       }
 
-      // Konversi Set menjadi List<Category>
       _categoriesMap = {};
       tempCategoriesMap.forEach((mainCategory, subCategories) {
         _categoriesMap[mainCategory] = subCategories
@@ -182,7 +185,6 @@ class _MenuScreenState extends State<MenuScreen> {
       debugPrint("Generated categories: $_categoriesMap");
     } catch (e) {
       debugPrint("Error in _generateCategoriesMap: $e");
-      // Fallback to default categories if there's an error
       _categoriesMap = {
         'Makanan': [Category(name: 'Nasi Goreng')],
         'Minuman': [Category(name: 'Minuman Dingin')]
@@ -190,37 +192,28 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-// UPDATE: Fungsi _getFilteredProducts juga menggunakan product object
   List<Product> _getFilteredProducts() {
     return _allProducts.where((product) {
-      // Gunakan fungsi yang sudah diperbaiki
       String productMainCategory = _determineMainCategory(product);
 
-      // Cek main category
       if (productMainCategory != selectedMenu) {
         return false;
       }
 
-      // Jika selectedSubMenu kosong, tampilkan semua produk dari mainCategory
       if (selectedSubMenu.isEmpty) {
         return true;
       }
 
-      // Cek sub category
       String productSubCategory = _extractSubCategory(product);
       return productSubCategory == selectedSubMenu;
     }).toList();
   }
 
-  // Ekstrak subCategory dari product
-  // Ekstrak subCategory dari product
   String _extractSubCategory(Product product) {
-    // ✅ FIXED: Prioritas pertama gunakan subCategory yang sudah diset di service
     if (product.subCategory != null && product.subCategory!.isNotEmpty) {
       return product.subCategory!;
     }
 
-    // Fallback: gunakan category name
     if (product.category is Map && product.category['name'] != null) {
       return product.category['name'];
     } else if (product.category is String) {
@@ -230,11 +223,8 @@ class _MenuScreenState extends State<MenuScreen> {
     return 'Lainnya';
   }
 
-  // Set pilihan awal berdasarkan data yang tersedia
   void _setInitialSelections() {
-    // Pastikan ada main kategori
     if (_categoriesMap.isNotEmpty) {
-      // Prioritas: Makanan dulu, baru Minuman
       if (_categoriesMap.containsKey('Makanan')) {
         selectedMenu = 'Makanan';
       } else if (_categoriesMap.containsKey('Minuman')) {
@@ -243,13 +233,11 @@ class _MenuScreenState extends State<MenuScreen> {
         selectedMenu = _categoriesMap.keys.first;
       }
 
-      // Pastikan ada sub kategori
       if (_categoriesMap[selectedMenu]!.isNotEmpty) {
         selectedSubMenu = _categoriesMap[selectedMenu]![0].name;
       }
     }
   }
-
 
   Widget _buildReservationInfo() {
     if (!widget.isReservation || widget.reservationData == null) {
@@ -257,9 +245,7 @@ class _MenuScreenState extends State<MenuScreen> {
     }
 
     final data = widget.reservationData!;
-    print(data);
 
-    // Helper method untuk mendapatkan nomor meja yang dipilih
     String getSelectedTables() {
       if (data.selectedTableIds.isEmpty) {
         return 'Belum dipilih';
@@ -278,7 +264,6 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
@@ -293,10 +278,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
-          // Info dalam 2 baris
           Row(
             children: [
               Expanded(
@@ -311,9 +293,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 4),
-
           Row(
             children: [
               Expanded(
@@ -344,7 +324,6 @@ class _MenuScreenState extends State<MenuScreen> {
     }
 
     final data = widget.openBillData!;
-    print(data);
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -357,7 +336,6 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
@@ -372,10 +350,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
-          // Info dalam 2 baris
           Row(
             children: [
               Expanded(
@@ -390,9 +365,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 4),
-
           Row(
             children: [
               Expanded(
@@ -412,7 +385,7 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
-  // Widget untuk menampilkan info dine-in
+
   Widget _buildDineInInfo() {
     if (!widget.isDineIn || widget.tableNumber == null) {
       return const SizedBox.shrink();
@@ -472,7 +445,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // Get dynamic app bar title
   String _getAppBarTitle() {
     if (widget.isReservation) {
       return 'Menu Reservasi';
@@ -485,46 +457,38 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil daftar sub-menu berdasarkan menu yang dipilih
     final List<Category> subMenuList = _categoriesMap[selectedMenu] ?? [];
-    // Ambil produk yang sesuai dengan menu dan sub-menu yang dipilih
-    final List<Product> filteredProducts = _getFilteredProducts();
+    final List<Product> filteredProducts = _isLoading
+        ? _getDummyProducts()
+        : _getFilteredProducts();
 
     return BaseScreenWrapper(
       canPop: false,
-      customBackRoute: '/main', // Always go back to main for menu
+      customBackRoute: '/main',
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: ClassicAppBar(title: _getAppBarTitle()),
         body: SafeArea(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage.isNotEmpty
+          child: _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : Column(
             children: [
-              // Reservation info (only shown if isReservation is true)
               _buildReservationInfo(),
-
               _buildOpenBillInfo(),
-
-              // Dine-in info (only shown if isDineIn is true)
               _buildDineInInfo(),
 
-              // Menu selector (Makanan/Minuman)
               MenuSelector(
                 selectedMenu: selectedMenu,
                 onMenuSelected: (menu) {
                   setState(() {
                     selectedMenu = menu;
                     if (_categoriesMap[menu]!.isNotEmpty) {
-                      selectedSubMenu = _categoriesMap[menu]![0].name; // Reset sub-menu
+                      selectedSubMenu = _categoriesMap[menu]![0].name;
                     }
                   });
                 },
               ),
 
-              // Sub-menu slider
               SubMenuSlider(
                 subMenus: subMenuList,
                 selectedSubMenu: selectedSubMenu,
@@ -535,9 +499,12 @@ class _MenuScreenState extends State<MenuScreen> {
                 },
               ),
 
-              // Product grid (scrollable)
               Expanded(
-                child: ProductGrid(products: filteredProducts),
+                child: Skeletonizer(
+                  enabled: _isLoading,
+                  enableSwitchAnimation: true,
+                  child: ProductGrid(products: filteredProducts),
+                ),
               ),
             ],
           ),
@@ -548,7 +515,7 @@ class _MenuScreenState extends State<MenuScreen> {
           isDineIn: widget.isDineIn,
           tableNumber: widget.tableNumber,
           isOpenBill: widget.isOpenBill,
-          openBillData: widget.openBillData, // ✅
+          openBillData: widget.openBillData,
         ),
       ),
     );

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../models/event_model.dart';
+import '../../models/event_model.dart';
 
-class EventCard extends StatelessWidget {
+class EventCard extends StatefulWidget {
   final Event event;
   final VoidCallback onTap;
 
@@ -13,6 +13,14 @@ class EventCard extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<EventCard> createState() => _EventCardState();
+}
+
+class _EventCardState extends State<EventCard> {
+  bool _imageLoaded = false;
+  bool _hasError = false;
+
   // Warna Gold untuk event berbayar
   Color get _goldColor => const Color(0xFFD4AF37);
   Color get _goldBackgroundColor => const Color(0xFFFFF8E1);
@@ -21,9 +29,23 @@ class EventCard extends StatelessWidget {
   Color get _silverColor => const Color(0xFF8E8E93);
   Color get _silverBackgroundColor => const Color(0xFFF5F5F5);
 
-  // String _formatDateTime(DateTime dateTime) {
-  //   return DateFormat('EEEE, d MMM yyyy • HH:mm', 'id_ID').format(dateTime);
-  // }
+  @override
+  void initState() {
+    super.initState();
+    _imageLoaded = false;
+    _hasError = false;
+  }
+
+  @override
+  void didUpdateWidget(EventCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.event.id != widget.event.id) {
+      setState(() {
+        _imageLoaded = false;
+        _hasError = false;
+      });
+    }
+  }
 
   String _formatDateOnly(DateTime dateTime) {
     return DateFormat('d', 'id_ID').format(dateTime);
@@ -33,9 +55,134 @@ class EventCard extends StatelessWidget {
     return DateFormat('MMM', 'id_ID').format(dateTime).toUpperCase();
   }
 
+  Widget _buildShimmerSkeleton() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.3, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+      builder: (context, value, child) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[300]!,
+                Colors.grey[100]!.withOpacity(value),
+                Colors.grey[300]!,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.image_outlined,
+              size: 50,
+              color: Colors.grey[400],
+            ),
+          ),
+        );
+      },
+      onEnd: () {
+        if (mounted && !_imageLoaded && !_hasError) {
+          setState(() {});
+        }
+      },
+    );
+  }
+
+  Widget _buildImageContent() {
+    final hasValidUrl = widget.event.imageUrl.isNotEmpty;
+
+    if (!hasValidUrl || _hasError) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey.shade300, Colors.grey.shade200],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.image_outlined,
+            size: 50,
+            color: Colors.grey,
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Skeleton layer
+        if (!_imageLoaded) _buildShimmerSkeleton(),
+
+        // Image layer
+        AnimatedOpacity(
+          opacity: _imageLoaded ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: Image.network(
+            widget.event.imageUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            headers: const {
+              'Cache-Control': 'max-age=3600',
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_imageLoaded) {
+                    setState(() {
+                      _imageLoaded = true;
+                    });
+                  }
+                });
+                return child;
+              }
+              return const SizedBox.shrink();
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print('❌ Event image load error: $error');
+
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && !_hasError) {
+                  setState(() {
+                    _hasError = true;
+                  });
+                }
+              });
+
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade300, Colors.grey.shade200],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.image_outlined,
+                    size: 50,
+                    color: Colors.grey,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isFree = event.price == 0;
+    final isFree = widget.event.price == 0;
 
     return Container(
       decoration: BoxDecoration(
@@ -52,7 +199,7 @@ class EventCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +208,8 @@ class EventCard extends StatelessWidget {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
                     child: Container(
                       height: 200,
                       width: double.infinity,
@@ -72,43 +220,7 @@ class EventCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                         ),
                       ),
-                      child: event.imageUrl.isNotEmpty
-                          ? Image.network(
-                        event.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.grey.shade300, Colors.grey.shade200],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image_outlined,
-                              size: 50,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ),
-                      )
-                          : Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.grey.shade300, Colors.grey.shade200],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 50,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
+                      child: _buildImageContent(),
                     ),
                   ),
                   // Date Badge
@@ -116,7 +228,8 @@ class EventCard extends StatelessWidget {
                     top: 16,
                     right: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -132,7 +245,7 @@ class EventCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _formatDateOnly(event.date),
+                            _formatDateOnly(widget.event.date),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -140,7 +253,7 @@ class EventCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            _formatMonthOnly(event.date),
+                            _formatMonthOnly(widget.event.date),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -157,7 +270,8 @@ class EventCard extends StatelessWidget {
                       top: 16,
                       left: 16,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFFFFD700), Color(0xFFB8860B)],
@@ -200,7 +314,7 @@ class EventCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      event.name,
+                      widget.event.name,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -228,7 +342,8 @@ class EventCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            DateFormat('HH:mm', 'id_ID').format(event.date),
+                            DateFormat('HH:mm', 'id_ID')
+                                .format(widget.event.date),
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade700,
@@ -256,7 +371,7 @@ class EventCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            event.location,
+                            widget.event.location,
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade700,
@@ -273,17 +388,24 @@ class EventCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isFree ? _silverBackgroundColor : _goldBackgroundColor,
+                            color: isFree
+                                ? _silverBackgroundColor
+                                : _goldBackgroundColor,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: isFree ? _silverColor.withOpacity(0.3) : _goldColor.withOpacity(0.3),
+                              color: isFree
+                                  ? _silverColor.withOpacity(0.3)
+                                  : _goldColor.withOpacity(0.3),
                               width: 1.5,
                             ),
                           ),
                           child: Text(
-                            isFree ? 'GRATIS' : 'Rp ${NumberFormat('#,###', 'id_ID').format(event.price)}',
+                            isFree
+                                ? 'GRATIS'
+                                : 'Rp ${NumberFormat('#,###', 'id_ID').format(widget.event.price)}',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../models/table.dart';
 import '../providers/cart_provider.dart';
 import '../utils/base_screen_wrapper.dart';
@@ -723,25 +724,135 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
+  // Import yang perlu ditambahkan di bagian atas file
+// import 'package:skeletonizer/skeletonizer.dart';
+
   Widget _buildTableList() {
     if (selectedArea == null) return const SizedBox();
 
+    // Skeleton ketika loading
     if (isLoadingTables) {
-      return const Center(child: CircularProgressIndicator());
+      return Skeletonizer(
+        enabled: true,
+        child: Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Pilih Meja',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Tersedia: 0/0',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Skeleton tables grid
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(8, (index) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'M-00',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '0 kursi',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Skeleton legend
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  _buildLegendItem(Colors.white, Colors.grey.shade300, 'Tersedia'),
+                  _buildLegendItem(Colors.grey.shade400, Colors.grey.shade400, 'Dipilih'),
+                  _buildLegendItem(Colors.red.shade100, Colors.red.shade300, 'Direservasi'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (tables.isEmpty) {
-      return const Center(
-        child: Text(
-          'Tidak ada meja tersedia untuk area ini',
-          style: TextStyle(color: Colors.grey),
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Icon(
+                Icons.table_restaurant_outlined,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tidak ada meja tersedia untuk area ini',
+                style: TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
 
     // Filter tables by availability status
     final availableTables = tables.where((table) => table.canBeSelected).toList();
-    // final unavailableTables = tables.where((table) => !table.canBeSelected).toList();
 
     return Container(
       margin: const EdgeInsets.only(top: 16),

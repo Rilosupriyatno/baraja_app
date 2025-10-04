@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-// import 'package:go_router/go_router.dart';
 import '../../models/product.dart';
 import '../../screens/product_detail_modal.dart';
-import '../../utils/currency_formatter.dart'; // Import fungsi formatCurrency
+import '../../utils/currency_formatter.dart';
 
-class MenuProductCard extends StatelessWidget {
+class MenuProductCard extends StatefulWidget {
   final Product product;
   final String? bundleText;
 
@@ -14,27 +13,49 @@ class MenuProductCard extends StatelessWidget {
     this.bundleText,
   });
 
-  // Widget untuk menampilkan rating dengan bintang yang presisi
+  @override
+  State<MenuProductCard> createState() => _MenuProductCardState();
+}
+
+class _MenuProductCardState extends State<MenuProductCard> {
+  bool _imageLoaded = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageLoaded = false;
+    _hasError = false;
+  }
+
+  @override
+  void didUpdateWidget(MenuProductCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.product.id != widget.product.id) {
+      setState(() {
+        _imageLoaded = false;
+        _hasError = false;
+      });
+    }
+  }
+
   Widget _buildRatingWidget(double rating) {
     List<Widget> stars = [];
 
     for (int i = 1; i <= 5; i++) {
       if (i <= rating.floor()) {
-        // Bintang penuh
         stars.add(const Icon(
           Icons.star,
           color: Colors.amber,
           size: 16,
         ));
       } else if (i == rating.floor() + 1 && rating % 1 != 0) {
-        // Bintang setengah
         stars.add(const Icon(
           Icons.star_half,
           color: Colors.amber,
           size: 16,
         ));
       } else {
-        // Bintang kosong
         stars.add(Icon(
           Icons.star_border,
           color: Colors.grey[400],
@@ -60,24 +81,125 @@ class MenuProductCard extends StatelessWidget {
     );
   }
 
+  Widget _buildShimmerSkeleton() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.3, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+      builder: (context, value, child) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey[300]!,
+                Colors.grey[100]!.withOpacity(value),
+                Colors.grey[300]!,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.image_outlined,
+              size: 40,
+              color: Colors.grey[400],
+            ),
+          ),
+        );
+      },
+      onEnd: () {
+        if (mounted && !_imageLoaded && !_hasError) {
+          setState(() {});
+        }
+      },
+    );
+  }
+
+  Widget _buildImageContent() {
+    final hasValidUrl = widget.product.imageUrl.isNotEmpty &&
+        widget.product.imageUrl != 'https://placehold.co/1920x1080/png';
+
+    if (!hasValidUrl || _hasError) {
+      return Image.asset(
+        'assets/images/product_default_image.png',
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Skeleton layer
+        if (!_imageLoaded) _buildShimmerSkeleton(),
+
+        // Image layer
+        AnimatedOpacity(
+          opacity: _imageLoaded ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: Image.network(
+            widget.product.imageUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            headers: const {
+              'Cache-Control': 'max-age=3600',
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_imageLoaded) {
+                    setState(() {
+                      _imageLoaded = true;
+                    });
+                  }
+                });
+                return child;
+              }
+              return const SizedBox.shrink();
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print('❌ Image load error for ${widget.product.name}: $error');
+
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && !_hasError) {
+                  setState(() {
+                    _hasError = true;
+                  });
+                }
+              });
+
+              return Image.asset(
+                'assets/images/product_default_image.png',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Tidak perlu lagi membuat NumberFormat currencyFormatter
     return GestureDetector(
-      // onTap: () {
-      //   context.push('/product/${product.id}');
-      // },
       onTap: () {
-        print('Product card tapped: ${product.name}'); // Debug print
+        print('Product card tapped: ${widget.product.name}');
         try {
-          ProductDetailModal.show(context, product);
+          ProductDetailModal.show(context, widget.product);
         } catch (e) {
           print('Error showing modal: $e');
-          // Fallback - show simple dialog for debugging
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: Text(product.name),
+              title: Text(widget.product.name),
               content: const Text('Modal error, but tap detected!'),
               actions: [
                 TextButton(
@@ -110,12 +232,11 @@ class MenuProductCard extends StatelessWidget {
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
-
               child: Container(
                 width: double.infinity,
                 height: 120,
                 decoration: const BoxDecoration(
-                  color: Colors.white, // ✅ selalu putih
+                  color: Colors.white,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
@@ -123,42 +244,20 @@ class MenuProductCard extends StatelessWidget {
                 ),
                 child: Stack(
                   children: [
-                    Center(
-                        child: product.imageUrl.isNotEmpty &&
-                            product.imageUrl != 'https://placehold.co/1920x1080/png'
-                            ? Image.network(
-                          product.imageUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.asset(
-                              'assets/images/product_default_image.png',
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            );
-                          },
-                        )
-                            : Image.asset(
-                          'assets/images/product_default_image.png',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                    ),
-                    if (bundleText != null)
+                    Center(child: _buildImageContent()),
+                    if (widget.bundleText != null)
                       Positioned(
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            bundleText!,
+                            widget.bundleText!,
                             style: TextStyle(
                               color: Colors.brown[800],
                               fontWeight: FontWeight.bold,
@@ -179,7 +278,7 @@ class MenuProductCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      product.name,
+                      widget.product.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -187,42 +286,29 @@ class MenuProductCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    // Harga coret jika ada diskon
-                    // if (product.discountPrice != 0)
-                    //   Text(
-                    //     formatCurrency(product.originalPrice?.round() ?? 0),
-                    //     style: TextStyle(
-                    //       decoration: TextDecoration.lineThrough,
-                    //       color: Colors.grey[600],
-                    //       fontSize: 14,
-                    //     ),
-                    //   ),
                     Text(
-                      formatCurrency(product.discountPrice?.round() ?? 0), // Menggunakan formatCurrency
+                      formatCurrency(
+                          widget.product.discountPrice?.round() ?? 0),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    // const SizedBox(height: 4),
-                    // Expanded(
-                    //   child: Text(
-                    //     product.description,
-                    //     style: TextStyle(
-                    //       color: Colors.grey[600],
-                    //       fontSize: 14,
-                    //     ),
-                    //     overflow: TextOverflow.ellipsis,
-                    //     maxLines: 2,
-                    //   ),
-                    // ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.product.description,
+                      style: const TextStyle(
+                        fontSize: 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Widget rating yang sudah diperbaiki
-                        if (product.averageRating > 0)
-                          _buildRatingWidget(product.averageRating),
+                        if (widget.product.averageRating > 0)
+                          _buildRatingWidget(widget.product.averageRating),
                       ],
                     ),
                   ],

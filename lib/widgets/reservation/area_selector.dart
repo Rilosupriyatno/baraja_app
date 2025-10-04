@@ -1,5 +1,5 @@
-// widgets/reservation/area_selector.dart - Updated with real-time availability
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../../models/area.dart';
 import '../../theme/app_theme.dart';
 
@@ -17,8 +17,32 @@ class AreaSelector extends StatelessWidget {
     this.isLoading = false,
   });
 
+  // Dummy areas untuk skeleton
+  List<Area> _getDummyAreas() {
+    return List.generate(
+      4,
+          (index) => Area(
+        id: 'dummy_$index',
+        areaCode: String.fromCharCode(65 + index), // A, B, C, D
+        areaName: 'Loading Area Name',
+        capacity: 50,
+        description: 'Loading description',
+        isActive: true,
+        totalTables: 10,
+        availableTables: 8,
+        reservedTables: 2,
+        availableCapacity: 40,
+        totalReservedGuests: 10,
+        isFullyBooked: false,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Use dummy data when loading
+    final displayAreas = isLoading ? _getDummyAreas() : areas;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -44,9 +68,7 @@ class AreaSelector extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          if (isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (areas.isEmpty)
+          if (displayAreas.isEmpty && !isLoading)
             const Center(
               child: Text(
                 'Tidak ada area tersedia',
@@ -54,20 +76,24 @@ class AreaSelector extends StatelessWidget {
               ),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.9,
+            Skeletonizer(
+              enabled: isLoading,
+              enableSwitchAnimation: true,
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.9,
+                ),
+                itemCount: displayAreas.length,
+                itemBuilder: (context, index) {
+                  final area = displayAreas[index];
+                  return _buildAreaOption(area);
+                },
               ),
-              itemCount: areas.length,
-              itemBuilder: (context, index) {
-                final area = areas[index];
-                return _buildAreaOption(area);
-              },
             ),
         ],
       ),
@@ -113,7 +139,9 @@ class AreaSelector extends StatelessWidget {
     }
 
     return InkWell(
-      onTap: area.isActive && hasAvailability ? () => onAreaChanged(area) : null,
+      onTap: isLoading
+          ? null
+          : (area.isActive && hasAvailability ? () => onAreaChanged(area) : null),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

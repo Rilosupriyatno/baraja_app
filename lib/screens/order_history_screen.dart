@@ -1,10 +1,12 @@
 import 'package:baraja_amphitheater_app/theme/app_theme.dart';
 import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
 import 'package:baraja_amphitheater_app/widgets/utils/title_app_bar.dart';
-// import 'package:baraja_amphitheater_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import '../models/cart_item.dart';
 import '../models/order.dart';
+import '../models/order_type.dart';
 import '../services/order_service.dart';
 import '../utils/currency_formatter.dart';
 
@@ -22,7 +24,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Add refresh keys for each tab to ensure refresh works properly
   final GlobalKey<RefreshIndicatorState> _processRefreshKey = GlobalKey<RefreshIndicatorState>();
   final GlobalKey<RefreshIndicatorState> _doneRefreshKey = GlobalKey<RefreshIndicatorState>();
 
@@ -42,7 +43,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     try {
       final orders = await _orderService.getUserOrderHistory();
 
-      // Debug: Print orders untuk memastikan data tersambung dengan benar
       print('📦 Total orders loaded: ${orders.length}');
       for (var order in orders) {
         print('Order ID: ${order.id}');
@@ -70,9 +70,62 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     }
   }
 
-  // Method untuk manual refresh yang bisa dipanggil dari luar
   Future<void> refreshData() async {
     await _fetchOrderHistory();
+  }
+
+  // Dummy orders untuk skeleton
+  List<Order> _getDummyOrders() {
+    return List.generate(
+      3,
+          (index) => Order(
+        id: 'dummy_order_$index',
+        orderId: 'ORD${index}12345678',
+        items: [
+          CartItem(
+            id: 'dummy_item_$index',
+            name: 'Loading Product Name Loading',
+            imageUrl: '',
+            price: 50000,
+            quantity: 1,
+            addons: [],
+            toppings: [],
+            notes: 'Loading notes',
+            totalprice: 50000,
+            outletId: 'dummy_outlet',
+            outletName: 'Loading Outlet',
+          ),
+          CartItem(
+            id: 'dummy_item_${index}_2',
+            name: 'Loading Product Name 2',
+            imageUrl: '',
+            price: 35000,
+            quantity: 1,
+            addons: [],
+            toppings: [],
+            notes: '',
+            totalprice: 35000,
+            outletId: 'dummy_outlet',
+            outletName: 'Loading Outlet',
+          ),
+        ],
+        orderType: OrderType.dineIn,
+        tableNumber: 'A${index + 1}',
+        deliveryAddress: '',
+        pickupTime: null,
+        subtotal: 85000,
+        discount: 0,
+        total: 93500,
+        voucherCode: null,
+        orderTime: DateTime.now(),
+        status: OrderStatus.pending,
+        paymentDetails: {
+          'status': 'pending',
+          'method': 'Loading',
+        },
+        taxAmount: 8500,
+      ),
+    );
   }
 
   @override
@@ -84,98 +137,104 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return BaseScreenWrapper(
-        canPop: false,
-        customBackRoute: '/main',
-        child: Scaffold(
-          backgroundColor: Colors.white,
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(104), // tinggi AppBar + TabBar
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const TitleAppBar(title: 'History'),
-                Material(
-                  color: Colors.white,
-                  child: TabBar(
-                    controller: _tabController,
-                    labelColor: Colors.black,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: AppTheme.primaryColor,
-                    tabs: const [
-                      Tab(text: 'Berlangsung'),
-                      Tab(text: 'Selesai'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          body: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage.isNotEmpty
-              ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _fetchOrderHistory,
-                  child: const Text('Coba Lagi'),
-                ),
-              ],
-            ),
-          )
-              : TabBarView(
-            controller: _tabController,
+      canPop: false,
+      customBackRoute: '/main',
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(104),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // Tab 1: Process (Ongoing orders)
-              RefreshIndicator(
-                key: _processRefreshKey,
-                onRefresh: _fetchOrderHistory,
-                child: _buildOrdersList(isCompleted: false),
-              ),
-
-              // Tab 2: Done (Completed orders)
-              RefreshIndicator(
-                key: _doneRefreshKey,
-                onRefresh: _fetchOrderHistory,
-                child: _buildOrdersList(isCompleted: true),
+              const TitleAppBar(title: 'History'),
+              Material(
+                color: Colors.white,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.black,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: AppTheme.primaryColor,
+                  tabs: const [
+                    Tab(text: 'Berlangsung'),
+                    Tab(text: 'Selesai'),
+                  ],
+                ),
               ),
             ],
           ),
-        ));
+        ),
+        body: _errorMessage.isNotEmpty
+            ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchOrderHistory,
+                child: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        )
+            : TabBarView(
+          controller: _tabController,
+          children: [
+            // Tab 1: Process (Ongoing orders)
+            RefreshIndicator(
+              key: _processRefreshKey,
+              onRefresh: _fetchOrderHistory,
+              child: _buildOrdersList(isCompleted: false),
+            ),
+
+            // Tab 2: Done (Completed orders)
+            RefreshIndicator(
+              key: _doneRefreshKey,
+              onRefresh: _fetchOrderHistory,
+              child: _buildOrdersList(isCompleted: true),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildOrdersList({required bool isCompleted}) {
-    // Filter orders based on tab
-    final List<Order> filteredOrders = _orders.where((order) {
-      if (isCompleted) {
-        return order.status == OrderStatus.completed;
-      } else {
-        return order.status != OrderStatus.completed &&
-            order.status != OrderStatus.cancelled;
-      }
-    }).toList();
+    // Get display orders (dummy when loading, real when loaded)
+    List<Order> displayOrders;
 
-    // Sort by date, newest first
-    filteredOrders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
+    if (_isLoading) {
+      displayOrders = _getDummyOrders();
+    } else {
+      // Filter orders based on tab
+      displayOrders = _orders.where((order) {
+        if (isCompleted) {
+          return order.status == OrderStatus.completed;
+        } else {
+          return order.status != OrderStatus.completed &&
+              order.status != OrderStatus.cancelled;
+        }
+      }).toList();
 
-    if (filteredOrders.isEmpty) {
-      // Make sure empty state is scrollable so refresh indicator works
+      // Sort by date, newest first
+      displayOrders.sort((a, b) => b.orderTime.compareTo(a.orderTime));
+    }
+
+    if (displayOrders.isEmpty && !_isLoading) {
+      // Empty state
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(
@@ -220,19 +279,22 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
       );
     }
 
-    return ListView.builder(
-      // Enable always scrollable physics to make refresh indicator work even when content is short
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 6,
+    return Skeletonizer(
+      enabled: _isLoading,
+      enableSwitchAnimation: true,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 6,
+        ),
+        itemCount: displayOrders.length,
+        itemBuilder: (context, index) {
+          return _buildOrderItem(context, displayOrders[index]);
+        },
       ),
-      itemCount: filteredOrders.length,
-      itemBuilder: (context, index) {
-        return _buildOrderItem(context, filteredOrders[index]);
-      },
     );
   }
 
@@ -246,8 +308,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
     final firstItem = order.items.first;
 
     return InkWell(
-      onTap: () {
-        // Navigate to OrderDetailScreen
+      onTap: _isLoading
+          ? null // Disable tap when loading
+          : () {
         context.go('/orderDetail', extra: order.id);
       },
       child: Container(
@@ -274,13 +337,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> with SingleTick
                 width: 70,
                 height: 70,
                 decoration: const BoxDecoration(
-                  color: Colors.white, // ✅ selalu putih
+                  color: Colors.white,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
                 ),
-
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: firstItem.imageUrl.isNotEmpty &&

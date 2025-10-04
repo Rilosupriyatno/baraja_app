@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_amphitheater_app/models/product.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import '../../models/promo_item.dart';
 
 class PromoSlider extends StatefulWidget {
   final List<PromoItem> promoItems;
+  final bool isLoading;
 
   const PromoSlider({
     super.key,
     required this.promoItems,
+    this.isLoading = false,
   });
 
   @override
@@ -20,20 +23,19 @@ class _PromoSliderState extends State<PromoSlider> {
   @override
   void initState() {
     super.initState();
-    _startPromoAutoSlider();
+    _autoSlide();
   }
 
-  void _startPromoAutoSlider() {
+  void _autoSlide() {
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        int nextPage = (currentPromoIndex + 1) % widget.promoItems.length;
+      if (mounted && widget.promoItems.isNotEmpty) {
+        final next = (currentPromoIndex + 1) % widget.promoItems.length;
         _pageController.animateToPage(
-          nextPage,
+          next,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
         );
-        // Don't call setState here - the onPageChanged callback will handle it
-        _startPromoAutoSlider();
+        _autoSlide();
       }
     });
   }
@@ -44,97 +46,91 @@ class _PromoSliderState extends State<PromoSlider> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSkeletonSlider() {
+    return Container(
+      height: 200,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(15),
+          bottomRight: Radius.circular(15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSlider() {
+    if (widget.promoItems.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text('No promos available')),
+      );
+    }
+
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        // Container tetap - tidak bergerak
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: BoxDecoration(
-            // Warna background default jika diinginkan
-            color: Colors.grey[200],
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(15),
-              bottomRight: Radius.circular(15),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(15),
+            bottomRight: Radius.circular(15),
           ),
-          // Stack untuk menempatkan PageView di atas container tetap
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(15),
-              bottomRight: Radius.circular(15),
-            ),
+          child: SizedBox(
+            height: 200,
             child: PageView.builder(
               controller: _pageController,
               itemCount: widget.promoItems.length,
-              onPageChanged: (index) {
-                setState(() {
-                  currentPromoIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                return ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(15),
-                    bottomRight: Radius.circular(15),
+              onPageChanged: (i) => setState(() => currentPromoIndex = i),
+              itemBuilder: (_, i) {
+                final promo = widget.promoItems[i];
+                final url = promo.imageUrls.isNotEmpty
+                    ? promo.imageUrls.first
+                    : null;
+                return url != null
+                    ? Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey,
+                    child: const Icon(Icons.broken_image),
                   ),
-                  child: Image.asset(
-                    widget.promoItems[index].imagePath,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 200,
-                  ),
+                )
+                    : Container(
+                  color: Colors.grey,
+                  child: const Icon(Icons.image_not_supported),
                 );
               },
             ),
-
-            // child: PageView.builder(
-            //   controller: _pageController,
-            //   itemCount: widget.promoItems.length,
-            //   onPageChanged: (index) {
-            //     setState(() {
-            //       currentPromoIndex = index;
-            //     });
-            //   },
-            //   itemBuilder: (context, index) {
-            //     return Container(
-            //       color: widget.promoItems[index].color,
-            //       alignment: Alignment.center,
-            //       child: Row(
-            //         mainAxisAlignment: MainAxisAlignment.center,
-            //         children: [
-            //           const Icon(
-            //             Icons.coffee,
-            //             color: Colors.white,
-            //             size: 36,
-            //           ),
-            //           const SizedBox(width: 10),
-            //           Text(
-            //             widget.promoItems[index].title,
-            //             style: const TextStyle(
-            //               color: Colors.white,
-            //               fontSize: 22,
-            //               fontWeight: FontWeight.bold,
-            //             ),
-            //           ),
-            //         ],
-            //       ),
-            //     );
-            //   },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            widget.promoItems.length,
+                (i) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: currentPromoIndex == i ? 10 : 8,
+              height: currentPromoIndex == i ? 10 : 8,
+              decoration: BoxDecoration(
+                color: currentPromoIndex == i
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
-
+        ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Skeletonizer(
+      enabled: widget.isLoading,
+      child: widget.isLoading ? _buildSkeletonSlider() : _buildSlider(),
     );
   }
 }
