@@ -26,7 +26,6 @@ class _JroReservationManagementScreenState
   @override
   void initState() {
     super.initState();
-    // Set filter dari parameter widget (GoRouter query parameter)
     if (widget.filter != null && widget.filter!.isNotEmpty) {
       _selectedFilter = widget.filter!;
     }
@@ -44,8 +43,10 @@ class _JroReservationManagementScreenState
         page: _currentPage,
         limit: 20,
         status: _selectedFilter == 'all' ? null : _selectedFilter,
-        search: _searchController.text.isNotEmpty ? _searchController.text : null,
-        date: 'all', // Tidak filter tanggal, tampilkan semua
+        search: _searchController.text.isNotEmpty
+            ? _searchController.text
+            : null,
+        date: 'all',
       );
 
       if (result['success']) {
@@ -226,7 +227,8 @@ class _JroReservationManagementScreenState
           ),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 12),
         ),
         onSubmitted: (_) => _loadReservations(),
       ),
@@ -313,6 +315,8 @@ class _JroReservationManagementScreenState
     final area = reservation['area_id'];
     final tables = reservation['table_id'] as List<dynamic>? ?? [];
     final order = reservation['order_id'];
+    final checkInTime = reservation['check_in_time'];
+    final checkOutTime = reservation['check_out_time'];
 
     String formattedDate = 'N/A';
     if (date != null) {
@@ -396,6 +400,20 @@ class _JroReservationManagementScreenState
                   tables.map((t) => t['table_number']).join(', '),
                 ),
               ],
+              if (checkInTime != null) ...[
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  Icons.login,
+                  'Check-in: ${_formatDateTime(checkInTime)}',
+                ),
+              ],
+              if (checkOutTime != null) ...[
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  Icons.logout,
+                  'Check-out: ${_formatDateTime(checkOutTime)}',
+                ),
+              ],
               if (order != null) ...[
                 const SizedBox(height: 8),
                 _buildInfoRow(
@@ -410,6 +428,16 @@ class _JroReservationManagementScreenState
         ),
       ),
     );
+  }
+
+  String _formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null) return 'N/A';
+    try {
+      final dateTime = DateTime.parse(dateTimeStr);
+      return DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(dateTime);
+    } catch (e) {
+      return dateTimeStr;
+    }
   }
 
   Widget _buildInfoRow(IconData icon, String text) {
@@ -433,11 +461,17 @@ class _JroReservationManagementScreenState
   Widget _buildActionButtons(Map<String, dynamic> reservation) {
     final status = reservation['status'];
     final id = reservation['_id'];
+    final checkInTime = reservation['check_in_time'];
+    final checkOutTime = reservation['check_out_time'];
 
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
+        // Tombol Konfirmasi (hanya untuk status pending)
         if (status == 'pending')
-          Expanded(
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _confirmReservation(id),
               icon: const Icon(Icons.check, size: 16),
@@ -453,9 +487,69 @@ class _JroReservationManagementScreenState
               ),
             ),
           ),
-        if (status == 'pending' || status == 'confirmed') ...[
-          if (status == 'pending') const SizedBox(width: 8),
-          Expanded(
+
+        // Tombol Check-in (untuk status confirmed yang belum check-in)
+        if (status == 'confirmed' && checkInTime == null)
+          SizedBox(
+            width: (MediaQuery
+                .of(context)
+                .size
+                .width - 48) / 2 - 4,
+            child: ElevatedButton.icon(
+              onPressed: () => _checkInReservation(id),
+              icon: const Icon(Icons.login, size: 16),
+              label: const Text('Check-in'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+        // Tombol Check-out (untuk yang sudah check-in tapi belum check-out)
+        if (status == 'confirmed' && checkInTime != null &&
+            checkOutTime == null)
+          SizedBox(
+            width: (MediaQuery
+                .of(context)
+                .size
+                .width - 48) / 2 - 4,
+            child: ElevatedButton.icon(
+              onPressed: () => _checkOutReservation(id),
+              icon: const Icon(Icons.logout, size: 16),
+              label: const Text('Check-out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+        // Tombol Batalkan (untuk pending dan confirmed)
+        if (status == 'pending' || status == 'confirmed')
+          SizedBox(
+            width: status == 'confirmed' && checkInTime != null &&
+                checkOutTime == null
+                ? (MediaQuery
+                .of(context)
+                .size
+                .width - 48) / 2 - 4
+                : status == 'confirmed' && checkInTime == null
+                ? (MediaQuery
+                .of(context)
+                .size
+                .width - 48) / 2 - 4
+                : double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => _cancelReservation(id),
               icon: const Icon(Icons.close, size: 16),
@@ -470,10 +564,11 @@ class _JroReservationManagementScreenState
               ),
             ),
           ),
-        ],
-        if (status == 'confirmed') ...[
-          const SizedBox(width: 8),
-          Expanded(
+
+        // Tombol Selesai (untuk confirmed yang sudah check-out atau belum)
+        if (status == 'confirmed')
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _completeReservation(id, reservation),
               icon: const Icon(Icons.done_all, size: 16),
@@ -489,7 +584,6 @@ class _JroReservationManagementScreenState
               ),
             ),
           ),
-        ],
       ],
     );
   }
@@ -535,7 +629,8 @@ class _JroReservationManagementScreenState
             }
                 : null,
             icon: const Icon(Icons.arrow_forward),
-            color: _currentPage < _totalPages ? const Color(0xFF2E8B57) : Colors.grey,
+            color: _currentPage < _totalPages ? const Color(0xFF2E8B57) : Colors
+                .grey,
           ),
         ],
       ),
@@ -545,23 +640,25 @@ class _JroReservationManagementScreenState
   Future<void> _confirmReservation(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi Reservasi'),
-        content: const Text('Apakah Anda yakin ingin mengkonfirmasi reservasi ini?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Konfirmasi Reservasi'),
+            content: const Text(
+                'Apakah Anda yakin ingin mengkonfirmasi reservasi ini?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                ),
+                child: const Text('Konfirmasi'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-            ),
-            child: const Text('Konfirmasi'),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
@@ -587,8 +684,102 @@ class _JroReservationManagementScreenState
     }
   }
 
-  Future<void> _completeReservation(
-      String id, Map<String, dynamic> reservation) async {
+  Future<void> _checkInReservation(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Check-in Reservasi'),
+            content: const Text(
+                'Apakah tamu sudah datang dan siap untuk check-in?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B5CF6),
+                ),
+                child: const Text('Check-in'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      final result = await _jroService.checkInReservation(id);
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Check-in berhasil'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReservations();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal check-in'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _checkOutReservation(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Check-out Reservasi'),
+            content: const Text(
+                'Apakah tamu sudah selesai dan siap untuk check-out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                ),
+                child: const Text('Check-out'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      final result = await _jroService.checkOutReservation(id);
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Check-out berhasil'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReservations();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal check-out'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _completeReservation(String id,
+      Map<String, dynamic> reservation) async {
     final order = reservation['order_id'];
     bool hasOpenBill = false;
 
@@ -601,29 +792,30 @@ class _JroReservationManagementScreenState
     if (hasOpenBill) {
       final result = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Selesaikan Reservasi'),
-          content: const Text(
-            'Reservasi ini memiliki open bill. Apakah Anda ingin menutup open bill?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
-            ),
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Selesai Tanpa Tutup Bill'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
+        builder: (context) =>
+            AlertDialog(
+              title: const Text('Selesaikan Reservasi'),
+              content: const Text(
+                'Reservasi ini memiliki open bill. Apakah Anda ingin menutup open bill?',
               ),
-              child: const Text('Selesai & Tutup Bill'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('Batal'),
+                ),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Selesai Tanpa Tutup Bill'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                  ),
+                  child: const Text('Selesai & Tutup Bill'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
 
       if (result == null) return;
@@ -631,25 +823,26 @@ class _JroReservationManagementScreenState
     } else {
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Selesaikan Reservasi'),
-          content: const Text(
-            'Apakah Anda yakin ingin menyelesaikan reservasi ini?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
+        builder: (context) =>
+            AlertDialog(
+              title: const Text('Selesaikan Reservasi'),
+              content: const Text(
+                'Apakah Anda yakin ingin menyelesaikan reservasi ini?',
               ),
-              child: const Text('Selesaikan'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                  ),
+                  child: const Text('Selesaikan'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
 
       if (confirm != true) return;
@@ -685,37 +878,39 @@ class _JroReservationManagementScreenState
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Batalkan Reservasi'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Apakah Anda yakin ingin membatalkan reservasi ini?'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Alasan pembatalan (opsional)',
-                border: OutlineInputBorder(),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Batalkan Reservasi'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'Apakah Anda yakin ingin membatalkan reservasi ini?'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Alasan pembatalan (opsional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
               ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444),
+                ),
+                child: const Text('Batalkan Reservasi'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-            child: const Text('Batalkan Reservasi'),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {

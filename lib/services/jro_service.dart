@@ -9,7 +9,7 @@ class JROService {
 
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('authToken');
+    final token = prefs.getString('token');
     return {
       'Content-Type': 'application/json',
       'ngrok-skip-browser-warning': 'true',
@@ -66,7 +66,6 @@ class JROService {
         'page': page.toString(),
         'limit': limit.toString(),
         if (status != null && status.isNotEmpty) 'status': status,
-        // Kirim date parameter bahkan jika 'all'
         if (date != null && date.isNotEmpty) 'date': date,
         if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
         if (search != null && search.isNotEmpty) 'search': search,
@@ -169,6 +168,78 @@ class JROService {
         'success': false,
         'data': null,
         'error': 'Error confirming reservation: $e',
+      };
+    }
+  }
+
+  // ✅ NEW: Check-In Reservation
+  Future<Map<String, dynamic>> checkInReservation(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .put(
+        Uri.parse('$baseUrl/api/jro/reservations/$id/check-in'),
+        headers: headers,
+      )
+          .timeout(requestTimeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': jsonData['data'],
+          'message': jsonData['message'],
+          'error': null,
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'data': null,
+          'error': errorData['message'] ?? 'Failed to check-in reservation',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'data': null,
+        'error': 'Error checking in reservation: $e',
+      };
+    }
+  }
+
+  // ✅ NEW: Check-Out Reservation
+  Future<Map<String, dynamic>> checkOutReservation(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .put(
+        Uri.parse('$baseUrl/api/jro/reservations/$id/check-out'),
+        headers: headers,
+      )
+          .timeout(requestTimeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': jsonData['data'],
+          'message': jsonData['message'],
+          'error': null,
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'data': null,
+          'error': errorData['message'] ?? 'Failed to check-out reservation',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'data': null,
+        'error': 'Error checking out reservation: $e',
       };
     }
   }
