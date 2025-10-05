@@ -3,7 +3,12 @@ import 'package:intl/intl.dart';
 import '../services/jro_service.dart';
 
 class JroReservationDetailScreen extends StatefulWidget {
-  const JroReservationDetailScreen({super.key});
+  final String reservationId;
+
+  const JroReservationDetailScreen({
+    super.key,
+    required this.reservationId,
+  });
 
   @override
   State<JroReservationDetailScreen> createState() =>
@@ -20,13 +25,7 @@ class _JroReservationDetailScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args =
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null && args['reservationId'] != null) {
-        _loadReservationDetail(args['reservationId']);
-      }
-    });
+    _loadReservationDetail(widget.reservationId);
   }
 
   Future<void> _loadReservationDetail(String id) async {
@@ -37,6 +36,8 @@ class _JroReservationDetailScreenState
 
     try {
       final result = await _jroService.getReservationDetail(id);
+
+      if (!mounted) return;
 
       if (result['success']) {
         setState(() {
@@ -50,6 +51,8 @@ class _JroReservationDetailScreenState
         });
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _errorMessage = 'Error loading reservation detail: $e';
         _isLoading = false;
@@ -90,14 +93,20 @@ class _JroReservationDetailScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         title: const Text(
           'Detail Reservasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            color: Colors.black,
+          ),
         ),
-        backgroundColor: const Color(0xFF2E8B57),
-        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
         actions: [
           if (_reservation != null && _reservation!['order_id'] != null)
             PopupMenuButton<String>(
@@ -137,15 +146,20 @@ class _JroReservationDetailScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               _errorMessage ?? 'Terjadi kesalahan',
               textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Kembali'),
             ),
           ],
@@ -178,11 +192,20 @@ class _JroReservationDetailScreenState
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildStatusCard(status, reservationCode),
+          const SizedBox(height: 24),
+          const Text(
+            'Informasi Reservasi',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 16),
           _buildInfoCard(
             formattedDate,
@@ -193,6 +216,15 @@ class _JroReservationDetailScreenState
             notes,
           ),
           if (order != null) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Informasi Order',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
             const SizedBox(height: 16),
             _buildOrderCard(order),
           ],
@@ -204,37 +236,46 @@ class _JroReservationDetailScreenState
   }
 
   Widget _buildStatusCard(String status, String code) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: _getStatusColor(status).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _getStatusText(status),
-                style: TextStyle(
-                  color: _getStatusColor(status),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _getStatusColor(status).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 12),
-            Text(
-              code,
-              style: const TextStyle(
-                fontSize: 20,
+            child: Text(
+              _getStatusText(status),
+              style: TextStyle(
+                color: _getStatusColor(status),
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            code,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -247,50 +288,50 @@ class _JroReservationDetailScreenState
       List<dynamic> tables,
       String notes,
       ) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Informasi Reservasi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Divider(height: 24),
-            _buildDetailRow(Icons.calendar_today, 'Tanggal', date),
-            const SizedBox(height: 16),
-            _buildDetailRow(Icons.access_time, 'Waktu', time),
-            const SizedBox(height: 16),
-            _buildDetailRow(Icons.people, 'Jumlah Tamu', '$guestCount orang'),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDetailRow(Icons.calendar_today, 'Tanggal', date),
+          const SizedBox(height: 16),
+          _buildDetailRow(Icons.access_time, 'Waktu', time),
+          const SizedBox(height: 16),
+          _buildDetailRow(Icons.people, 'Jumlah Tamu', '$guestCount orang'),
+          const SizedBox(height: 16),
+          _buildDetailRow(
+            Icons.location_on,
+            'Area',
+            area != null
+                ? '${area['area_name']} (${area['area_code']})'
+                : 'N/A',
+          ),
+          if (tables.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildDetailRow(
-              Icons.location_on,
-              'Area',
-              area != null
-                  ? '${area['area_name']} (${area['area_code']})'
-                  : 'N/A',
+              Icons.table_restaurant,
+              'Meja',
+              tables
+                  .map((t) => '${t['table_number']} (${t['seats']} kursi)')
+                  .join(', '),
             ),
-            if (tables.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildDetailRow(
-                Icons.table_restaurant,
-                'Meja',
-                tables
-                    .map((t) => '${t['table_number']} (${t['seats']} kursi)')
-                    .join(', '),
-              ),
-            ],
-            if (notes.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildDetailRow(Icons.notes, 'Catatan', notes),
-            ],
           ],
-        ),
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.notes, 'Catatan', notes),
+          ],
+        ],
       ),
     );
   }
@@ -307,9 +348,9 @@ class _JroReservationDetailScreenState
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Colors.grey,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -319,6 +360,7 @@ class _JroReservationDetailScreenState
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
+                  color: Colors.black87,
                 ),
               ),
             ],
@@ -333,88 +375,104 @@ class _JroReservationDetailScreenState
     final grandTotal = order['grandTotal'] ?? 0;
     final items = order['items'] as List<dynamic>? ?? [];
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Informasi Order',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Order ID',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B82F6).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    orderId,
-                    style: const TextStyle(
-                      color: Color(0xFF3B82F6),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
                 ),
-              ],
-            ),
-            const Divider(height: 24),
-            if (items.isNotEmpty) ...[
-              ...items.map((item) {
-                final menuItem = item['menuItem'];
-                final quantity = item['quantity'] ?? 1;
-                final name = menuItem != null ? menuItem['name'] : 'N/A';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Text('$quantity x ',
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Expanded(child: Text(name)),
-                    ],
-                  ),
-                );
-              }),
-              const Divider(height: 16),
-            ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                Text(
-                  NumberFormat.currency(
-                    locale: 'id_ID',
-                    symbol: 'Rp ',
-                    decimalDigits: 0,
-                  ).format(grandTotal),
+                child: Text(
+                  orderId,
                   style: const TextStyle(
-                    fontSize: 16,
+                    color: Color(0xFF3B82F6),
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E8B57),
+                    fontSize: 12,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          if (items.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ...items.map((item) {
+              final menuItem = item['menuItem'];
+              final quantity = item['quantity'] ?? 1;
+              final name = menuItem != null ? menuItem['name'] : 'N/A';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('$quantity x ',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        )),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
-        ),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                NumberFormat.currency(
+                  locale: 'id_ID',
+                  symbol: 'Rp ',
+                  decimalDigits: 0,
+                ).format(grandTotal),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E8B57),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

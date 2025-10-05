@@ -219,35 +219,35 @@ class _JroDashboardScreenState extends State<JroDashboardScreen>
           value: '${_dashboardStats['allReservations'] ?? 0}',
           icon: Icons.history,
           color: const Color(0xFF6366F1),
-          onTap: () => _navigateToReservations(),
+          onTap: () => _navigateToReservations('all'),
         ),
         _buildStatCard(
           title: 'Menunggu',
           value: '${_dashboardStats['pendingReservations'] ?? 0}',
           icon: Icons.schedule,
           color: const Color(0xFFF59E0B),
-          onTap: () => _navigateToReservations(status: 'pending'),
+          onTap: () => _navigateToReservations('pending'),
         ),
         _buildStatCard(
           title: 'Berlangsung',
           value: '${_dashboardStats['activeReservations'] ?? 0}',
           icon: Icons.dining,
           color: const Color(0xFF10B981),
-          onTap: () => _navigateToReservations(status: 'active'),
+          onTap: () => _navigateToReservations('active'),
         ),
         _buildStatCard(
           title: 'Selesai',
           value: '${_dashboardStats['completedReservations'] ?? 0}',
           icon: Icons.check_circle,
           color: const Color(0xFF059669),
-          onTap: () => _navigateToReservations(status: 'completed'),
+          onTap: () => _navigateToReservations('completed'),
         ),
         _buildStatCard(
           title: 'Batal',
           value: '${_dashboardStats['cancelledReservations'] ?? 0}',
           icon: Icons.cancel,
           color: const Color(0xFFEF4444),
-          onTap: () => _navigateToReservations(status: 'cancelled'),
+          onTap: () => _navigateToReservations('cancelled'),
         ),
         _buildStatCard(
           title: 'Meja Tersedia',
@@ -314,11 +314,12 @@ class _JroDashboardScreenState extends State<JroDashboardScreen>
     );
   }
 
-  void _navigateToReservations({String? status}) {
-    context.push(
-      '/jro-reservation-management',
-      extra: {'filter': status},
-    );
+  void _navigateToReservations(String filter) {
+    // Gunakan queryParameters untuk GoRouter
+    context.push('/jro-reservation-management?filter=$filter').then((_) {
+      // Refresh dashboard saat kembali
+      _loadDashboardStats();
+    });
   }
 
   void _navigateToTableManagement() {

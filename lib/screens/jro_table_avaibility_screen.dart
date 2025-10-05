@@ -70,20 +70,28 @@ class _JroTableAvailabilityScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         title: const Text(
           'Ketersediaan Meja',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            color: Colors.black,
+          ),
         ),
-        backgroundColor: const Color(0xFF2E8B57),
-        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
         actions: [
           IconButton(
             onPressed: _loadTableAvailability,
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
+            splashRadius: 24,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -102,11 +110,19 @@ class _JroTableAvailabilityScreenState
     );
   }
 
-  // Option 1: Give more space to the dropdown
   Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -115,13 +131,14 @@ class _JroTableAvailabilityScreenState
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                flex: 2, // Give date picker more space
+                flex: 2,
                 child: InkWell(
                   onTap: _selectDate,
                   child: Container(
@@ -152,7 +169,7 @@ class _JroTableAvailabilityScreenState
               ),
               const SizedBox(width: 12),
               Expanded(
-                flex: 3, // Give dropdown more space
+                flex: 3,
                 child: DropdownButtonFormField<String>(
                   value: _selectedTime,
                   decoration: InputDecoration(
@@ -165,7 +182,7 @@ class _JroTableAvailabilityScreenState
                     ),
                     prefixIcon: const Icon(Icons.access_time, size: 20),
                   ),
-                  isExpanded: true, // Important: makes dropdown content fit
+                  isExpanded: true,
                   hint: const Text('Waktu'),
                   items: [
                     const DropdownMenuItem<String>(
@@ -190,166 +207,6 @@ class _JroTableAvailabilityScreenState
     );
   }
 
-// Option 2: Stack filters vertically for better mobile UX
-  Widget _buildFiltersVertical() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Filter',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: _selectDate,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat('dd MMM yyyy', 'id_ID')
-                        .format(_selectedDate),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _selectedTime,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              prefixIcon: const Icon(Icons.access_time, size: 20),
-            ),
-            isExpanded: true,
-            hint: const Text('Waktu'),
-            items: [
-              const DropdownMenuItem<String>(
-                value: null,
-                child: Text('Semua Waktu'),
-              ),
-              ..._timeSlots.map((time) => DropdownMenuItem(
-                value: time,
-                child: Text(time),
-              )),
-            ],
-            onChanged: (value) {
-              setState(() => _selectedTime = value);
-              _loadTableAvailability();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-// Option 3: Remove prefix icon from dropdown to save space
-  Widget _buildFiltersCompact() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Filter',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: _selectDate,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 20),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            DateFormat('dd MMM yyyy', 'id_ID')
-                                .format(_selectedDate),
-                            style: const TextStyle(fontSize: 14),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedTime,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    // Remove prefixIcon to save space
-                  ),
-                  isExpanded: true,
-                  hint: const Text('🕐 Waktu'),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Semua Waktu'),
-                    ),
-                    ..._timeSlots.map((time) => DropdownMenuItem(
-                      value: time,
-                      child: Text(time),
-                    )),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedTime = value);
-                    _loadTableAvailability();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -380,9 +237,9 @@ class _JroTableAvailabilityScreenState
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -447,9 +304,9 @@ class _JroTableAvailabilityScreenState
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: Colors.grey,
           ),
         ),
       ],
@@ -463,11 +320,12 @@ class _JroTableAvailabilityScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               _errorMessage ?? 'Terjadi kesalahan',
               textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -493,9 +351,9 @@ class _JroTableAvailabilityScreenState
           children: [
             Icon(Icons.table_restaurant, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Tidak ada data meja',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
         ),
@@ -518,7 +376,7 @@ class _JroTableAvailabilityScreenState
     return RefreshIndicator(
       onRefresh: _loadTableAvailability,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount: tablesByArea.length,
         itemBuilder: (context, index) {
           final areaName = tablesByArea.keys.elementAt(index);

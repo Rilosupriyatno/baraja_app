@@ -10,6 +10,7 @@ import '../models/product.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/favorit_screen.dart';
 import '../screens/jro_management_reservation_screen.dart';
+import '../screens/jro_reservation_detail_screen.dart';
 import '../screens/jro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
@@ -340,22 +341,40 @@ class AppRouter {
           builder: (context, state) => const ReservationScreen(),
         ),
 
+        // GoRoute(
+        //   path: '/jro-dashboard',
+        //   name: 'jro-dashboard',
+        //   builder: (context, state) => const JroDashboardScreen(),
+        // ),
+
+        // Setup route dengan query parameter
         GoRoute(
           path: '/jro-reservation-management',
-          parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) {
-            final args = state.extra as Map<String, dynamic>?;
-            final filter = args?['filter'];
+            final filter = state.uri.queryParameters['filter'] ?? 'all';
             return JroReservationManagementScreen(filter: filter);
           },
         ),
 
         GoRoute(
-          path: '/jro-table-availability',
-          parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const JroTableAvailabilityScreen(),
+          path: '/jro-reservation-detail/:id',
+          name: 'jro-reservation-detail',
+          builder: (context, state) {
+            // Ambil path parameter 'id' dari URL
+            // Contoh URL: /jro-reservation-detail/123abc
+            final reservationId = state.pathParameters['id'] ?? '';
+
+            return JroReservationDetailScreen(
+              reservationId: reservationId,
+            );
+          },
         ),
 
+        GoRoute(
+          path: '/jro-table-availability',
+          name: 'jro-table-availability',
+          builder: (context, state) => const JroTableAvailabilityScreen(),
+        ),
       ],
     );
   }

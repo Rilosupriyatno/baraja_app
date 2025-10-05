@@ -66,6 +66,7 @@ class JROService {
         'page': page.toString(),
         'limit': limit.toString(),
         if (status != null && status.isNotEmpty) 'status': status,
+        // Kirim date parameter bahkan jika 'all'
         if (date != null && date.isNotEmpty) 'date': date,
         if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
         if (search != null && search.isNotEmpty) 'search': search,

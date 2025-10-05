@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../services/jro_service.dart';
 
@@ -25,16 +26,11 @@ class _JroReservationManagementScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args =
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      if (args != null && args['filter'] != null) {
-        setState(() {
-          _selectedFilter = args['filter'];
-        });
-      }
-      _loadReservations();
-    });
+    // Set filter dari parameter widget (GoRouter query parameter)
+    if (widget.filter != null && widget.filter!.isNotEmpty) {
+      _selectedFilter = widget.filter!;
+    }
+    _loadReservations();
   }
 
   Future<void> _loadReservations() async {
@@ -49,6 +45,7 @@ class _JroReservationManagementScreenState
         limit: 20,
         status: _selectedFilter == 'all' ? null : _selectedFilter,
         search: _searchController.text.isNotEmpty ? _searchController.text : null,
+        date: 'all', // Tidak filter tanggal, tampilkan semua
       );
 
       if (result['success']) {
@@ -749,10 +746,9 @@ class _JroReservationManagementScreenState
   }
 
   void _showReservationDetail(Map<String, dynamic> reservation) {
-    Navigator.pushNamed(
-      context,
-      '/jro-reservation-detail',
-      arguments: {'reservationId': reservation['_id']},
-    ).then((_) => _loadReservations());
+    final reservationId = reservation['_id'];
+    context.push('/jro-reservation-detail/$reservationId').then((_) {
+      _loadReservations();
+    });
   }
 }
