@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/jro_service.dart';
+import '../widgets/reservation/transfer_table_dialog.dart';
 
 class JroReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -108,26 +109,47 @@ class _JroReservationDetailScreenState
         centerTitle: true,
         elevation: 0,
         actions: [
-          if (_reservation != null && _reservation!['order_id'] != null)
+          if (_reservation != null)
             PopupMenuButton<String>(
               onSelected: (value) {
                 final id = _reservation!['_id'];
+                final status = _reservation!['status'];
+
                 if (value == 'close_bill') {
                   _closeOpenBill(id);
+                } else if (value == 'transfer_table') {
+                  _showTransferTableDialog();
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'close_bill',
-                  child: Row(
-                    children: [
-                      Icon(Icons.receipt_long, size: 20),
-                      SizedBox(width: 8),
-                      Text('Tutup Open Bill'),
-                    ],
-                  ),
-                ),
-              ],
+              itemBuilder: (context) {
+                final status = _reservation!['status'];
+                final hasOrder = _reservation!['order_id'] != null;
+
+                return [
+                  if (hasOrder)
+                    const PopupMenuItem(
+                      value: 'close_bill',
+                      child: Row(
+                        children: [
+                          Icon(Icons.receipt_long, size: 20),
+                          SizedBox(width: 8),
+                          Text('Tutup Open Bill'),
+                        ],
+                      ),
+                    ),
+                  if (status == 'confirmed' || status == 'pending')
+                    const PopupMenuItem(
+                      value: 'transfer_table',
+                      child: Row(
+                        children: [
+                          Icon(Icons.swap_horiz, size: 20),
+                          SizedBox(width: 8),
+                          Text('Pindah Meja'),
+                        ],
+                      ),
+                    ),
+                ];
+              },
             ),
         ],
       ),
@@ -542,6 +564,37 @@ class _JroReservationDetailScreenState
         ],
       ],
     );
+  }
+
+  // ✅ METHOD BARU: Show Transfer Table Dialog
+  Future<void> _showTransferTableDialog() async {
+    final tables = _reservation!['table_id'] as List<dynamic>? ?? [];
+    final area = _reservation!['area_id'];
+    final areaId = area != null ? area['_id'] : null;
+
+    if (areaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Area tidak ditemukan'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => TableTransferDialog(
+        reservationId: _reservation!['_id'],
+        currentTables: tables,
+        areaId: areaId,
+      ),
+    );
+
+    // Reload data jika transfer berhasil
+    if (result == true) {
+      _loadReservationDetail(widget.reservationId);
+    }
   }
 
   Future<void> _confirmReservation(String id) async {

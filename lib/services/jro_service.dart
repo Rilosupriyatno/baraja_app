@@ -172,7 +172,7 @@ class JROService {
     }
   }
 
-  // ✅ NEW: Check-In Reservation
+  // Check-In Reservation
   Future<Map<String, dynamic>> checkInReservation(String id) async {
     try {
       final headers = await _getHeaders();
@@ -208,7 +208,7 @@ class JROService {
     }
   }
 
-  // ✅ NEW: Check-Out Reservation
+  // Check-Out Reservation
   Future<Map<String, dynamic>> checkOutReservation(String id) async {
     try {
       final headers = await _getHeaders();
@@ -400,6 +400,51 @@ class JROService {
         'success': false,
         'data': null,
         'error': 'Error fetching table availability: $e',
+      };
+    }
+  }
+
+  // ✅ FIXED: Transfer Table - URL sudah diperbaiki
+  Future<Map<String, dynamic>> transferTable(
+      String reservationId, {
+        required List<String> newTableIds,
+        String? reason,
+      }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .put(
+        // ✅ URL DIPERBAIKI dari /api/jro/table/ ke /api/jro/reservations/
+        Uri.parse('$baseUrl/api/jro/reservations/$reservationId/transfer-table'),
+        headers: headers,
+        body: json.encode({
+          'new_table_ids': newTableIds,
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        }),
+      )
+          .timeout(requestTimeout);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': jsonData['data'],
+          'message': jsonData['message'],
+          'error': null,
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'data': null,
+          'error': errorData['message'] ?? 'Failed to transfer table',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'data': null,
+        'error': 'Error transferring table: $e',
       };
     }
   }
