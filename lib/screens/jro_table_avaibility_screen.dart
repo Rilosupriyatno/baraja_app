@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/jro_service.dart';
+import 'jro_reservation_screen.dart'; // ✅ Import screen baru
 
 class JroTableAvailabilityScreen extends StatefulWidget {
   const JroTableAvailabilityScreen({super.key});
@@ -413,7 +414,7 @@ class _JroTableAvailabilityScreenState
           ),
           itemCount: tables.length,
           itemBuilder: (context, index) {
-            return _buildTableCard(tables[index]);
+            return _buildTableCard(tables[index]); // ✅ PERBAIKAN: Pass table data
           },
         ),
         const SizedBox(height: 24),
@@ -421,6 +422,7 @@ class _JroTableAvailabilityScreenState
     );
   }
 
+  // ✅ PERBAIKAN: Method ini harus ada dan menerima parameter table
   Widget _buildTableCard(Map<String, dynamic> table) {
     final tableNumber = table['table_number'] ?? 'N/A';
     final seats = table['seats'] ?? 0;
@@ -445,56 +447,82 @@ class _JroTableAvailabilityScreenState
       icon = Icons.event_seat;
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: textColor.withOpacity(0.3),
-          width: 2,
+    // ✅ PERBAIKAN: Wrap dengan InkWell untuk handle klik
+    return InkWell(
+      onTap: isActive && isAvailable
+          ? () => _onTableTap(table) // ✅ PERBAIKAN: Pass table data
+          : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: textColor.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              tableNumber,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person, size: 14, color: textColor),
+                const SizedBox(width: 4),
+                Text(
+                  '$seats',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isActive
+                  ? (isAvailable ? 'Tersedia' : 'Terisi')
+                  : 'Nonaktif',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: textColor, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            tableNumber,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.person, size: 14, color: textColor),
-              const SizedBox(width: 4),
-              Text(
-                '$seats',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            isActive
-                ? (isAvailable ? 'Tersedia' : 'Terisi')
-                : 'Nonaktif',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: textColor,
-            ),
-          ),
-        ],
+    );
+  }
+
+  // ✅ PERBAIKAN: Method ini harus menerima parameter table
+  void _onTableTap(Map<String, dynamic> table) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateReservationScreen(
+          selectedTable: table,
+          selectedDate: _selectedDate,
+          selectedTime: _selectedTime,
+        ),
       ),
     );
+
+    // Refresh jika reservasi berhasil dibuat
+    if (result == true) {
+      _loadTableAvailability();
+    }
   }
 }
