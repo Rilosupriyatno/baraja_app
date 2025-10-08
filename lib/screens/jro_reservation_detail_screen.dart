@@ -113,7 +113,6 @@ class _JroReservationDetailScreenState
             PopupMenuButton<String>(
               onSelected: (value) {
                 final id = _reservation!['_id'];
-                final status = _reservation!['status'];
 
                 if (value == 'close_bill') {
                   _closeOpenBill(id);

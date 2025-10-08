@@ -22,7 +22,7 @@ class _TableTransferDialogState extends State<TableTransferDialog> {
   final TextEditingController _reasonController = TextEditingController();
 
   List<dynamic> _availableTables = [];
-  List<String> _selectedTableIds = [];
+  final List<String> _selectedTableIds = [];
   bool _isLoading = true;
   String? _errorMessage;
 

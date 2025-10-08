@@ -50,7 +50,62 @@ class JROService {
       };
     }
   }
+// Create Reservation
+  Future<Map<String, dynamic>> createReservation({
+    required String guestName,
+    required String guestPhone,
+    String? guestEmail,
+    required int guestCount,
+    required String reservationDate,
+    required String reservationTime,
+    required List<String> tableIds,
+    required String areaId,
+    String? notes,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+        Uri.parse('$baseUrl/api/jro/reservations'),
+        headers: headers,
+        body: json.encode({
+          'guest_name': guestName,
+          'guest_phone': guestPhone,
+          if (guestEmail != null && guestEmail.isNotEmpty) 'guest_email': guestEmail,
+          'guest_count': guestCount,
+          'reservation_date': reservationDate,
+          'reservation_time': reservationTime,
+          'table_ids': tableIds,
+          'area_id': areaId,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        }),
+      )
+          .timeout(requestTimeout);
 
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': jsonData['data'],
+          'message': jsonData['message'],
+          'error': null,
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'data': null,
+          'error': errorData['message'] ?? 'Failed to create reservation',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'data': null,
+        'error': 'Error creating reservation: $e',
+      };
+    }
+  }
   // Get Reservations with filters
   Future<Map<String, dynamic>> getReservations({
     int page = 1,
