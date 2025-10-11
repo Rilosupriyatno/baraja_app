@@ -1,3 +1,4 @@
+// jro_reservation_screen.dart - Updated version
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/jro_service.dart';
@@ -23,10 +24,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final _formKey = GlobalKey<FormState>();
   final JROService _jroService = JROService();
 
-  // Form controllers
+  // Form controllers (removed email controller)
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _guestCountController = TextEditingController();
 
@@ -58,7 +58,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _notesController.dispose();
     _guestCountController.dispose();
     super.dispose();
@@ -88,7 +87,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       final result = await _jroService.createReservation(
         guestName: _nameController.text.trim(),
         guestPhone: _phoneController.text.trim(),
-        guestEmail: _emailController.text.trim(),
         guestCount: int.parse(_guestCountController.text.trim()),
         reservationDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
         reservationTime: _selectedTime!,
@@ -219,13 +217,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 }
                 return null;
               },
-            ),
-            const SizedBox(height: 12),
-            _buildTextField(
-              controller: _emailController,
-              label: 'Email (Opsional)',
-              icon: Icons.email,
-              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
             _buildTextField(

@@ -1,112 +1,104 @@
+// services/jro_service.dart - Updated version
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class JROService {
-  final String? baseUrl = dotenv.env['BASE_URL'];
-  static const Duration requestTimeout = Duration(seconds: 10);
+  static String? baseUrl = dotenv.env['BASE_URL'];
 
-  Future<Map<String, String>> _getHeaders() async {
+  // Get auth token from SharedPreferences
+  Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    return prefs.getString('token');
+  }
+
+  // Get headers with authentication
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _getToken();
     return {
       'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
-  // Get Dashboard Statistics
-  Future<Map<String, dynamic>> getDashboardStats() async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http
-          .get(
-        Uri.parse('$baseUrl/api/jro/dashboard-stats'),
-        headers: headers,
-      )
-          .timeout(requestTimeout);
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return {
-          'success': true,
-          'data': jsonData['data'],
-          'error': null,
-        };
-      } else {
-        return {
-          'success': false,
-          'data': null,
-          'error': 'Failed to load dashboard stats: ${response.statusCode}',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'data': null,
-        'error': 'Error fetching dashboard stats: $e',
-      };
-    }
-  }
-// Create Reservation
+  // Create reservation (updated to match backend)
   Future<Map<String, dynamic>> createReservation({
     required String guestName,
     required String guestPhone,
-    String? guestEmail,
     required int guestCount,
     required String reservationDate,
     required String reservationTime,
     required List<String> tableIds,
     required String areaId,
     String? notes,
+    String? outlet,
+    List<Map<String, dynamic>>? items,
+    String? voucherCode,
+    String reservationType = 'nonBlocking',
+    bool servingFood = false,
+    List<String>? equipment,
+    String foodServingOption = 'immediate',
+    String? foodServingTime,
   }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .post(
+
+      final Map<String, dynamic> requestBody = {
+        'guest_name': guestName,
+        'guest_phone': guestPhone,
+        'guest_count': guestCount,
+        'reservation_date': reservationDate,
+        'reservation_time': reservationTime,
+        'table_ids': tableIds,
+        'area_id': areaId,
+        'reservation_type': reservationType,
+        'serving_food': servingFood,
+        'food_serving_option': foodServingOption,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (outlet != null) 'outlet': outlet,
+        if (items != null && items.isNotEmpty) 'items': items,
+        if (voucherCode != null && voucherCode.isNotEmpty) 'voucherCode': voucherCode,
+        if (equipment != null && equipment.isNotEmpty) 'equipment': equipment,
+        if (foodServingTime != null) 'food_serving_time': foodServingTime,
+      };
+
+      print('Creating reservation with data: $requestBody');
+
+      final response = await http.post(
         Uri.parse('$baseUrl/api/jro/reservations'),
         headers: headers,
-        body: json.encode({
-          'guest_name': guestName,
-          'guest_phone': guestPhone,
-          if (guestEmail != null && guestEmail.isNotEmpty) 'guest_email': guestEmail,
-          'guest_count': guestCount,
-          'reservation_date': reservationDate,
-          'reservation_time': reservationTime,
-          'table_ids': tableIds,
-          'area_id': areaId,
-          if (notes != null && notes.isNotEmpty) 'notes': notes,
-        }),
-      )
-          .timeout(requestTimeout);
+        body: json.encode(requestBody),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Reservasi berhasil dibuat',
+          'data': responseData['data'],
+          'order': responseData['order'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to create reservation',
+          'error': errorData['message'] ?? 'Gagal membuat reservasi',
         };
       }
     } catch (e) {
+      print('Error creating reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error creating reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
-  // Get Reservations with filters
+
+  // Get all reservations with filters
   Future<Map<String, dynamic>> getReservations({
     int page = 1,
     int limit = 20,
@@ -117,305 +109,294 @@ class JROService {
   }) async {
     try {
       final headers = await _getHeaders();
-      final queryParams = {
+
+      final queryParams = <String, String>{
         'page': page.toString(),
         'limit': limit.toString(),
-        if (status != null && status.isNotEmpty) 'status': status,
-        if (date != null && date.isNotEmpty) 'date': date,
-        if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
-        if (search != null && search.isNotEmpty) 'search': search,
       };
 
-      final uri = Uri.parse('$baseUrl/api/jro/reservations')
-          .replace(queryParameters: queryParams);
+      if (status != null) queryParams['status'] = status;
+      if (date != null) queryParams['date'] = date;
+      if (areaId != null) queryParams['area_id'] = areaId;
+      if (search != null) queryParams['search'] = search;
 
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(requestTimeout);
+      final uri = Uri.parse('$baseUrl/api/jro/reservations').replace(
+        queryParameters: queryParams,
+      );
+
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return {
-          'success': true,
-          'data': jsonData['data'],
-          'pagination': jsonData['pagination'],
-          'error': null,
-        };
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
       } else {
-        return {
-          'success': false,
-          'data': null,
-          'error': 'Failed to load reservations: ${response.statusCode}',
-        };
+        throw Exception('Failed to load reservations: ${response.statusCode}');
       }
     } catch (e) {
-      return {
-        'success': false,
-        'data': null,
-        'error': 'Error fetching reservations: $e',
-      };
+      print('Error fetching reservations: $e');
+      throw Exception('Error fetching reservations: $e');
     }
   }
 
-  // Get Reservation Detail
+  // Get single reservation detail
   Future<Map<String, dynamic>> getReservationDetail(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .get(
+
+      final response = await http.get(
         Uri.parse('$baseUrl/api/jro/reservations/$id'),
         headers: headers,
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return {
-          'success': true,
-          'data': jsonData['data'],
-          'error': null,
-        };
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
       } else {
-        return {
-          'success': false,
-          'data': null,
-          'error': 'Failed to load reservation detail: ${response.statusCode}',
-        };
+        throw Exception('Failed to load reservation detail: ${response.statusCode}');
       }
     } catch (e) {
-      return {
-        'success': false,
-        'data': null,
-        'error': 'Error fetching reservation detail: $e',
-      };
+      print('Error fetching reservation detail: $e');
+      throw Exception('Error fetching reservation detail: $e');
     }
   }
 
-  // Confirm Reservation
+  // Confirm reservation
   Future<Map<String, dynamic>> confirmReservation(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
+
+      final response = await http.put(
         Uri.parse('$baseUrl/api/jro/reservations/$id/confirm'),
         headers: headers,
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Reservasi berhasil dikonfirmasi',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to confirm reservation',
+          'error': errorData['message'] ?? 'Gagal mengkonfirmasi reservasi',
         };
       }
     } catch (e) {
+      print('Error confirming reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error confirming reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Check-In Reservation
+  // Check-in reservation
   Future<Map<String, dynamic>> checkInReservation(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
+
+      final response = await http.put(
         Uri.parse('$baseUrl/api/jro/reservations/$id/check-in'),
         headers: headers,
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Check-in berhasil',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to check-in reservation',
+          'error': errorData['message'] ?? 'Gagal check-in',
         };
       }
     } catch (e) {
+      print('Error checking in reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error checking in reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Check-Out Reservation
+  // Check-out reservation
   Future<Map<String, dynamic>> checkOutReservation(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
+
+      final response = await http.put(
         Uri.parse('$baseUrl/api/jro/reservations/$id/check-out'),
         headers: headers,
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Check-out berhasil',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to check-out reservation',
+          'error': errorData['message'] ?? 'Gagal check-out',
         };
       }
     } catch (e) {
+      print('Error checking out reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error checking out reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Complete Reservation
+  // Complete reservation
   Future<Map<String, dynamic>> completeReservation(
       String id, {
         bool closeOpenBill = false,
       }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
+
+      final response = await http.put(
         Uri.parse('$baseUrl/api/jro/reservations/$id/complete'),
         headers: headers,
         body: json.encode({'closeOpenBill': closeOpenBill}),
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Reservasi selesai',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to complete reservation',
+          'error': errorData['message'] ?? 'Gagal menyelesaikan reservasi',
         };
       }
     } catch (e) {
+      print('Error completing reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error completing reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Cancel Reservation
+  // Cancel reservation
   Future<Map<String, dynamic>> cancelReservation(
       String id, {
         String? reason,
       }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
+
+      final response = await http.put(
         Uri.parse('$baseUrl/api/jro/reservations/$id/cancel'),
         headers: headers,
         body: json.encode({'reason': reason}),
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Reservasi dibatalkan',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to cancel reservation',
+          'error': errorData['message'] ?? 'Gagal membatalkan reservasi',
         };
       }
     } catch (e) {
+      print('Error canceling reservation: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error cancelling reservation: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Close Open Bill
-  Future<Map<String, dynamic>> closeOpenBill(String id) async {
+  // Transfer table
+  Future<Map<String, dynamic>> transferTable(
+      String id, {
+        required List<String> newTableIds,
+        String? reason,
+      }) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
-        Uri.parse('$baseUrl/api/jro/reservations/$id/close-open-bill'),
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/jro/reservations/$id/transfer-table'),
         headers: headers,
-      )
-          .timeout(requestTimeout);
+        body: json.encode({
+          'new_table_ids': newTableIds,
+          'reason': reason,
+        }),
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Meja berhasil dipindahkan',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to close open bill',
+          'error': errorData['message'] ?? 'Gagal memindahkan meja',
         };
       }
     } catch (e) {
+      print('Error transferring table: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error closing open bill: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
 
-  // Get Table Availability
+  // Get dashboard statistics
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/jro/dashboard-stats'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to load dashboard stats: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching dashboard stats: $e');
+      throw Exception('Error fetching dashboard stats: $e');
+    }
+  }
+
+  // Get table availability
   Future<Map<String, dynamic>> getTableAvailability({
     String? date,
     String? time,
@@ -423,83 +404,59 @@ class JROService {
   }) async {
     try {
       final headers = await _getHeaders();
-      final queryParams = {
-        if (date != null && date.isNotEmpty) 'date': date,
-        if (time != null && time.isNotEmpty) 'time': time,
-        if (areaId != null && areaId.isNotEmpty) 'area_id': areaId,
-      };
 
-      final uri = Uri.parse('$baseUrl/api/jro/tables/availability')
-          .replace(queryParameters: queryParams);
+      final queryParams = <String, String>{};
+      if (date != null) queryParams['date'] = date;
+      if (time != null) queryParams['time'] = time;
+      if (areaId != null) queryParams['area_id'] = areaId;
 
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(requestTimeout);
+      final uri = Uri.parse('$baseUrl/api/jro/tables/availability').replace(
+        queryParameters: queryParams,
+      );
+
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return {
-          'success': true,
-          'data': jsonData['data'],
-          'error': null,
-        };
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
       } else {
-        return {
-          'success': false,
-          'data': null,
-          'error': 'Failed to load table availability: ${response.statusCode}',
-        };
+        throw Exception('Failed to load table availability: ${response.statusCode}');
       }
     } catch (e) {
-      return {
-        'success': false,
-        'data': null,
-        'error': 'Error fetching table availability: $e',
-      };
+      print('Error fetching table availability: $e');
+      throw Exception('Error fetching table availability: $e');
     }
   }
 
-  // ✅ FIXED: Transfer Table - URL sudah diperbaiki
-  Future<Map<String, dynamic>> transferTable(
-      String reservationId, {
-        required List<String> newTableIds,
-        String? reason,
-      }) async {
+  // Close open bill
+  Future<Map<String, dynamic>> closeOpenBill(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http
-          .put(
-        // ✅ URL DIPERBAIKI dari /api/jro/table/ ke /api/jro/reservations/
-        Uri.parse('$baseUrl/api/jro/reservations/$reservationId/transfer-table'),
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/jro/reservations/$id/close-open-bill'),
         headers: headers,
-        body: json.encode({
-          'new_table_ids': newTableIds,
-          if (reason != null && reason.isNotEmpty) 'reason': reason,
-        }),
-      )
-          .timeout(requestTimeout);
+      );
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'data': jsonData['data'],
-          'message': jsonData['message'],
-          'error': null,
+          'message': responseData['message'] ?? 'Open bill berhasil ditutup',
+          'data': responseData['data'],
         };
       } else {
-        final errorData = json.decode(response.body);
+        final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'data': null,
-          'error': errorData['message'] ?? 'Failed to transfer table',
+          'error': errorData['message'] ?? 'Gagal menutup open bill',
         };
       }
     } catch (e) {
+      print('Error closing open bill: $e');
       return {
         'success': false,
-        'data': null,
-        'error': 'Error transferring table: $e',
+        'error': 'Terjadi kesalahan: $e',
       };
     }
   }
