@@ -64,7 +64,7 @@ class AuthService with ChangeNotifier {
       'superadmin',
       'admin',
       'marketing',
-      'jro',
+      'gro',
       'akuntan',
       'inventory',
       'operational',
@@ -79,15 +79,15 @@ class AuthService with ChangeNotifier {
     return getUserRole() == 'customer';
   }
 
-  bool isJro() {
-    return getUserRole() == 'jro';
+  bool isGro() {
+    return getUserRole() == 'gro';
   }
 
   /// Check if user is any operational role
   bool isOperationalRole() {
     final role = getUserRole();
     return role != null && [
-      'jro',
+      'gro',
       'operational',
       'staff',
       'cashier junior',
@@ -97,17 +97,17 @@ class AuthService with ChangeNotifier {
 
   /// Check if user can manage reservations
   bool canManageReservations() {
-    return hasPermission('manage_reservations') || isJro() || isAdmin();
+    return hasPermission('manage_reservations') || isGro() || isAdmin();
   }
 
   /// Check if user can manage tables
   bool canManageTables() {
-    return hasPermission('manage_tables') || isJro() || isAdmin();
+    return hasPermission('manage_tables') || isGro() || isAdmin();
   }
 
   /// Check if user can view reports
   bool canViewReports() {
-    return hasPermission('view_reports') || isJro() || isMarketing() || isAdmin();
+    return hasPermission('view_reports') || isGro() || isMarketing() || isAdmin();
   }
 
   /// Check if user is marketing admin

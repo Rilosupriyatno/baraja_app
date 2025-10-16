@@ -7,7 +7,7 @@ import 'navigation_bar.dart';
 class RoleBasedWidget extends StatelessWidget {
   final Widget? customerChild;
   final Widget? marketingChild;
-  final Widget? jroChild;        // Add JRO child
+  final Widget? groChild;        // Add GRO child
   final Widget? adminChild;
   final Widget? fallbackChild;
   final List<String>? allowedRoles;
@@ -17,7 +17,7 @@ class RoleBasedWidget extends StatelessWidget {
     super.key,
     this.customerChild,
     this.marketingChild,
-    this.jroChild,                // Add JRO child parameter
+    this.groChild,                // Add GRO child parameter
     this.adminChild,
     this.fallbackChild,
     this.allowedRoles,
@@ -59,8 +59,8 @@ class RoleBasedWidget extends StatelessWidget {
       return customerChild;
     } else if (authService.isMarketing() && marketingChild != null) {
       return marketingChild;
-    } else if (authService.isJro() && jroChild != null) {      // Add JRO check
-      return jroChild;
+    } else if (authService.isGro() && groChild != null) {      // Add GRO check
+      return groChild;
     } else if (authService.isAdmin() && adminChild != null) {
       return adminChild;
     }
@@ -324,7 +324,7 @@ mixin RoleCheckMixin<T extends StatefulWidget> on State<T> {
 
   bool get isCustomer => authService.isCustomer();
   bool get isMarketing => authService.isMarketing();
-  bool get isJro => authService.isJro();           // Add JRO mixin
+  bool get isGro => authService.isGro();           // Add GRO mixin
   bool get isAdmin => authService.isAdmin();
 
   String? get userRole => authService.getUserRole();
@@ -350,7 +350,7 @@ extension RoleCheckExtension on BuildContext {
 
   bool get isCustomer => authService.isCustomer();
   bool get isMarketing => authService.isMarketing();
-  bool get isJro => authService.isJro();           // Add JRO extension
+  bool get isGro => authService.isGro();           // Add GRO extension
   bool get isAdmin => authService.isAdmin();
 
   String? get userRole => authService.getUserRole();

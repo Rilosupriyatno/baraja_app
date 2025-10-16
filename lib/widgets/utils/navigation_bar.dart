@@ -8,7 +8,7 @@ import 'package:persistent_bottom_nav_bar_v2/persistent_bottom_nav_bar_v2.dart';
 import 'package:provider/provider.dart';
 import '../../screens/event_screen.dart';
 import '../../screens/home_screen.dart';
-import '../../screens/jro_dashboard_screen.dart';
+import '../../screens/gro_dashboard_screen.dart';
 import '../../screens/profile_screen.dart';
 import '../../services/auth_service.dart';
 
@@ -25,8 +25,8 @@ class NavigationBarMenu extends StatelessWidget {
         // Determine navigation based on user role
         if (authService.isMarketing()) {
           return MarketingNavigationBar(initialTab: initialTab);
-        } else if (authService.getUserRole() == 'jro') {
-          return JroNavigationBar(initialTab: initialTab);
+        } else if (authService.getUserRole() == 'gro') {
+          return GroNavigationBar(initialTab: initialTab);
         } else {
           return CustomerNavigationBar(initialTab: initialTab);
         }
@@ -325,17 +325,17 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
   }
 }
 
-// JRO Navigation Bar
-class JroNavigationBar extends StatefulWidget {
+// GRO Navigation Bar
+class GroNavigationBar extends StatefulWidget {
   final int? initialTab;
 
-  const JroNavigationBar({super.key, this.initialTab});
+  const GroNavigationBar({super.key, this.initialTab});
 
   @override
-  State<JroNavigationBar> createState() => _JroNavigationBarState();
+  State<GroNavigationBar> createState() => _GroNavigationBarState();
 }
 
-class _JroNavigationBarState extends State<JroNavigationBar> {
+class _GroNavigationBarState extends State<GroNavigationBar> {
   late PersistentTabController _controller;
   DateTime? _lastBackPressed;
 
@@ -406,9 +406,9 @@ class _JroNavigationBarState extends State<JroNavigationBar> {
         avoidBottomPadding: true,
         navBarOverlap: const NavBarOverlap.full(),
         tabs: [
-          // JRO Dashboard
+          // GRO Dashboard
           PersistentTabConfig(
-            screen: const JroDashboardScreen(),
+            screen: const GroDashboardScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.dashboard),
               title: "Dashboard",
@@ -417,15 +417,16 @@ class _JroNavigationBarState extends State<JroNavigationBar> {
           ),
           // Reservation Management
           // PersistentTabConfig(
-          //   screen: const JroDashboardScreen(),
+          //   screen: const GroDashboardScreen(),
           //   item: ItemConfig(
           //     icon: const Icon(Icons.event_seat),
           //     title: "Reservasi",
-          //     activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
+          //     activeForegroundColor: AppTheme.barajaPri
+          //     mary.primaryColor,
           //   ),
           // ),
           // PersistentTabConfig(
-          //   screen: const JroDashboardScreen(),
+          //   screen: const GroDashboardScreen(),
           //   item: ItemConfig(
           //     icon: const Icon(Icons.analytics),
           //     title: "Laporan",

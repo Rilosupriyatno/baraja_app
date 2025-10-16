@@ -9,9 +9,9 @@ import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/favorit_screen.dart';
-import '../screens/jro_management_reservation_screen.dart';
-import '../screens/jro_reservation_detail_screen.dart';
-import '../screens/jro_table_avaibility_screen.dart';
+import '../screens/gro_management_reservation_screen.dart';
+import '../screens/gro_reservation_detail_screen.dart';
+import '../screens/gro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/login_screen.dart';
@@ -342,38 +342,38 @@ class AppRouter {
         ),
 
         // GoRoute(
-        //   path: '/jro-dashboard',
-        //   name: 'jro-dashboard',
-        //   builder: (context, state) => const JroDashboardScreen(),
+        //   path: '/gro-dashboard',
+        //   name: 'gro-dashboard',
+        //   builder: (context, state) => const GroDashboardScreen(),
         // ),
 
         // Setup route dengan query parameter
         GoRoute(
-          path: '/jro-reservation-management',
+          path: '/gro-reservation-management',
           builder: (context, state) {
             final filter = state.uri.queryParameters['filter'] ?? 'all';
-            return JroReservationManagementScreen(filter: filter);
+            return GroReservationManagementScreen(filter: filter);
           },
         ),
 
         GoRoute(
-          path: '/jro-reservation-detail/:id',
-          name: 'jro-reservation-detail',
+          path: '/gro-reservation-detail/:id',
+          name: 'gro-reservation-detail',
           builder: (context, state) {
             // Ambil path parameter 'id' dari URL
-            // Contoh URL: /jro-reservation-detail/123abc
+            // Contoh URL: /gro-reservation-detail/123abc
             final reservationId = state.pathParameters['id'] ?? '';
 
-            return JroReservationDetailScreen(
+            return GroReservationDetailScreen(
               reservationId: reservationId,
             );
           },
         ),
 
         GoRoute(
-          path: '/jro-table-availability',
-          name: 'jro-table-availability',
-          builder: (context, state) => const JroTableAvailabilityScreen(),
+          path: '/gro-table-availability',
+          name: 'gro-table-availability',
+          builder: (context, state) => const GroTableAvailabilityScreen(),
         ),
       ],
     );

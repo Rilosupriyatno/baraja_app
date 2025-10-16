@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/jro_service.dart';
+import '../../services/gro_service.dart';
 
 class TableTransferDialog extends StatefulWidget {
   final String reservationId;
@@ -18,7 +18,7 @@ class TableTransferDialog extends StatefulWidget {
 }
 
 class _TableTransferDialogState extends State<TableTransferDialog> {
-  final JROService _jroService = JROService();
+  final GROService _groService = GROService();
   final TextEditingController _reasonController = TextEditingController();
 
   List<dynamic> _availableTables = [];
@@ -45,7 +45,7 @@ class _TableTransferDialogState extends State<TableTransferDialog> {
     });
 
     try {
-      final result = await _jroService.getTableAvailability(
+      final result = await _groService.getTableAvailability(
         areaId: widget.areaId,
       );
 
@@ -109,7 +109,7 @@ class _TableTransferDialogState extends State<TableTransferDialog> {
     );
 
     try {
-      final result = await _jroService.transferTable(
+      final result = await _groService.transferTable(
         widget.reservationId,
         newTableIds: _selectedTableIds,
         reason: _reasonController.text.isNotEmpty ? _reasonController.text : null,
