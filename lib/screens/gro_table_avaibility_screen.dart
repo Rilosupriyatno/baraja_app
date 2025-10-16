@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
-import 'gro_reservation_screen.dart'; // ✅ Import screen baru
+import 'gro_reservation_screen.dart';
 
 class GroTableAvailabilityScreen extends StatefulWidget {
   const GroTableAvailabilityScreen({super.key});
@@ -414,7 +414,7 @@ class _GroTableAvailabilityScreenState
           ),
           itemCount: tables.length,
           itemBuilder: (context, index) {
-            return _buildTableCard(tables[index]); // ✅ PERBAIKAN: Pass table data
+            return _buildTableCard(tables[index]);
           },
         ),
         const SizedBox(height: 24),
@@ -422,7 +422,6 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  // ✅ PERBAIKAN: Method ini harus ada dan menerima parameter table
   Widget _buildTableCard(Map<String, dynamic> table) {
     final tableNumber = table['table_number'] ?? 'N/A';
     final seats = table['seats'] ?? 0;
@@ -447,10 +446,10 @@ class _GroTableAvailabilityScreenState
       icon = Icons.event_seat;
     }
 
-    // ✅ PERBAIKAN: Wrap dengan InkWell untuk handle klik
     return InkWell(
-      onTap: isActive && isAvailable
-          ? () => _onTableTap(table) // ✅ PERBAIKAN: Pass table data
+      onTap: isActive ? () => _onTableTap(table) : null,
+      onLongPress: isActive && !isAvailable
+          ? () => _showCompleteOrderDialog(table)
           : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -507,22 +506,479 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  // ✅ PERBAIKAN: Method ini harus menerima parameter table
   void _onTableTap(Map<String, dynamic> table) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateReservationScreen(
-          selectedTable: table,
-          selectedDate: _selectedDate,
-          selectedTime: _selectedTime,
+    final isAvailable = table['is_available'] ?? false;
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    if (isAvailable) {
+      // Jika meja tersedia, buka form reservasi
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateReservationScreen(
+            selectedTable: table,
+            selectedDate: _selectedDate,
+            selectedTime: _selectedTime,
+          ),
         ),
+      );
+
+      if (result == true) {
+        _loadTableAvailability();
+      }
+    } else {
+      // Jika meja terisi, tampilkan detail order
+      _showTableOrderDetail(table);
+    }
+  }
+
+  void _showTableOrderDetail(Map<String, dynamic> table) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
 
-    // Refresh jika reservasi berhasil dibuat
-    if (result == true) {
-      _loadTableAvailability();
+    try {
+      final result = await _groService.getTableOrderDetail(
+        tableNumber: tableNumber,
+        date: dateStr,
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success']) {
+        final orderData = result['data'];
+        _showOrderDetailBottomSheet(orderData, table);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal memuat detail order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showOrderDetailBottomSheet(
+      Map<String, dynamic> orderData,
+      Map<String, dynamic> table,
+      ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[200]!),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Meja ${table['table_number']}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          orderData['order_id'] ?? 'N/A',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInfoCard(
+                      'Informasi Pelanggan',
+                      [
+                        _buildInfoRow(
+                          Icons.person,
+                          'Nama',
+                          orderData['customerName'] ?? 'N/A',
+                        ),
+                        if (orderData['customerPhone'] != null)
+                          _buildInfoRow(
+                            Icons.phone,
+                            'Telepon',
+                            orderData['customerPhone'],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      'Pesanan',
+                      (orderData['items'] as List? ?? []).map((item) {
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundColor:
+                            const Color(0xFF2E8B57).withOpacity(0.1),
+                            child: Text(
+                              '${item['quantity']}x',
+                              style: const TextStyle(
+                                color: Color(0xFF2E8B57),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            item['menuItem']?['name'] ?? 'N/A',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: item['notes'] != null &&
+                              item['notes'].toString().isNotEmpty
+                              ? Text(
+                            'Catatan: ${item['notes']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          )
+                              : null,
+                          trailing: Text(
+                            'Rp ${(item['subtotal'] ?? 0).toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoCard(
+                      'Total Pembayaran',
+                      [
+                        _buildTotalRow(
+                          'Subtotal',
+                          orderData['totalBeforeDiscount'] ?? 0,
+                        ),
+                        if ((orderData['totalTax'] ?? 0) > 0)
+                          _buildTotalRow('Pajak', orderData['totalTax']),
+                        if ((orderData['totalServiceFee'] ?? 0) > 0)
+                          _buildTotalRow('Service', orderData['totalServiceFee']),
+                        const Divider(),
+                        _buildTotalRow(
+                          'Grand Total',
+                          orderData['grandTotal'] ?? 0,
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showCompleteOrderDialog(table, orderData: orderData);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E8B57),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Selesaikan Pesanan',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(String title, List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2E8B57),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, dynamic value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            'Rp ${(value ?? 0).toStringAsFixed(0)}',
+            style: TextStyle(
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCompleteOrderDialog(
+      Map<String, dynamic> table, {
+        Map<String, dynamic>? orderData,
+      }) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    Map<String, dynamic>? data = orderData;
+    if (data == null) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final result = await _groService.getTableOrderDetail(
+        tableNumber: tableNumber,
+        date: dateStr,
+      );
+
+      if (!result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal memuat detail order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      data = result['data'];
+    }
+
+    if (data == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selesaikan Pesanan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Apakah Anda yakin ingin menyelesaikan pesanan untuk:'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Meja: $tableNumber',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text('Order ID: ${data!['order_id'] ?? 'N/A'}'),
+                  Text('Customer: ${data['customerName'] ?? 'N/A'}'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Total: Rp ${(data['grandTotal'] ?? 0).toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2E8B57),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Meja akan menjadi tersedia setelah pesanan diselesaikan.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E8B57),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Selesaikan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _completeOrder(data['_id']);
+    }
+  }
+
+  Future<void> _completeOrder(String orderId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final result = await _groService.completeTableOrder(orderId);
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'] ?? 'Pesanan berhasil diselesaikan',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        _loadTableAvailability();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal menyelesaikan pesanan'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

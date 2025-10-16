@@ -429,6 +429,111 @@ class GROService {
   }
 
   // Close open bill
+  // Future<Map<String, dynamic>> closeOpenBill(String id) async {
+  //   try {
+  //     final headers = await _getHeaders();
+  //
+  //     final response = await http.put(
+  //       Uri.parse('$baseUrl/api/gro/reservations/$id/close-open-bill'),
+  //       headers: headers,
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //       return {
+  //         'success': true,
+  //         'message': responseData['message'] ?? 'Open bill berhasil ditutup',
+  //         'data': responseData['data'],
+  //       };
+  //     } else {
+  //       final Map<String, dynamic> errorData = json.decode(response.body);
+  //       return {
+  //         'success': false,
+  //         'error': errorData['message'] ?? 'Gagal menutup open bill',
+  //       };
+  //     }
+  //   } catch (e) {
+  //     print('Error closing open bill: $e');
+  //     return {
+  //       'success': false,
+  //       'error': 'Terjadi kesalahan: $e',
+  //     };
+  //   }
+  // }
+  // Get table order detail
+// Get table order detail
+  Future<Map<String, dynamic>> getTableOrderDetail({
+    required String tableNumber,
+    required String date,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final uri = Uri.parse('$baseUrl/api/gro/tables/$tableNumber/order').replace(
+        queryParameters: {'date': date},
+      );
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal memuat detail order',
+        };
+      }
+    } catch (e) {
+      print('Error fetching table order detail: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+  // Complete table order (finish order and make table available)
+  Future<Map<String, dynamic>> completeTableOrder(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/complete'),
+        headers: headers,
+      );
+
+      print('Complete order response status: ${response.statusCode}');
+      print('Complete order response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Order berhasil diselesaikan',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal menyelesaikan order',
+        };
+      }
+    } catch (e) {
+      print('Error completing order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+  // Close open bill
   Future<Map<String, dynamic>> closeOpenBill(String id) async {
     try {
       final headers = await _getHeaders();
