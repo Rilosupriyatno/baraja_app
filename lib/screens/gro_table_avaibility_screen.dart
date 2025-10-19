@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
 import 'gro_reservation_screen.dart';
+import 'menu_screen.dart'; // Import MenuScreen untuk dine-in
 
 class GroTableAvailabilityScreen extends StatefulWidget {
   const GroTableAvailabilityScreen({super.key});
@@ -42,13 +43,20 @@ class _GroTableAvailabilityScreenState
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
+      print('Loading table availability with:');
+      print('Date: $dateStr');
+      print('Time: $_selectedTime');
+      print('Area ID: $_selectedAreaId');
+
       final result = await _groService.getTableAvailability(
         date: dateStr,
-        time: _selectedTime,
+        time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
         areaId: _selectedAreaId,
       );
 
-      if (result['success']) {
+      print('Result: $result');
+
+      if (result['success'] == true || result['data'] != null) {
         setState(() {
           _tables = result['data']['tables'] ?? [];
           _summary = result['data']['summary'] ?? {};
@@ -56,11 +64,12 @@ class _GroTableAvailabilityScreenState
         });
       } else {
         setState(() {
-          _errorMessage = result['error'];
+          _errorMessage = result['error'] ?? 'Gagal memuat data';
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('Error loading table availability: $e');
       setState(() {
         _errorMessage = 'Error loading table availability: $e';
         _isLoading = false;
@@ -187,7 +196,7 @@ class _GroTableAvailabilityScreenState
                   hint: const Text('Waktu'),
                   items: [
                     const DropdownMenuItem<String>(
-                      value: null,
+                      value: '',
                       child: Text('Semua Waktu'),
                     ),
                     ..._timeSlots.map((time) => DropdownMenuItem(
@@ -196,7 +205,9 @@ class _GroTableAvailabilityScreenState
                     )),
                   ],
                   onChanged: (value) {
-                    setState(() => _selectedTime = value);
+                    setState(() {
+                      _selectedTime = (value == null || value.isEmpty) ? null : value;
+                    });
                     _loadTableAvailability();
                   },
                 ),
@@ -214,7 +225,6 @@ class _GroTableAvailabilityScreenState
       initialDate: _selectedDate,
       firstDate: DateTime.now().subtract(const Duration(days: 7)),
       lastDate: DateTime.now().add(const Duration(days: 90)),
-      locale: const Locale('id', 'ID'),
     );
 
     if (picked != null && picked != _selectedDate) {
@@ -361,7 +371,6 @@ class _GroTableAvailabilityScreenState
       );
     }
 
-    // Group tables by area
     final Map<String, List<dynamic>> tablesByArea = {};
     for (var table in _tables) {
       final area = table['area'];
@@ -508,30 +517,209 @@ class _GroTableAvailabilityScreenState
 
   void _onTableTap(Map<String, dynamic> table) async {
     final isAvailable = table['is_available'] ?? false;
-    final tableNumber = table['table_number'] ?? 'N/A';
 
     if (isAvailable) {
-      // Jika meja tersedia, buka form reservasi
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CreateReservationScreen(
-            selectedTable: table,
-            selectedDate: _selectedDate,
-            selectedTime: _selectedTime,
-          ),
-        ),
-      );
-
-      if (result == true) {
-        _loadTableAvailability();
-      }
+      // Tampilkan dialog pilihan: Dine-In atau Reservasi
+      _showOrderTypeDialog(table);
     } else {
-      // Jika meja terisi, tampilkan detail order
       _showTableOrderDetail(table);
     }
   }
 
+  // Dialog untuk memilih tipe order: Dine-In atau Reservasi
+  void _showOrderTypeDialog(Map<String, dynamic> table) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Meja ${table['table_number']}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pilih jenis pesanan untuk meja ini:',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Dine-In Option
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToDineIn(table);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF3B82F6).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.restaurant,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Dine-In',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3B82F6),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pesan langsung untuk meja ini',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Reservation Option
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToReservation(table);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E8B57).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF2E8B57).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E8B57),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.event_available,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Reservasi',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E8B57),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Buat reservasi untuk meja ini',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Color(0xFF2E8B57),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Navigate to Dine-In (Menu Screen)
+  void _navigateToDineIn(Map<String, dynamic> table) {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuScreen(
+          isReservation: false,
+          isDineIn: true,
+          tableNumber: tableNumber,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadTableAvailability();
+      }
+    });
+  }
+
+  // Navigate to Reservation Screen
+  void _navigateToReservation(Map<String, dynamic> table) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateReservationScreen(
+          selectedTable: table,
+          selectedDate: _selectedDate,
+          selectedTime: _selectedTime,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadTableAvailability();
+    }
+  }
+
+  // Methods untuk order detail (unchanged)
   void _showTableOrderDetail(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
