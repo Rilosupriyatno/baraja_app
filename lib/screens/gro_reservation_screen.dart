@@ -15,12 +15,14 @@ class CreateReservationScreen extends StatefulWidget {
   final Map<String, dynamic>? selectedTable;
   final DateTime? selectedDate;
   final String? selectedTime;
+  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
 
   const CreateReservationScreen({
     super.key,
     this.selectedTable,
     this.selectedDate,
     this.selectedTime,
+    this.isGroMode = false, // Default false untuk akses user biasa
   });
 
   @override
@@ -370,6 +372,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           builder: (context) => CheckoutPage(
             isReservation: true,
             reservationData: reservationData,
+            isGroMode: widget.isGroMode, // ⭐ Pass isGroMode
           ),
         ),
       );
@@ -388,6 +391,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           builder: (context) => MenuScreen(
             isReservation: true,
             reservationData: reservationData,
+            isGroMode: widget.isGroMode, // ⭐ Pass isGroMode
           ),
         ),
       );

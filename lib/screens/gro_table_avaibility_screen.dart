@@ -5,7 +5,12 @@ import 'gro_reservation_screen.dart';
 import 'menu_screen.dart'; // Import MenuScreen untuk dine-in
 
 class GroTableAvailabilityScreen extends StatefulWidget {
-  const GroTableAvailabilityScreen({super.key});
+  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
+
+  const GroTableAvailabilityScreen({
+    super.key,
+    this.isGroMode = true, // Default true karena ini screen khusus GRO
+  });
 
   @override
   State<GroTableAvailabilityScreen> createState() =>
@@ -692,6 +697,7 @@ class _GroTableAvailabilityScreenState
           isReservation: false,
           isDineIn: true,
           tableNumber: tableNumber,
+          isGroMode: true, // ⭐ PENTING: Set true untuk GRO mode
         ),
       ),
     ).then((result) {
@@ -710,6 +716,7 @@ class _GroTableAvailabilityScreenState
           selectedTable: table,
           selectedDate: _selectedDate,
           selectedTime: _selectedTime,
+          isGroMode: true, // ⭐ PENTING: Set true untuk GRO mode
         ),
       ),
     );

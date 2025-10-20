@@ -226,6 +226,105 @@ class GROService {
     }
   }
 
+  // Check-in walk-in customer
+  Future<Map<String, dynamic>> checkInWalkInOrder(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/walk-in/check-in'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Check-in berhasil',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal check-in',
+        };
+      }
+    } catch (e) {
+      print('Error checking in walk-in order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+// Check-out walk-in customer
+  Future<Map<String, dynamic>> checkOutWalkInOrder(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/walk-in/check-out'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Check-out berhasil',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal check-out',
+        };
+      }
+    } catch (e) {
+      print('Error checking out walk-in order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+// Complete walk-in order (gunakan endpoint yang sudah ada)
+  Future<Map<String, dynamic>> completeWalkInOrder(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/complete'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Order berhasil diselesaikan',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal menyelesaikan order',
+        };
+      }
+    } catch (e) {
+      print('Error completing walk-in order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
   // Check-out reservation
   Future<Map<String, dynamic>> checkOutReservation(String id) async {
     try {

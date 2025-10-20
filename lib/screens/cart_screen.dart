@@ -16,6 +16,7 @@ class CartScreen extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
+  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
 
   const CartScreen({
     super.key,
@@ -25,11 +26,13 @@ class CartScreen extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
+    this.isGroMode = false, // Default false
   });
 
   @override
   CartScreenState createState() => CartScreenState();
 }
+
 
 class CartScreenState extends State<CartScreen> {
   final bool _isLoading = false;
@@ -308,7 +311,7 @@ class CartScreenState extends State<CartScreen> {
         final OpenBillData? openBillData = cartProvider.openBillData;
 
         return BaseScreenWrapper(
-          customBackRoute: '/menu',
+          customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/menu',
           canPop: false,
           child: Scaffold(
             backgroundColor: Colors.white,
@@ -324,7 +327,14 @@ class CartScreenState extends State<CartScreen> {
                   centerTitle: true,
                   leading: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      // ⭐ Conditional back navigation berdasarkan isGroMode
+                      if (widget.isGroMode) {
+                        Navigator.of(context).pop(); // Kembali ke screen sebelumnya (menu GRO)
+                      } else {
+                        Navigator.of(context).pop(); // Kembali ke menu user biasa
+                      }
+                    },
                   ),
                   title: Text(_getTitle(isReservation, isDineIn, isOpenBill),
                       style: const TextStyle(color: Colors.black)),
@@ -410,15 +420,21 @@ class CartScreenState extends State<CartScreen> {
                     padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate back to menu with appropriate context
-                        if (isReservation && reservationData != null) {
-                          context.pop(); // Just go back to the menu screen
-                        } else if (isDineIn && tableNumber != null) {
-                          context.pop(); // Just go back to the menu screen
-                        } else if (isOpenBill && openBillData != null){
-                          context.pop(); // Just go back to the menu screen
+                        // ⭐ Conditional navigation berdasarkan context
+                        if (widget.isGroMode) {
+                          // GRO mode: kembali langsung dengan pop
+                          Navigator.of(context).pop();
                         } else {
-                          context.push('/menu');
+                          // User mode: ke menu screen dengan context yang sesuai
+                          if (isReservation && reservationData != null) {
+                            context.pop();
+                          } else if (isDineIn && tableNumber != null) {
+                            context.pop();
+                          } else if (isOpenBill && openBillData != null){
+                            context.pop();
+                          } else {
+                            context.push('/menu');
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -470,30 +486,25 @@ class CartScreenState extends State<CartScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: cartItems.isEmpty ? null : () {
-                          // Pass all relevant data to checkout
-                          Map<String, dynamic> extraData = {};
+                          Map<String, dynamic> extraData = {
+                            'isGroMode': widget.isGroMode, // ⭐ ALWAYS pass isGroMode
+                          };
 
                           if (isReservation && reservationData != null) {
-                            extraData = {
-                              'isReservation': true,
-                              'reservationData': reservationData,
-                            };
+                            extraData['isReservation'] = true;
+                            extraData['reservationData'] = reservationData;
                           } else if (isOpenBill && openBillData != null) {
-                            extraData = {
-                              'isOpenBill': true,
-                              'openBillData': openBillData,
-                            };
+                            extraData['isOpenBill'] = true;
+                            extraData['openBillData'] = openBillData;
                           } else if (isDineIn && tableNumber != null) {
-                            extraData = {
-                              'isDineIn': true,
-                              'tableNumber': tableNumber,
-                            };
+                            extraData['isDineIn'] = true;
+                            extraData['tableNumber'] = tableNumber;
                           }
 
-                          if (extraData.isNotEmpty) {
+                          if (extraData.length > 1) { // More than just isGroMode
                             context.go('/checkout', extra: extraData);
                           } else {
-                            context.go('/checkout');
+                            context.go('/checkout', extra: {'isGroMode': widget.isGroMode});
                           }
                         },
                         style: ElevatedButton.styleFrom(

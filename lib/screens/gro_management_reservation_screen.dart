@@ -461,8 +461,75 @@ class _GroReservationManagementScreenState
   Widget _buildActionButtons(Map<String, dynamic> reservation) {
     final status = reservation['status'];
     final id = reservation['_id'];
+    final type = reservation['type']; // Check if walk-in order
     final checkInTime = reservation['check_in_time'];
     final checkOutTime = reservation['check_out_time'];
+
+    // Handle walk-in orders differently
+    if (type == 'dine-in-order') {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          // Tombol Check-in untuk walk-in
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 48) / 2 - 4,
+            child: ElevatedButton.icon(
+              onPressed: () => _checkInWalkIn(id),
+              icon: const Icon(Icons.login, size: 16),
+              label: const Text('Check-in'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+          // Tombol Check-out untuk walk-in
+          SizedBox(
+            width: (MediaQuery.of(context).size.width - 48) / 2 - 4,
+            child: ElevatedButton.icon(
+              onPressed: () => _checkOutWalkIn(id),
+              icon: const Icon(Icons.logout, size: 16),
+              label: const Text('Check-out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+          // Tombol Selesai untuk walk-in
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _completeWalkIn(id),
+              icon: const Icon(Icons.done_all, size: 16),
+              label: const Text('Selesai'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Wrap(
       spacing: 8,
@@ -635,6 +702,141 @@ class _GroReservationManagementScreenState
         ],
       ),
     );
+  }
+
+  Future<void> _checkInWalkIn(String orderId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Check-in Customer'),
+        content: const Text('Apakah customer sudah datang dan siap untuk check-in?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: const Text('Check-in'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final result = await _groService.checkInWalkInOrder(orderId);
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Check-in berhasil'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReservations();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal check-in'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _checkOutWalkIn(String orderId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Check-out Customer'),
+        content: const Text('Apakah customer sudah selesai dan siap untuk check-out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+            ),
+            child: const Text('Check-out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final result = await _groService.checkOutWalkInOrder(orderId);
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Check-out berhasil'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReservations();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal check-out'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _completeWalkIn(String orderId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selesaikan Order'),
+        content: const Text('Apakah Anda yakin ingin menyelesaikan order ini? Meja akan menjadi tersedia.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+            ),
+            child: const Text('Selesaikan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final result = await _groService.completeWalkInOrder(orderId);
+      if (mounted) {
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Order berhasil diselesaikan'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadReservations();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal menyelesaikan order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _confirmReservation(String id) async {
@@ -941,9 +1143,75 @@ class _GroReservationManagementScreenState
   }
 
   void _showReservationDetail(Map<String, dynamic> reservation) {
-    final reservationId = reservation['_id'];
-    context.push('/gro-reservation-detail/$reservationId').then((_) {
-      _loadReservations();
-    });
+    final type = reservation['type'];
+
+    // Jika walk-in order, tampilkan detail order instead
+    if (type == 'dine-in-order') {
+      final orderId = reservation['_id'];
+      // Navigasi ke detail order (bisa buat screen baru atau reuse yang ada)
+      _showWalkInOrderDetail(orderId);
+    } else {
+      // Navigate to reservation detail as usual
+      final reservationId = reservation['_id'];
+      context.push('/gro-reservation-detail/$reservationId').then((_) {
+        _loadReservations();
+      });
+    }
+  }
+
+  Future<void> _showWalkInOrderDetail(String orderId) async {
+    // Bisa show bottom sheet atau navigate ke screen detail
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildWalkInOrderDetailSheet(orderId),
+    );
+  }
+
+  Widget _buildWalkInOrderDetailSheet(String orderId) {
+    // Implement detail view untuk walk-in order
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Detail Walk-in Order',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          // Content - implement sesuai kebutuhan
+          Expanded(
+            child: Center(
+              child: Text('Order ID: $orderId'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

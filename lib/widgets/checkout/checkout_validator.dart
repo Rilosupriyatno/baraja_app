@@ -23,6 +23,7 @@ class CheckoutValidator {
     required TimeOfDay Function() getMinimumPickupTime,
     required String Function(TimeOfDay) formatTime,
     required TableService tableService,
+    required bool isGroMode, // ✅ TAMBAHKAN
   }) async {
     Map<String, String> errors = {};
     String? firstErrorKey;
@@ -33,6 +34,18 @@ class CheckoutValidator {
         'isValid': false,
         'errors': {'general': 'Keranjang belanja masih kosong'},
         'firstErrorKey': 'general',
+      };
+    }
+
+    if (!isGroMode || cartProvider.isReservation) {
+      if (selectedPaymentMethod == null || selectedPaymentMethodName == null) {
+        errors['paymentMethod'] = 'Metode pembayaran harus dipilih';
+        if (firstErrorKey == null) firstErrorKey = 'paymentMethod';
+      }
+      return {
+        'isValid': errors.isEmpty,
+        'errors': errors,
+        'firstErrorKey': firstErrorKey,
       };
     }
 

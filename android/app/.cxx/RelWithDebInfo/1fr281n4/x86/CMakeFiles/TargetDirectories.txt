@@ -1,0 +1,2 @@
+/home/rils/StudioProjects/baraja_app/android/app/.cxx/RelWithDebInfo/1fr281n4/x86/CMakeFiles/edit_cache.dir
+/home/rils/StudioProjects/baraja_app/android/app/.cxx/RelWithDebInfo/1fr281n4/x86/CMakeFiles/rebuild_cache.dir

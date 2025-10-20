@@ -44,23 +44,11 @@ class _MenuProductCardState extends State<MenuProductCard> {
 
     for (int i = 1; i <= 5; i++) {
       if (i <= rating.floor()) {
-        stars.add(const Icon(
-          Icons.star,
-          color: Colors.amber,
-          size: 16,
-        ));
+        stars.add(const Icon(Icons.star, color: Colors.amber, size: 16));
       } else if (i == rating.floor() + 1 && rating % 1 != 0) {
-        stars.add(const Icon(
-          Icons.star_half,
-          color: Colors.amber,
-          size: 16,
-        ));
+        stars.add(const Icon(Icons.star_half, color: Colors.amber, size: 16));
       } else {
-        stars.add(Icon(
-          Icons.star_border,
-          color: Colors.grey[400],
-          size: 16,
-        ));
+        stars.add(Icon(Icons.star_border, color: Colors.grey[400], size: 16));
       }
     }
 
@@ -81,7 +69,7 @@ class _MenuProductCardState extends State<MenuProductCard> {
     );
   }
 
-  Widget _buildShimmerSkeleton() {
+  Widget _buildShimmerSkeleton({double height = 120}) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.3, end: 1.0),
       duration: const Duration(milliseconds: 800),
@@ -89,8 +77,9 @@ class _MenuProductCardState extends State<MenuProductCard> {
       builder: (context, value, child) {
         return Container(
           width: double.infinity,
-          height: double.infinity,
+          height: height, // 🔧 tinggi dibatasi agar tidak overflow
           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -135,8 +124,15 @@ class _MenuProductCardState extends State<MenuProductCard> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Skeleton layer
-        if (!_imageLoaded) _buildShimmerSkeleton(),
+        // Skeleton layer (dengan ClipRRect agar tidak overflow)
+        if (!_imageLoaded)
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+            child: _buildShimmerSkeleton(height: 120),
+          ),
 
         // Image layer
         AnimatedOpacity(
@@ -147,16 +143,12 @@ class _MenuProductCardState extends State<MenuProductCard> {
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            headers: const {
-              'Cache-Control': 'max-age=3600',
-            },
+            headers: const {'Cache-Control': 'max-age=3600'},
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted && !_imageLoaded) {
-                    setState(() {
-                      _imageLoaded = true;
-                    });
+                    setState(() => _imageLoaded = true);
                   }
                 });
                 return child;
@@ -164,16 +156,9 @@ class _MenuProductCardState extends State<MenuProductCard> {
               return const SizedBox.shrink();
             },
             errorBuilder: (context, error, stackTrace) {
-              print('❌ Image load error for ${widget.product.name}: $error');
-
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_hasError) {
-                  setState(() {
-                    _hasError = true;
-                  });
-                }
+                if (mounted && !_hasError) setState(() => _hasError = true);
               });
-
               return Image.asset(
                 'assets/images/product_default_image.png',
                 fit: BoxFit.cover,
@@ -191,11 +176,9 @@ class _MenuProductCardState extends State<MenuProductCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        print('Product card tapped: ${widget.product.name}');
         try {
           ProductDetailModal.show(context, widget.product);
         } catch (e) {
-          print('Error showing modal: $e');
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
@@ -227,24 +210,18 @@ class _MenuProductCardState extends State<MenuProductCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Gambar produk
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
-              child: Container(
+              child: SizedBox(
                 width: double.infinity,
                 height: 120,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
-                  ),
-                ),
                 child: Stack(
                   children: [
-                    Center(child: _buildImageContent()),
+                    _buildImageContent(),
                     if (widget.bundleText != null)
                       Positioned(
                         top: 8,
@@ -253,7 +230,7 @@ class _MenuProductCardState extends State<MenuProductCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.85),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -270,12 +247,14 @@ class _MenuProductCardState extends State<MenuProductCard> {
                 ),
               ),
             ),
+
+            // Informasi produk
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max, // 🔧 fix overflow
                   children: [
                     Text(
                       widget.product.name,
@@ -284,11 +263,11 @@ class _MenuProductCardState extends State<MenuProductCard> {
                         fontSize: 16,
                       ),
                       overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      formatCurrency(
-                          widget.product.discountPrice?.round() ?? 0),
+                      formatCurrency(widget.product.discountPrice?.round() ?? 0),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -297,20 +276,13 @@ class _MenuProductCardState extends State<MenuProductCard> {
                     const SizedBox(height: 4),
                     Text(
                       widget.product.description,
-                      style: const TextStyle(
-                        fontSize: 10,
-                      ),
-                      maxLines: 1,
+                      style: const TextStyle(fontSize: 10),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (widget.product.averageRating > 0)
-                          _buildRatingWidget(widget.product.averageRating),
-                      ],
-                    ),
+                    const Spacer(), // 🔧 dorong rating ke bawah, mencegah overflow
+                    if (widget.product.averageRating > 0)
+                      _buildRatingWidget(widget.product.averageRating),
                   ],
                 ),
               ),

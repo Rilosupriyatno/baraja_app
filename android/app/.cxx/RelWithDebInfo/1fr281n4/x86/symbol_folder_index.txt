@@ -1,0 +1,1 @@
+/home/rils/StudioProjects/baraja_app/build/app/intermediates/cxx/RelWithDebInfo/1fr281n4/obj/x86

@@ -124,7 +124,18 @@ class AppRouter {
         GoRoute(
           path: '/menu',
           parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) => const MenuScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return MenuScreen(
+              isReservation: extra?['isReservation'] ?? false,
+              reservationData: extra?['reservationData'],
+              isDineIn: extra?['isDineIn'] ?? false,
+              tableNumber: extra?['tableNumber'],
+              isOpenBill: extra?['isOpenBill'] ?? false,
+              openBillData: extra?['openBillData'],
+              isGroMode: extra?['isGroMode'] ?? false, // ADD
+            );
+          },
         ),
 
         GoRoute(
@@ -208,11 +219,11 @@ class AppRouter {
               tableNumber: extra?['tableNumber'],
               isOpenBill: extra?['isOpenBill'] ?? false,
               openBillData: extra?['openBillData'],
+              isGroMode: extra?['isGroMode'] ?? false, // ADD
             );
           },
         ),
 
-        // Checkout route
         GoRoute(
           path: '/checkout',
           parentNavigatorKey: _rootNavigatorKey,
@@ -225,6 +236,7 @@ class AppRouter {
               tableNumber: extra?['tableNumber'],
               isOpenBill: extra?['isOpenBill'] ?? false,
               openBillData: extra?['openBillData'],
+              isGroMode: extra?['isGroMode'] ?? false, // ADD
             );
           },
         ),

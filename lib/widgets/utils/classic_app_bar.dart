@@ -10,6 +10,7 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBackButton;
   final Widget? customLeading;
   final List<Widget>? actions;
+  final bool usePopInsteadOfGo; // ⭐ NEW: Option to use pop instead of go
 
   const ClassicAppBar({
     super.key,
@@ -19,6 +20,7 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showBackButton = true,
     this.customLeading,
     this.actions,
+    this.usePopInsteadOfGo = false, // ⭐ NEW: Default false for backward compatibility
   });
 
   @override
@@ -63,8 +65,30 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
       return;
     }
 
-    // Priority 2: Custom route
+    // ⭐ NEW: Priority 2: Use pop if explicitly requested
+    if (usePopInsteadOfGo) {
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      } else {
+        // Fallback to main if can't pop
+        context.go('/main');
+      }
+      return;
+    }
+
+    // Priority 3: Custom route
     if (customBackRoute != null) {
+      // ⭐ FIX: Special handling for /cart and /menu - use pop instead of go
+      if (customBackRoute == '/cart' || customBackRoute == '/menu') {
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        } else {
+          context.go(customBackRoute!);
+        }
+        return;
+      }
+
+      // Special handling for /history
       if (customBackRoute == '/history') {
         context.go('/main', extra: {'initialTab': 3});
       } else {
@@ -73,8 +97,7 @@ class ClassicAppBar extends StatelessWidget implements PreferredSizeWidget {
       return;
     }
 
-
-    // Priority 3: Default behavior
+    // Priority 4: Default behavior - always try pop first
     if (Navigator.canPop(context)) {
       Navigator.of(context).pop();
     } else {
@@ -93,11 +116,13 @@ extension ClassicAppBarExtension on ClassicAppBar {
     required String title,
     required String backRoute,
     List<Widget>? actions,
+    bool usePopInsteadOfGo = false, // ⭐ NEW parameter
   }) {
     return ClassicAppBar(
       title: title,
       customBackRoute: backRoute,
       actions: actions,
+      usePopInsteadOfGo: usePopInsteadOfGo,
     );
   }
 
@@ -124,6 +149,18 @@ extension ClassicAppBarExtension on ClassicAppBar {
       title: title,
       showBackButton: false,
       customLeading: customLeading,
+      actions: actions,
+    );
+  }
+
+  /// ⭐ NEW: Factory constructor untuk safe pop navigation
+  static ClassicAppBar withSafePop({
+    required String title,
+    List<Widget>? actions,
+  }) {
+    return ClassicAppBar(
+      title: title,
+      usePopInsteadOfGo: true,
       actions: actions,
     );
   }

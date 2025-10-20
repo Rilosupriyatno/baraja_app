@@ -26,7 +26,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   List<Product> _products = [];
-  List<Product> _discountedProducts = [];
+  List<Product> _forYouProducts = [];
+  List<Product> _recommendedProducts = [];
+
+  // 🎯 Daftar produk untuk "Untuk Kamu"
+  final List<String> _forYouProductNames = [
+    'banana fritter',
+    'dunkel braun',
+    'americano',
+    'fried mozarella',
+    'pancake special',
+    'nasi empal gentong',
+    'spaghetti carbonara',
+  ];
+
+  // 🎯 Daftar produk untuk "Rekomendasi"
+  final List<String> _recommendedProductNames = [
+    'hell braun',
+    'manual brew',
+    'cappucino',
+    'nasi goreng la baraja',
+    'baraja latte',
+    'famiglia patatine fritte',
+  ];
 
   @override
   void initState() {
@@ -58,8 +80,13 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _products = products;
-          _discountedProducts =
-              products.where((p) => p.discountPercentage != null).toList();
+
+          // 🎯 Filter produk untuk "Untuk Kamu"
+          _forYouProducts = _filterProductsByNames(products, _forYouProductNames);
+
+          // 🎯 Filter produk untuk "Rekomendasi"
+          _recommendedProducts = _filterProductsByNames(products, _recommendedProductNames);
+
           _isLoading = false;
         });
       }
@@ -67,6 +94,26 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('❌ Failed to load data: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // 🎯 Method untuk filter produk berdasarkan daftar nama
+  List<Product> _filterProductsByNames(List<Product> products, List<String> productNames) {
+    List<Product> filteredProducts = [];
+
+    // Loop through nama produk yang diinginkan
+    for (String productName in productNames) {
+      // Cari produk yang match (case insensitive)
+      try {
+        Product product = products.firstWhere(
+              (p) => p.name.toLowerCase().trim() == productName.toLowerCase().trim(),
+        );
+        filteredProducts.add(product);
+      } catch (e) {
+        debugPrint('⚠️ Product not found: $productName');
+      }
+    }
+
+    return filteredProducts;
   }
 
   // Dummy data untuk skeleton
@@ -189,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Skeletonizer(
       enabled: true,
       child: Container(
-        height: 166, // 150 + 8 + 8 (tinggi carousel + spacing + indicator)
+        height: 166,
         margin: const EdgeInsets.symmetric(horizontal: 10),
         child: Column(
           children: [
@@ -305,11 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         enabled: _isLoading,
                         enableSwitchAnimation: true,
                         child: ProductSlider(
-                          products: _isLoading
-                              ? _getDummyProducts()
-                              : (_discountedProducts.isNotEmpty
-                              ? _discountedProducts
-                              : _products),
+                          products: _isLoading ? _getDummyProducts() : _forYouProducts,
                           formatPrice: formatCurrency,
                           title: _isLoading ? '' : 'Untuk Kamu',
                         ),
@@ -329,9 +372,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         enabled: _isLoading,
                         enableSwitchAnimation: true,
                         child: ProductSlider(
-                          products: _isLoading ? _getDummyProducts() : _products,
+                          products: _isLoading ? _getDummyProducts() : _recommendedProducts,
                           title: _isLoading ? '' : 'Rekomendasi',
-                          isBundle: true,
+                          isBundle: false,
                           formatPrice: formatCurrency,
                         ),
                       ),

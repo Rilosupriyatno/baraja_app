@@ -21,6 +21,7 @@ class MenuScreen extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
+  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
 
   const MenuScreen({
     super.key,
@@ -30,6 +31,7 @@ class MenuScreen extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
+    this.isGroMode = false, // Default false untuk user biasa
   });
 
   @override
@@ -54,6 +56,7 @@ class _MenuScreenState extends State<MenuScreen> {
     _loadProducts();
     print(widget.reservationData);
     print("ini adalah data open bill: ${widget.openBillData}");
+    print("GRO Mode: ${widget.isGroMode}"); // Debug log
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -446,12 +449,22 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   String _getAppBarTitle() {
-    if (widget.isReservation) {
+    if (widget.isGroMode) {
+      return 'Menu (GRO Mode)';
+    } else if (widget.isReservation) {
       return 'Menu Reservasi';
     } else if (widget.isDineIn) {
       return 'Menu Dine In';
     } else {
       return 'Menu';
+    }
+  }
+
+  String _getBackRoute() {
+    if (widget.isGroMode) {
+      return '/gro-table-availability';
+    } else {
+      return '/main';
     }
   }
 
@@ -464,10 +477,13 @@ class _MenuScreenState extends State<MenuScreen> {
 
     return BaseScreenWrapper(
       canPop: false,
-      customBackRoute: '/main',
+      customBackRoute: _getBackRoute(),
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: ClassicAppBar(title: _getAppBarTitle()),
+        appBar: ClassicAppBar(
+          title: _getAppBarTitle(),
+          customBackRoute: _getBackRoute(),
+        ),
         body: SafeArea(
           child: _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
@@ -516,6 +532,7 @@ class _MenuScreenState extends State<MenuScreen> {
           tableNumber: widget.tableNumber,
           isOpenBill: widget.isOpenBill,
           openBillData: widget.openBillData,
+          isGroMode: widget.isGroMode, // PASS parameter ke checkout button
         ),
       ),
     );

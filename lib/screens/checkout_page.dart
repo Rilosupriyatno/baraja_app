@@ -34,6 +34,7 @@ class CheckoutPage extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
+  final bool isGroMode; // NEW
 
   const CheckoutPage({
     super.key,
@@ -43,6 +44,7 @@ class CheckoutPage extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
+    this.isGroMode = false, // Default false
   });
 
   @override
@@ -407,13 +409,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
 
         return BaseScreenWrapper(
-          customBackRoute: '/cart',
+          customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/cart',
           canPop: false,
           child: Scaffold(
             backgroundColor: Colors.white,
             appBar: const ClassicAppBar(
               title: 'Pembayaran',
-              customBackRoute: '/history',
+              usePopInsteadOfGo: true
+              // customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/history',
             ),
             resizeToAvoidBottomInset: true,
             body: Column(
@@ -670,6 +673,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   isOpenBill: cartProvider.isOpenBill,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   taxCalculation: _taxCalculation,
+                  // File: checkout_page.dart
+// Di dalam method onCheckoutPressed (sekitar line 718)
+// GANTI BAGIAN INI:
+
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan");
 
@@ -695,6 +702,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       getMinimumPickupTime: _getMinimumPickupTime,
                       formatTime: _formatTime,
                       tableService: _tableService,
+                      isGroMode: widget.isGroMode,
                     );
 
                     if (!validationResult['isValid']) {
@@ -720,8 +728,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     }
 
                     final prefs = await SharedPreferences.getInstance();
-                    final userId = prefs.getString('userId');
-                    final userName = prefs.getString('userName') ?? 'Guest';
+
+                    // ✅ PERBAIKAN UTAMA: Handle user data berbeda untuk GRO mode
+                    String? userId;
+                    String userName;
+
+                    if (widget.isGroMode) {
+                      // Untuk GRO mode, gunakan guest data dari reservationData
+                      if (cartProvider.reservationData != null) {
+                        // Backend akan create/find user berdasarkan phone
+                        userId = null;
+                        userName = 'null';
+
+                        print("🔍 GRO Mode - Using Guest Data:");
+                        print("  Guest Name: $userName");
+                        // print("  Guest Phone: ${cartProvider.reservationData!.guestPhone}");
+                      } else {
+                        userId = null;
+                        userName = 'Walk-in Guest';
+                        print("⚠️ GRO Mode - No reservation data, using default");
+                      }
+                    } else {
+                      // Normal user flow - gunakan data user yang login
+                      userId = prefs.getString('userId');
+                      userName = prefs.getString('userName') ?? 'Guest';
+
+                      print("👤 Normal Mode - Using Logged In User:");
+                      print("  User ID: $userId");
+                      print("  User Name: $userName");
+                    }
+
                     int amountToPay = grandTotal;
                     if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
                       if (_isReservationWithoutMenu(cartProvider)) {
@@ -741,7 +777,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       },
                     );
 
+                    bool isDialogShown = false;
+
                     try {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext dialogContext) {
+                          isDialogShown = true;
+                          return WillPopScope(
+                            onWillPop: () async => false,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                      );
+
                       final orderService = serviceorder.OrderService();
                       final List<Map<String, dynamic>> items = cartItems
                           .map((item) => {
@@ -775,7 +827,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         finalOrderType = selectedOrderType;
                       }
 
-                      print("✅ sebelum createOrder : Memulai pembuatan pesanan...");
+                      print("✅ Sebelum createOrder - Memulai pembuatan pesanan...");
+                      print("  User ID: $userId");
+                      print("  User Name: $userName");
+                      print("  Order Type: ${finalOrderType.toString()}");
+                      print("  Is GRO Mode: ${widget.isGroMode}");
 
                       final orderResult = await orderService.createOrder(
                         items: items,
@@ -829,8 +885,45 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'voucherCode': selectedVoucherCode,
                         'id': orderResult['order']?['_id'] ?? '',
                         'orderId': orderResult['order']?['order_id'] ?? '',
+                        'isGroMode': widget.isGroMode,
                       };
 
+                      // CONDITIONAL NAVIGATION berdasarkan isGroMode
+                      if (widget.isGroMode) {
+                        // Jika dari GRO, kembali ke table availability dengan success message
+                        Navigator.of(context).pop(); // Close loading
+
+                        // Show success dialog
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Row(
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.green),
+                                SizedBox(width: 8),
+                                Text('Berhasil'),
+                              ],
+                            ),
+                            content: Text(
+                                'Pesanan berhasil dibuat!\nOrder ID: ${extraData['orderId']}'
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  context.go('/gro-table-availability');
+                                },
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        cartProvider.clearCart();
+                        return; // Stop execution here for GRO mode
+                      }
+
+                      // Normal user flow continues...
                       if (cartProvider.isOpenBill && cartProvider.openBillData != null) {
                         extraData['isOpenBill'] = true;
                         extraData['openBillData'] = cartProvider.openBillData;
@@ -843,13 +936,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         extraData['paymentType'] = selectedPaymentType;
                         extraData['downPaymentAmount'] = downPaymentAmount;
 
-                        // Add reservation type data
                         if (_shouldShowReservationType(cartProvider.reservationData!.areaCode)) {
                           extraData['reservationType'] = selectedReservationType;
                           extraData['isBlocking'] = selectedReservationType == ReservationType.blocking;
                         }
 
-                        // Add remaining payment amount for down payment option
                         if (selectedPaymentType == PaymentType.downPayment) {
                           extraData['remainingPayment'] = finalTotal - downPaymentAmount;
                           extraData['isDownPayment'] = true;
@@ -858,15 +949,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           extraData['isDownPayment'] = false;
                         }
                       } else {
-                        // For non-reservation orders, set default values
                         extraData['remainingPayment'] = 0;
                         extraData['isDownPayment'] = false;
                       }
 
                       context.push('/paymentConfirmation', extra: extraData);
-
-                      // Clear cart after successful checkout
                       cartProvider.clearCart();
+
                     } catch (e) {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(

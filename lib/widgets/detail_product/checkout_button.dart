@@ -11,6 +11,7 @@ class CheckoutButton extends StatelessWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
+  final bool isGroMode; // NEW
 
   const CheckoutButton({
     super.key,
@@ -20,6 +21,7 @@ class CheckoutButton extends StatelessWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
+    this.isGroMode = false, // Default false
   });
 
   @override
@@ -29,40 +31,40 @@ class CheckoutButton extends StatelessWidget {
         if (cartProvider.items.isEmpty) {
           return const SizedBox.shrink(); // Tidak menampilkan tombol jika keranjang kosong
         }
+
+        // Ambil data dari provider
         final bool isReservation = cartProvider.isReservation;
         final ReservationData? reservationData = cartProvider.reservationData;
         final bool isDineIn = cartProvider.isDineIn;
         final String? tableNumber = cartProvider.tableNumber;
         final bool isOpenBill = cartProvider.isOpenBill;
         final OpenBillData? openBillData = cartProvider.openBillData;
+
         return FloatingActionButton.extended(
           onPressed: () {
-            // Prepare extra data for navigation
-            Map<String, dynamic> extraData = {};
+            // ⭐ FIX: Prepare extra data - JANGAN OVERWRITE!
+            Map<String, dynamic> extraData = {
+              'isGroMode': isGroMode, // ✅ ALWAYS include isGroMode
+            };
 
+            // ✅ TAMBAHKAN data, jangan overwrite
             if (isReservation && reservationData != null) {
-              extraData = {
-                'isReservation': true,
-                'reservationData': reservationData,
-              };
-            } else if (isDineIn && tableNumber != null) {
-              extraData = {
-                'isDineIn': true,
-                'tableNumber': tableNumber,
-              };
-            } else if (isOpenBill && openBillData != null) {
-              extraData = {
-                'isOpenBill': true,
-                'openBillData': openBillData,
-              };
+              extraData['isReservation'] = true;
+              extraData['reservationData'] = reservationData;
             }
 
-            // Navigate to cart with appropriate data
-            if (extraData.isNotEmpty) {
-              context.push('/cart', extra: extraData);
-            } else {
-              context.push('/cart');
+            if (isDineIn && tableNumber != null) {
+              extraData['isDineIn'] = true;
+              extraData['tableNumber'] = tableNumber;
             }
+
+            if (isOpenBill && openBillData != null) {
+              extraData['isOpenBill'] = true;
+              extraData['openBillData'] = openBillData;
+            }
+
+            // Navigate to cart with data
+            context.push('/cart', extra: extraData);
           },
           backgroundColor: const Color(0xFF076A3B),
           label: Row(
@@ -102,9 +104,9 @@ class CheckoutButton extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(width: 8), // Jarak antara ikon dan teks
+              const SizedBox(width: 8),
               Text(
-                _getButtonText(),
+                _getButtonText(isReservation, isDineIn, isOpenBill),
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.white,
@@ -119,7 +121,7 @@ class CheckoutButton extends StatelessWidget {
   }
 
   // Method untuk menentukan teks tombol berdasarkan context
-  String _getButtonText() {
+  String _getButtonText(bool isReservation, bool isDineIn, bool isOpenBill) {
     if (isReservation) {
       return 'Lanjut Reservasi';
     } else if (isDineIn) {
