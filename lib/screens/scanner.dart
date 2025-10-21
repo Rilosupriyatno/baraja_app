@@ -1,6 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
-import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';

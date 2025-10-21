@@ -1,6 +1,6 @@
-import 'package:baraja_amphitheater_app/theme/app_theme.dart';
-import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
-import 'package:baraja_amphitheater_app/widgets/utils/title_app_bar.dart';
+import 'package:baraja_app/theme/app_theme.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
+import 'package:baraja_app/widgets/utils/title_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:skeletonizer/skeletonizer.dart';

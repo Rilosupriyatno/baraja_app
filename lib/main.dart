@@ -1,9 +1,9 @@
-import 'package:baraja_amphitheater_app/providers/cart_provider.dart';
-import 'package:baraja_amphitheater_app/providers/order_provider.dart';
-import 'package:baraja_amphitheater_app/routes/app_router.dart';
-import 'package:baraja_amphitheater_app/services/auth_service.dart';
-import 'package:baraja_amphitheater_app/services/notification_count_service.dart';
-import 'package:baraja_amphitheater_app/services/notification_service.dart';
+import 'package:baraja_app/providers/cart_provider.dart';
+import 'package:baraja_app/providers/order_provider.dart';
+import 'package:baraja_app/routes/app_router.dart';
+import 'package:baraja_app/services/auth_service.dart';
+import 'package:baraja_app/services/notification_count_service.dart';
+import 'package:baraja_app/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';

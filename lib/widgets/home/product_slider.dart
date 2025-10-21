@@ -1,6 +1,6 @@
 // product_slider.dart
 import 'package:flutter/material.dart';
-import 'package:baraja_amphitheater_app/widgets/home/product_card.dart';
+import 'package:baraja_app/widgets/home/product_card.dart';
 import '../../models/product.dart';
 
 class ProductSlider extends StatefulWidget {

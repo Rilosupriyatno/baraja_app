@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_amphitheater_app/models/product.dart';
+import 'package:baraja_app/models/product.dart';
 import '../../utils/currency_formatter.dart';
 import '../../screens/product_detail_modal.dart';
 

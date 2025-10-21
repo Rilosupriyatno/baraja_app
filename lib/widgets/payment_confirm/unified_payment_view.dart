@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:baraja_amphitheater_app/services/confirm_service.dart';
+import 'package:baraja_app/services/confirm_service.dart';
 import 'package:flutter/material.dart';
-import 'package:baraja_amphitheater_app/theme/app_theme.dart';
+import 'package:baraja_app/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';

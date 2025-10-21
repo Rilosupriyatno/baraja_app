@@ -1,3 +1,4 @@
+import 'package:baraja_app/screens/gro_dine_in_detail_order_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -1159,16 +1160,17 @@ class _GroReservationManagementScreenState
     }
   }
 
+
   Future<void> _showWalkInOrderDetail(String orderId) async {
-    // Bisa show bottom sheet atau navigate ke screen detail
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildWalkInOrderDetailSheet(orderId),
+      builder: (context) => WalkInOrderDetailSheet(orderId: orderId),
     );
   }
 
+  // ignore: unused_element
   Widget _buildWalkInOrderDetailSheet(String orderId) {
     // Implement detail view untuk walk-in order
     return Container(

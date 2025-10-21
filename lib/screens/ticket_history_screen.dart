@@ -1,4 +1,4 @@
-import 'package:baraja_amphitheater_app/screens/ticket_payment_detail_screen.dart';
+import 'package:baraja_app/screens/ticket_payment_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/ticket_service.dart';

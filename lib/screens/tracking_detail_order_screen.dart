@@ -1,7 +1,7 @@
-import 'package:baraja_amphitheater_app/screens/payment_detail_screen.dart';
-import 'package:baraja_amphitheater_app/services/rating_service.dart';
-import 'package:baraja_amphitheater_app/utils/base_screen_wrapper.dart';
-import 'package:baraja_amphitheater_app/widgets/utils/classic_app_bar.dart';
+import 'package:baraja_app/screens/payment_detail_screen.dart';
+import 'package:baraja_app/services/rating_service.dart';
+import 'package:baraja_app/utils/base_screen_wrapper.dart';
+import 'package:baraja_app/widgets/utils/classic_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/order.dart';

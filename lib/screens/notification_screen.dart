@@ -1,4 +1,4 @@
-import 'package:baraja_amphitheater_app/screens/notification_detail_screen.dart';
+import 'package:baraja_app/screens/notification_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../models/notification_model.dart';

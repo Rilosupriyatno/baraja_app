@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:baraja_amphitheater_app/theme/app_theme.dart';
+import 'package:baraja_app/theme/app_theme.dart';
 
 class PaymentErrorView extends StatelessWidget {
   final String? errorMessage;

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
+import '../models/reservation_data.dart';
+import '../screens/menu_screen.dart';
 import '../widgets/reservation/transfer_table_dialog.dart';
+import '../widgets/gro/gro_order_detail_widget.dart';
 
 class GroReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -20,6 +23,7 @@ class _GroReservationDetailScreenState
     extends State<GroReservationDetailScreen> {
   final GROService _groService = GROService();
   Map<String, dynamic>? _reservation;
+  Map<String, dynamic>? _orderDetail;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -43,6 +47,18 @@ class _GroReservationDetailScreenState
       if (result['success']) {
         setState(() {
           _reservation = result['data'];
+        });
+
+        // ✅ Load order detail jika ada order_id
+        final order = _reservation!['order_id'];
+        if (order != null && order is Map<String, dynamic>) {
+          final orderId = order['order_id'] ?? order['_id'];
+          if (orderId != null) {
+            await _loadOrderDetail(orderId);
+          }
+        }
+
+        setState(() {
           _isLoading = false;
         });
       } else {
@@ -59,6 +75,148 @@ class _GroReservationDetailScreenState
         _isLoading = false;
       });
     }
+  }
+
+  // ✅ Load order detail lengkap
+  Future<void> _loadOrderDetail(String orderId) async {
+    try {
+      final result = await _groService.getOrderDetailWithPayment(orderId);
+
+      if (!mounted) return;
+
+      print('Load order detail result: $result');
+
+      if (result['success'] == true && result['data'] is Map<String, dynamic>) {
+        setState(() {
+          _orderDetail = result['data'] as Map<String, dynamic>;
+        });
+      }
+    } catch (e) {
+      print('Exception in _loadOrderDetail: $e');
+    }
+  }
+
+  // ✅ Handler untuk tambah pesanan (OpenBill)
+  void _handleAddOrder() {
+    if (_reservation == null) return;
+
+    // Extract data yang dibutuhkan
+    final tables = _reservation!['table_id'] as List<dynamic>? ?? [];
+    final tableNumbers = tables
+        .map((t) => t['table_number']?.toString() ?? '')
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+
+    final area = _reservation!['area_id'];
+    final areaId = area != null ? area['_id']?.toString() ?? '' : '';
+    final areaCode = area != null ? area['area_code']?.toString() ?? '' : '';
+
+    final order = _reservation!['order_id'];
+    final orderId = order is Map<String, dynamic>
+        ? (order['order_id'] ?? order['_id'])?.toString() ?? widget.reservationId
+        : widget.reservationId;
+
+    // Parse date and time
+    DateTime reservationDate = DateTime.now();
+    try {
+      final dateStr = _reservation!['reservation_date'];
+      if (dateStr != null) {
+        reservationDate = DateTime.parse(dateStr);
+      }
+    } catch (e) {
+      print('Error parsing date: $e');
+    }
+
+    TimeOfDay reservationTime = TimeOfDay.now();
+    try {
+      final timeStr = _reservation!['reservation_time'];
+      if (timeStr != null && timeStr.toString().contains(':')) {
+        final parts = timeStr.toString().split(':');
+        reservationTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      }
+    } catch (e) {
+      print('Error parsing time: $e');
+    }
+
+    // Buat OpenBillData
+    final openBillData = OpenBillData(
+      reservationId: orderId,
+      date: reservationDate,
+      time: reservationTime,
+      areaId: areaId,
+      areaCode: areaCode,
+      tableId: tables.isNotEmpty ? tables[0]['_id']?.toString() ?? '' : '',
+      tableNumbers: tableNumbers,
+    );
+
+    print('📌 Opening menu for additional order');
+    print('  Reservation ID: ${widget.reservationId}');
+    print('  Order ID: $orderId');
+    print('  Table: $tableNumbers');
+    print('  Area: $areaCode');
+
+    // Navigate ke MenuScreen dengan OpenBill mode
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuScreen(
+          isOpenBill: true,
+          openBillData: openBillData,
+        ),
+      ),
+    ).then((_) {
+      // Refresh data setelah kembali dari menu
+      _loadReservationDetail(widget.reservationId);
+    });
+  }
+
+  // ✅ Check apakah order masih bisa ditambah pesanan
+  bool _canAddOrder() {
+    if (_reservation == null) {
+      print('📋 Can Add Order: false (reservation is null)');
+      return false;
+    }
+
+    final reservationStatus = _reservation!['status']?.toString().toLowerCase();
+
+    // Cek apakah ada order
+    final hasOrder = _reservation!['order_id'] != null;
+
+    if (!hasOrder) {
+      print('📋 Can Add Order: false (no order)');
+      return false;
+    }
+
+    // Jika ada orderDetail, cek payment status juga
+    if (_orderDetail != null) {
+      final orderStatus = (_orderDetail!['orderStatus'] ??
+          _orderDetail!['order_status'])?.toString().toLowerCase();
+      final paymentStatus = (_orderDetail!['paymentStatus'] ??
+          _orderDetail!['payment_status'])?.toString().toLowerCase();
+
+      print('📋 Can Add Order Check:');
+      print('  Reservation Status: $reservationStatus');
+      print('  Order Status: $orderStatus');
+      print('  Payment Status: $paymentStatus');
+
+      final canAdd = reservationStatus != 'completed' &&
+          reservationStatus != 'cancelled' &&
+          orderStatus != 'completed' &&
+          orderStatus != 'cancelled' &&
+          paymentStatus != 'settlement' &&
+          paymentStatus != 'capture';
+
+      print('  ✅ Can Add Order Result: $canAdd');
+      return canAdd;
+    }
+
+    // Fallback: hanya cek reservation status
+    final canAdd = reservationStatus == 'confirmed';
+    print('📋 Can Add Order (fallback): $canAdd');
+    return canAdd;
   }
 
   Color _getStatusColor(String status) {
@@ -212,6 +370,8 @@ class _GroReservationDetailScreenState
       }
     }
 
+    final canAddOrder = _canAddOrder();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
@@ -247,7 +407,15 @@ class _GroReservationDetailScreenState
               ),
             ),
             const SizedBox(height: 16),
-            _buildOrderCard(order),
+            // ✅ Gunakan GroOrderDetailWidget jika ada orderDetail lengkap
+            if (_orderDetail != null)
+              GroOrderDetailWidget(
+                orderData: _orderDetail!,
+                showAddOrderButton: canAddOrder,
+                onAddOrder: canAddOrder ? _handleAddOrder : null,
+              )
+            else
+              _buildOrderCard(order),
           ],
           const SizedBox(height: 24),
           _buildActionButtons(status),
@@ -565,7 +733,6 @@ class _GroReservationDetailScreenState
     );
   }
 
-  // ✅ METHOD BARU: Show Transfer Table Dialog
   Future<void> _showTransferTableDialog() async {
     final tables = _reservation!['table_id'] as List<dynamic>? ?? [];
     final area = _reservation!['area_id'];
@@ -590,7 +757,6 @@ class _GroReservationDetailScreenState
       ),
     );
 
-    // Reload data jika transfer berhasil
     if (result == true) {
       _loadReservationDetail(widget.reservationId);
     }

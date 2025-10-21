@@ -1,4 +1,4 @@
-name: baraja_amphitheater_app
+name: baraja_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -68,6 +68,7 @@ dependencies:
   cached_network_image: ^3.4.1
   easy_localization: ^3.0.8
   skeletonizer: ^1.4.3
+  rename_app: ^1.6.5
 #  midtrans_sdk: ^0.4.0
 #  firebase_core: latest_version
 #  firebase_auth: latest_version

@@ -22,82 +22,6 @@ class GROService {
     };
   }
 
-  // Create reservation (updated to match backend)
-  // Future<Map<String, dynamic>> createReservation({
-  //   required String guestName,
-  //   required String guestPhone,
-  //   required int guestCount,
-  //   required String reservationDate,
-  //   required String reservationTime,
-  //   required List<String> tableIds,
-  //   required String areaId,
-  //   String? notes,
-  //   String? outlet,
-  //   List<Map<String, dynamic>>? items,
-  //   String? voucherCode,
-  //   String reservationType = 'nonBlocking',
-  //   bool servingFood = false,
-  //   List<String>? equipment,
-  //   String foodServingOption = 'immediate',
-  //   String? foodServingTime,
-  // }) async {
-  //   try {
-  //     final headers = await _getHeaders();
-  //
-  //     final Map<String, dynamic> requestBody = {
-  //       'guest_name': guestName,
-  //       'guest_phone': guestPhone,
-  //       'guest_count': guestCount,
-  //       'reservation_date': reservationDate,
-  //       'reservation_time': reservationTime,
-  //       'table_ids': tableIds,
-  //       'area_id': areaId,
-  //       'reservation_type': reservationType,
-  //       'serving_food': servingFood,
-  //       'food_serving_option': foodServingOption,
-  //       if (notes != null && notes.isNotEmpty) 'notes': notes,
-  //       if (outlet != null) 'outlet': outlet,
-  //       if (items != null && items.isNotEmpty) 'items': items,
-  //       if (voucherCode != null && voucherCode.isNotEmpty) 'voucherCode': voucherCode,
-  //       if (equipment != null && equipment.isNotEmpty) 'equipment': equipment,
-  //       if (foodServingTime != null) 'food_serving_time': foodServingTime,
-  //     };
-  //
-  //     print('Creating reservation with data: $requestBody');
-  //
-  //     final response = await http.post(
-  //       Uri.parse('$baseUrl/api/gro/reservations'),
-  //       headers: headers,
-  //       body: json.encode(requestBody),
-  //     );
-  //
-  //     print('Response status: ${response.statusCode}');
-  //     print('Response body: ${response.body}');
-  //
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       final Map<String, dynamic> responseData = json.decode(response.body);
-  //       return {
-  //         'success': true,
-  //         'message': responseData['message'] ?? 'Reservasi berhasil dibuat',
-  //         'data': responseData['data'],
-  //         'order': responseData['order'],
-  //       };
-  //     } else {
-  //       final Map<String, dynamic> errorData = json.decode(response.body);
-  //       return {
-  //         'success': false,
-  //         'error': errorData['message'] ?? 'Gagal membuat reservasi',
-  //       };
-  //     }
-  //   } catch (e) {
-  //     print('Error creating reservation: $e');
-  //     return {
-  //       'success': false,
-  //       'error': 'Terjadi kesalahan: $e',
-  //     };
-  //   }
-  // }
-
   // Get all reservations with filters
   Future<Map<String, dynamic>> getReservations({
     int page = 1,
@@ -159,6 +83,206 @@ class GROService {
       throw Exception('Error fetching reservation detail: $e');
     }
   }
+
+// Get dine-in order detail (dengan prefix /gro/)
+  Future<Map<String, dynamic>> getDineInOrderDetail(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      // ✅ Gunakan /api/gro/orders/ (bukan /api/orders/)
+      final url = '$baseUrl/api/gro/orders/$orderId';
+
+      print('🔍 Fetching order detail for ID: $orderId');
+      print('🔍 URL: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        print('📦 Response type: ${responseData.runtimeType}');
+
+        // Pastikan response adalah Map
+        if (responseData is! Map<String, dynamic>) {
+          print('❌ Invalid response format');
+          return {
+            'success': false,
+            'error': 'Invalid response format: expected Map but got ${responseData.runtimeType}',
+          };
+        }
+
+        final Map<String, dynamic> data = responseData;
+
+        // Cek apakah success = false (order tidak ditemukan)
+        if (data['success'] == false) {
+          print('❌ Order not found or error');
+          return {
+            'success': false,
+            'error': data['message'] ?? 'Order tidak ditemukan',
+          };
+        }
+
+        // Cek apakah ada key 'data'
+        if (!data.containsKey('data')) {
+          print('❌ No data field in response');
+          return {
+            'success': false,
+            'error': 'Response does not contain data field',
+          };
+        }
+
+        // Cek jika data adalah array kosong
+        if (data['data'] is List && (data['data'] as List).isEmpty) {
+          print('❌ Data is empty array');
+          return {
+            'success': false,
+            'error': 'Order tidak ditemukan atau sudah tidak aktif',
+          };
+        }
+
+        // Pastikan data['data'] adalah Map
+        if (data['data'] is! Map<String, dynamic>) {
+          print('❌ Data field is not a Map: ${data['data'].runtimeType}');
+          return {
+            'success': false,
+            'error': 'Data field is not a Map: ${data['data'].runtimeType}',
+          };
+        }
+
+        print('✅ Order detail loaded successfully');
+        return {
+          'success': true,
+          'data': data['data'] as Map<String, dynamic>,
+        };
+
+      } else if (response.statusCode == 404) {
+        print('❌ Order not found (404)');
+        return {
+          'success': false,
+          'error': 'Order tidak ditemukan',
+        };
+      } else {
+        print('❌ Error response: ${response.statusCode}');
+        try {
+          final Map<String, dynamic> errorData = json.decode(response.body);
+          return {
+            'success': false,
+            'error': errorData['message'] ?? 'Gagal memuat detail order',
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'error': 'Gagal memuat detail order (${response.statusCode})',
+          };
+        }
+      }
+    } catch (e, stackTrace) {
+      print('❌ Exception in getDineInOrderDetail: $e');
+      print('Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+  // services/gro_service.dart - UPDATED VERSION
+
+// ... kode sebelumnya tetap sama ...
+
+// ✅ TAMBAHAN METHOD BARU: Get order detail with payment info (seperti tracking)
+  Future<Map<String, dynamic>> getOrderDetailWithPayment(String orderId) async {
+    try {
+      final headers = await _getHeaders();
+
+      // Gunakan endpoint yang sama seperti di tracking
+      final url = '$baseUrl/api/order/$orderId';
+
+      print('🔍 Fetching order detail for ID: $orderId');
+      print('🔍 URL: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        if (responseData is! Map<String, dynamic>) {
+          return {
+            'success': false,
+            'error': 'Invalid response format',
+          };
+        }
+
+        final Map<String, dynamic> data = responseData;
+
+        // Check if order data exists
+        if (!data.containsKey('orderData')) {
+          return {
+            'success': false,
+            'error': 'Order data not found in response',
+          };
+        }
+
+        // Pastikan orderData adalah Map
+        if (data['orderData'] is! Map<String, dynamic>) {
+          return {
+            'success': false,
+            'error': 'Invalid order data format',
+          };
+        }
+
+        print('✅ Order detail with payment loaded successfully');
+        return {
+          'success': true,
+          'data': data['orderData'] as Map<String, dynamic>,
+        };
+
+      } else if (response.statusCode == 404) {
+        print('❌ Order not found (404)');
+        return {
+          'success': false,
+          'error': 'Order tidak ditemukan',
+        };
+      } else {
+        print('❌ Error response: ${response.statusCode}');
+        try {
+          final Map<String, dynamic> errorData = json.decode(response.body);
+          return {
+            'success': false,
+            'error': errorData['message'] ?? 'Gagal memuat detail order',
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'error': 'Gagal memuat detail order (${response.statusCode})',
+          };
+        }
+      }
+    } catch (e, stackTrace) {
+      print('❌ Exception in getOrderDetailWithPayment: $e');
+      print('Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+// ... sisa kode tetap sama ...
+
+  // Close open bill
 
   // Confirm reservation
   Future<Map<String, dynamic>> confirmReservation(String id) async {
