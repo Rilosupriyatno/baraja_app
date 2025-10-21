@@ -905,40 +905,48 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'isGroMode': widget.isGroMode,
                       };
 
-                      // CONDITIONAL NAVIGATION berdasarkan isGroMode
                       if (widget.isGroMode) {
-                        // Jika dari GRO, kembali ke table availability dengan success message
-                        Navigator.of(context).pop(); // Close loading
-
-                        // Show success dialog
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Row(
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.green),
-                                SizedBox(width: 8),
-                                Text('Berhasil'),
-                              ],
-                            ),
-                            content: Text(
-                                'Pesanan berhasil dibuat!\nOrder ID: ${extraData['orderId']}'
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  context.go('/gro-table-availability');
-                                },
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-
+                        // Langsung ke PaymentConfirmationScreen seperti user biasa
+                        context.push('/paymentConfirmation', extra: extraData);
                         cartProvider.clearCart();
-                        return; // Stop execution here for GRO mode
+                        return;
                       }
+
+
+                      // CONDITIONAL NAVIGATION berdasarkan isGroMode
+                      // if (widget.isGroMode) {
+                      //   // Jika dari GRO, kembali ke table availability dengan success message
+                      //   Navigator.of(context).pop(); // Close loading
+                      //
+                      //   // Show success dialog
+                      //   showDialog(
+                      //     context: context,
+                      //     builder: (context) => AlertDialog(
+                      //       title: const Row(
+                      //         children: [
+                      //           Icon(Icons.check_circle, color: Colors.green),
+                      //           SizedBox(width: 8),
+                      //           Text('Berhasil'),
+                      //         ],
+                      //       ),
+                      //       content: Text(
+                      //           'Pesanan berhasil dibuat!\nOrder ID: ${extraData['orderId']}'
+                      //       ),
+                      //       actions: [
+                      //         TextButton(
+                      //           onPressed: () {
+                      //             Navigator.of(context).pop();
+                      //             context.go('/gro-table-availability');
+                      //           },
+                      //           child: const Text('OK'),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //   );
+                      //
+                      //   cartProvider.clearCart();
+                      //   return; // Stop execution here for GRO mode
+                      // }
 
                       // Normal user flow continues...
                       if (cartProvider.isOpenBill && cartProvider.openBillData != null) {

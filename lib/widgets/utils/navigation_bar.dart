@@ -12,7 +12,6 @@ import '../../screens/gro_dashboard_screen.dart';
 import '../../screens/profile_screen.dart';
 import '../../services/auth_service.dart';
 
-
 class NavigationBarMenu extends StatelessWidget {
   final int? initialTab;
 
@@ -22,7 +21,6 @@ class NavigationBarMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, authService, _) {
-        // Determine navigation based on user role
         if (authService.isMarketing()) {
           return MarketingNavigationBar(initialTab: initialTab);
         } else if (authService.getUserRole() == 'gro') {
@@ -35,7 +33,7 @@ class NavigationBarMenu extends StatelessWidget {
   }
 }
 
-// Customer Navigation Bar
+// ================= CUSTOMER NAVIGATION =================
 class CustomerNavigationBar extends StatefulWidget {
   final int? initialTab;
 
@@ -100,7 +98,8 @@ class _CustomerNavigationBarState extends State<CustomerNavigationBar> {
           backgroundColor: Colors.grey[800],
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 6,
           duration: const Duration(seconds: 2),
         ),
@@ -117,9 +116,7 @@ class _CustomerNavigationBarState extends State<CustomerNavigationBar> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (!didPop) {
-          _handleBackPress();
-        }
+        if (!didPop) _handleBackPress();
       },
       child: PersistentTabView(
         controller: _controller,
@@ -189,14 +186,15 @@ class _CustomerNavigationBarState extends State<CustomerNavigationBar> {
   }
 }
 
-// Marketing Navigation Bar
+// ================= MARKETING NAVIGATION =================
 class MarketingNavigationBar extends StatefulWidget {
   final int? initialTab;
 
   const MarketingNavigationBar({super.key, this.initialTab});
 
   @override
-  State<MarketingNavigationBar> createState() => _MarketingNavigationBarState();
+  State<MarketingNavigationBar> createState() =>
+      _MarketingNavigationBarState();
 }
 
 class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
@@ -240,7 +238,8 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
           backgroundColor: Colors.grey[800],
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 6,
           duration: const Duration(seconds: 2),
         ),
@@ -257,9 +256,7 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (!didPop) {
-          _handleBackPress();
-        }
+        if (!didPop) _handleBackPress();
       },
       child: PersistentTabView(
         controller: _controller,
@@ -270,16 +267,14 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
         avoidBottomPadding: true,
         navBarOverlap: const NavBarOverlap.full(),
         tabs: [
-          // Marketing Dashboard instead of regular Home
           PersistentTabConfig(
-            screen: const MarketingDashboardScreen(), // Marketing dashboard
+            screen: const MarketingDashboardScreen(),
             item: ItemConfig(
               icon: const Icon(Icons.dashboard),
               title: "Dashboard",
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Event Management for Marketing
           PersistentTabConfig(
             screen: const EventScreen(),
             item: ItemConfig(
@@ -288,7 +283,6 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Voucher Management (Marketing specific)
           PersistentTabConfig(
             screen: const VoucherManagementScreen(),
             item: ItemConfig(
@@ -297,7 +291,6 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Profile
           PersistentTabConfig(
             screen: const ProfileScreen(),
             item: ItemConfig(
@@ -325,7 +318,7 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
   }
 }
 
-// GRO Navigation Bar
+// ================= GRO NAVIGATION =================
 class GroNavigationBar extends StatefulWidget {
   final int? initialTab;
 
@@ -342,11 +335,18 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
   @override
   void initState() {
     super.initState();
-    final initialIndex = widget.initialTab ?? 0;
-    _controller = PersistentTabController(initialIndex: initialIndex);
+    // ✅ Pastikan index selalu valid (0..1)
+    final safeIndex = (widget.initialTab ?? 0).clamp(0, 1);
+    _controller = PersistentTabController(initialIndex: safeIndex);
   }
 
   bool _handleBackPress() {
+    // ✅ Pastikan index valid sebelum digunakan
+    if (_controller.index >= 2) {
+      _controller.jumpToTab(0);
+      return false;
+    }
+
     if (_controller.index != 0) {
       _controller.jumpToTab(0);
       return false;
@@ -376,7 +376,8 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
           backgroundColor: Colors.grey[800],
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 6,
           duration: const Duration(seconds: 2),
         ),
@@ -393,9 +394,7 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (!didPop) {
-          _handleBackPress();
-        }
+        if (!didPop) _handleBackPress();
       },
       child: PersistentTabView(
         controller: _controller,
@@ -406,7 +405,6 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
         avoidBottomPadding: true,
         navBarOverlap: const NavBarOverlap.full(),
         tabs: [
-          // GRO Dashboard
           PersistentTabConfig(
             screen: const GroDashboardScreen(),
             item: ItemConfig(
@@ -415,25 +413,6 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
               activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
             ),
           ),
-          // Reservation Management
-          // PersistentTabConfig(
-          //   screen: const GroDashboardScreen(),
-          //   item: ItemConfig(
-          //     icon: const Icon(Icons.event_seat),
-          //     title: "Reservasi",
-          //     activeForegroundColor: AppTheme.barajaPri
-          //     mary.primaryColor,
-          //   ),
-          // ),
-          // PersistentTabConfig(
-          //   screen: const GroDashboardScreen(),
-          //   item: ItemConfig(
-          //     icon: const Icon(Icons.analytics),
-          //     title: "Laporan",
-          //     activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-          //   ),
-          // ),
-          // Profile
           PersistentTabConfig(
             screen: const ProfileScreen(),
             item: ItemConfig(
@@ -461,7 +440,7 @@ class _GroNavigationBarState extends State<GroNavigationBar> {
   }
 }
 
-// Placeholder screens for Marketing role
+// ================= PLACEHOLDER SCREENS =================
 class PromoManagementScreen extends StatelessWidget {
   const PromoManagementScreen({super.key});
 
@@ -484,41 +463,7 @@ class PromoManagementScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.local_offer,
-              size: 80,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Manajemen Promo',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kelola semua promo dan penawaran khusus',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to add promo screen
-        },
-        backgroundColor: AppTheme.barajaPrimary.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: Text('Manajemen Promo Placeholder'),
       ),
     );
   }
@@ -546,41 +491,7 @@ class VoucherManagementScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.card_giftcard,
-              size: 80,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Manajemen Voucher',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kelola semua voucher dan kupon diskon',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to add voucher screen
-        },
-        backgroundColor: AppTheme.barajaPrimary.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: Text('Manajemen Voucher Placeholder'),
       ),
     );
   }

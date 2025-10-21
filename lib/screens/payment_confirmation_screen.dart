@@ -42,6 +42,8 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int? taxAmount;
   final List<Map<String, dynamic>>? taxDetails;
   final int grandTotal;
+  final bool isGroMode;
+
 
   const PaymentConfirmationScreen({
     super.key,
@@ -70,6 +72,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     this.taxAmount,
     this.taxDetails,
     required this.grandTotal,
+    this.isGroMode = false, // tambahkan default false
   });
 
   @override
@@ -322,15 +325,16 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreenWrapper(
-      customBackRoute: '/history',
+     return BaseScreenWrapper(
+      customBackRoute: widget.isGroMode ? '/gro-dashboard' : '/history',
       canPop: false,
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: const ClassicAppBar(
+        appBar: ClassicAppBar(
           title: 'Konfirmasi Pembayaran',
-          customBackRoute: '/history',
+          customBackRoute: widget.isGroMode ? '/gro-dashboard' : '/history',
         ),
+
         body: SafeArea(
           child: _isLoading
               ? const PaymentLoadingView()
