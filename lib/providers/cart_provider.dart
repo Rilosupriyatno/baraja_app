@@ -11,6 +11,14 @@ class CartProvider with ChangeNotifier {
   bool _isOpenBill = false;
   OpenBillData? _openBillData;
 
+  String? _guestName;
+  String? _guestPhone;
+  String? _guestNotes;
+
+  String? get guestName => _guestName;
+  String? get guestPhone => _guestPhone;
+  String? get guestNotes => _guestNotes;
+
 
   List<CartItem> get items => _items;
   bool get isReservation => _isReservation;
@@ -20,6 +28,24 @@ class CartProvider with ChangeNotifier {
   bool get isDineIn => _isDineIn;
   String? get tableNumber => _tableNumber;
 
+
+  void setGuestData({
+    required String guestName,
+    required String guestPhone,
+    String? notes,
+  }) {
+    _guestName = guestName;
+    _guestPhone = guestPhone;
+    _guestNotes = notes;
+    notifyListeners();
+  }
+
+  void clearGuestData() {
+    _guestName = null;
+    _guestPhone = null;
+    _guestNotes = null;
+    notifyListeners();
+  }
   // Method untuk set reservation data (sudah ada, pastikan seperti ini)
   void setReservationData(bool isReservation, ReservationData? data) {
     _isReservation = isReservation;
@@ -67,6 +93,17 @@ class CartProvider with ChangeNotifier {
   // Method untuk clear cart sekaligus context
   void clearCart() {
     _items.clear();
+    _isReservation = false;
+    _reservationData = null;
+    _isDineIn = false;
+    _tableNumber = null;
+    _isOpenBill = false;
+    _openBillData = null;
+
+    // Clear guest data
+    clearGuestData();
+
+    notifyListeners();
     clearOrderContext();
     notifyListeners();
   }

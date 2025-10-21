@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
+import 'gro_dinein_screen.dart';
 import 'gro_reservation_screen.dart';
-import 'menu_screen.dart'; // Import MenuScreen untuk dine-in
 
 class GroTableAvailabilityScreen extends StatefulWidget {
   final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
@@ -688,16 +688,12 @@ class _GroTableAvailabilityScreenState
 
   // Navigate to Dine-In (Menu Screen)
   void _navigateToDineIn(Map<String, dynamic> table) {
-    final tableNumber = table['table_number'] ?? 'N/A';
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MenuScreen(
-          isReservation: false,
-          isDineIn: true,
-          tableNumber: tableNumber,
-          isGroMode: true, // ⭐ PENTING: Set true untuk GRO mode
+        builder: (context) => GroDineInGuestFormScreen(
+          tableNumber: table['table_number'],
+          areaCode: table['area']?['area_code'] ?? 'N/A',
         ),
       ),
     ).then((result) {
@@ -706,6 +702,7 @@ class _GroTableAvailabilityScreenState
       }
     });
   }
+
 
   // Navigate to Reservation Screen
   void _navigateToReservation(Map<String, dynamic> table) async {

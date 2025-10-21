@@ -40,7 +40,7 @@ class CheckoutValidator {
     if (!isGroMode || cartProvider.isReservation) {
       if (selectedPaymentMethod == null || selectedPaymentMethodName == null) {
         errors['paymentMethod'] = 'Metode pembayaran harus dipilih';
-        if (firstErrorKey == null) firstErrorKey = 'paymentMethod';
+        firstErrorKey ??= 'paymentMethod';
       }
       return {
         'isValid': errors.isEmpty,

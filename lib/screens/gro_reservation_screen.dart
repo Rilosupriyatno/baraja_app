@@ -1,8 +1,7 @@
-// gro_reservation_screen.dart - Updated with matching date/time selectors
+// gro_reservation_screen.dart - UPDATED: Remove createReservation, pass guest data
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../services/gro_service.dart';
 import '../providers/cart_provider.dart';
 import '../models/reservation_data.dart';
 import '../theme/app_theme.dart';
@@ -15,14 +14,14 @@ class CreateReservationScreen extends StatefulWidget {
   final Map<String, dynamic>? selectedTable;
   final DateTime? selectedDate;
   final String? selectedTime;
-  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
+  final bool isGroMode;
 
   const CreateReservationScreen({
     super.key,
     this.selectedTable,
     this.selectedDate,
     this.selectedTime,
-    this.isGroMode = false, // Default false untuk akses user biasa
+    this.isGroMode = false,
   });
 
   @override
@@ -32,7 +31,6 @@ class CreateReservationScreen extends StatefulWidget {
 
 class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final GROService _groService = GROService();
 
   // Form controllers
   final TextEditingController _nameController = TextEditingController();
@@ -44,14 +42,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 19, minute: 0);
   List<Map<String, dynamic>> _selectedTables = [];
   int personCount = 1;
-  bool _isCheckingAvailability = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.selectedTable != null) {
       _selectedTables = [widget.selectedTable!];
-      // Set initial guest count based on table capacity
       personCount = widget.selectedTable!['seats'] ?? 1;
       _guestCountController.text = personCount.toString();
     }
@@ -59,7 +55,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _selectedDate = widget.selectedDate!;
     }
     if (widget.selectedTime != null) {
-      // Parse string time to TimeOfDay
       final timeParts = widget.selectedTime!.split(':');
       _selectedTime = TimeOfDay(
         hour: int.parse(timeParts[0]),
@@ -68,7 +63,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     }
     _validateInitialDateTime();
 
-    // Add listeners to update button state
     _nameController.addListener(() => setState(() {}));
     _phoneController.addListener(() => setState(() {}));
     _guestCountController.addListener(() => setState(() {}));
@@ -193,7 +187,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     }
   }
 
-  Future<void> _checkAvailabilityAndProceed() async {
+  void _checkFormAndProceed() {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -207,61 +201,29 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _showErrorDialog('Waktu yang dipilih tidak valid. Silakan pilih waktu yang valid.');
       return;
     }
-    // final tableIds = _selectedTables.map((t) => t['_id'] as String).toList();
-    // final areaId = _selectedTables.first['area']['_id'] as String;
-    // final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    // final timeStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
-    setState(() => _isCheckingAvailability = true);
-
-    try {
-      // Check availability first
-
-      // Simulate availability check (you may need to implement actual API call)
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      setState(() => _isCheckingAvailability = false);
-
-      // Show availability dialog with options
-      _showAvailabilityDialog(true);
-    } catch (e) {
-      setState(() => _isCheckingAvailability = false);
-      _showErrorDialog('Terjadi kesalahan: $e');
-    }
+    _showConfirmationDialog();
   }
 
-  void _showAvailabilityDialog(bool isAvailable) {
+  void _showConfirmationDialog() {
     final timeStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
-              Icon(
-                isAvailable ? Icons.check_circle : Icons.error,
-                color: isAvailable ? Colors.green : Colors.red,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isAvailable ? 'Meja Tersedia' : 'Meja Tidak Tersedia',
-                style: TextStyle(
-                  color: isAvailable ? Colors.green : Colors.red,
-                  fontSize: 18,
-                ),
-              ),
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Konfirmasi Reservasi', style: TextStyle(fontSize: 18)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                isAvailable
-                    ? 'Meja yang Anda pilih tersedia untuk waktu yang dipilih.'
-                    : 'Meja yang Anda pilih tidak tersedia untuk waktu yang dipilih.',
-              ),
+              const Text('Data reservasi yang akan dibuat:'),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -272,14 +234,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Detail Informasi:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     _buildInfoRow('Nama Tamu', _nameController.text),
                     _buildInfoRow('No. Telepon', _phoneController.text),
                     _buildInfoRow('Jumlah Tamu', '${_guestCountController.text} orang'),
@@ -295,38 +249,31 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Batal',
-                style: TextStyle(color: Colors.grey),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _proceedToCheckout();
+              },
+              child: Text(
+                'Pesan Tanpa Menu',
+                style: TextStyle(color: Colors.blue.shade600),
               ),
             ),
-            if (isAvailable) ...[
-              // Tombol "Pesan Tanpa Menu" - langsung ke checkout
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _proceedToCheckout();
-                },
-                child: Text(
-                  'Pesan Tanpa Menu',
-                  style: TextStyle(color: Colors.blue.shade600),
-                ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _proceedToMenu();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.barajaPrimary.primaryColor,
               ),
-              // Tombol "Lanjut ke Menu"
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _proceedToMenu();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.barajaPrimary.primaryColor,
-                ),
-                child: const Text(
-                  'Lanjut ke Menu',
-                  style: TextStyle(color: Colors.white),
-                ),
+              child: const Text(
+                'Lanjut ke Menu',
+                style: TextStyle(color: Colors.white),
               ),
-            ],
+            ),
           ],
         );
       },
@@ -339,17 +286,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12)),
           Flexible(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               textAlign: TextAlign.right,
             ),
           ),
@@ -358,44 +299,54 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
   }
 
-  void _proceedToCheckout() async {
-    final result = await _createReservationAndProceed(false);
-    if (result != null && result['success']) {
-      // Navigate to checkout
-      final reservationData = _buildReservationData();
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      cartProvider.setReservationData(true, reservationData);
+  void _proceedToCheckout() {
+    final reservationData = _buildReservationData();
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CheckoutPage(
-            isReservation: true,
-            reservationData: reservationData,
-            isGroMode: widget.isGroMode, // ⭐ Pass isGroMode
-          ),
+    // Set guest data untuk GRO
+    cartProvider.setGuestData(
+      guestName: _nameController.text.trim(),
+      guestPhone: _phoneController.text.trim(),
+      notes: _notesController.text.trim(),
+    );
+
+    cartProvider.setReservationData(true, reservationData);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(
+          isReservation: true,
+          reservationData: reservationData,
+          isGroMode: widget.isGroMode,
         ),
-      );
-    }
+      ),
+    );
   }
 
-  void _proceedToMenu() async {
-    final result = await _createReservationAndProceed(true);
-    if (result != null && result['success']) {
-      // Navigate to menu
-      final reservationData = _buildReservationData();
+  void _proceedToMenu() {
+    final reservationData = _buildReservationData();
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MenuScreen(
-            isReservation: true,
-            reservationData: reservationData,
-            isGroMode: widget.isGroMode, // ⭐ Pass isGroMode
-          ),
+    // Set guest data untuk GRO
+    cartProvider.setGuestData(
+      guestName: _nameController.text.trim(),
+      guestPhone: _phoneController.text.trim(),
+      notes: _notesController.text.trim(),
+    );
+
+    cartProvider.setReservationData(true, reservationData);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuScreen(
+          isReservation: true,
+          reservationData: reservationData,
+          isGroMode: widget.isGroMode,
         ),
-      );
-    }
+      ),
+    );
   }
 
   ReservationData _buildReservationData() {
@@ -415,35 +366,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       formattedTime: formattedTime,
       selectedTableIds: tableIds,
     );
-  }
-
-  Future<Map<String, dynamic>?> _createReservationAndProceed(bool withMenu) async {
-    try {
-      final tableIds = _selectedTables.map((t) => t['_id'] as String).toList();
-      final areaId = _selectedTables.first['area']['_id'] as String;
-      final timeStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
-
-      final result = await _groService.createReservation(
-        guestName: _nameController.text.trim(),
-        guestPhone: _phoneController.text.trim(),
-        guestCount: int.parse(_guestCountController.text.trim()),
-        reservationDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-        reservationTime: timeStr,
-        tableIds: tableIds,
-        areaId: areaId,
-        notes: _notesController.text.trim(),
-      );
-
-      if (result['success']) {
-        return result;
-      } else {
-        _showErrorDialog(result['error'] ?? 'Gagal membuat reservasi');
-        return null;
-      }
-    } catch (e) {
-      _showErrorDialog('Terjadi kesalahan: $e');
-      return null;
-    }
   }
 
   void _showErrorDialog(String message) {
@@ -469,9 +391,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   String _getSelectedTableNumbers() {
-    return _selectedTables
-        .map((table) => table['table_number'])
-        .join(', ');
+    return _selectedTables.map((table) => table['table_number']).join(', ');
   }
 
   int _calculateTotalCapacity() {
@@ -479,7 +399,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   bool get _canProceed {
-    // Check basic requirements without triggering form validation
     final hasName = _nameController.text.trim().isNotEmpty;
     final hasPhone = _phoneController.text.trim().isNotEmpty;
     final hasGuestCount = _guestCountController.text.trim().isNotEmpty;
@@ -488,8 +407,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         hasPhone &&
         hasGuestCount &&
         _selectedTables.isNotEmpty &&
-        _isValidTime(_selectedTime, _selectedDate) &&
-        !_isCheckingAvailability;
+        _isValidTime(_selectedTime, _selectedDate);
   }
 
   @override
@@ -501,11 +419,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         foregroundColor: Colors.black,
         title: const Text(
           'Buat Reservasi',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
         ),
         centerTitle: true,
         elevation: 0,
@@ -517,14 +431,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Date selection - using DateSelector widget
               DateSelector(
                 selectedDate: _selectedDate,
                 onDateChanged: _onDateChanged,
               ),
               const SizedBox(height: 16),
 
-              // Time selection - using TimeSelector widget
               TimeSelector(
                 selectedTime: _selectedTime,
                 selectedDate: _selectedDate,
@@ -533,7 +445,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Informasi Tamu
               _buildSectionCard(
                 title: 'Informasi Tamu',
                 icon: Icons.person,
@@ -588,18 +499,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
               const SizedBox(height: 16),
 
-              // Meja Dipilih
               _buildSectionCard(
                 title: 'Meja Dipilih',
                 icon: Icons.table_restaurant,
-                children: [
-                  _buildSelectedTablesInfo(),
-                ],
+                children: [_buildSelectedTablesInfo()],
               ),
 
               const SizedBox(height: 16),
 
-              // Catatan
               _buildSectionCard(
                 title: 'Catatan (Opsional)',
                 icon: Icons.note_outlined,
@@ -615,7 +522,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
               const SizedBox(height: 24),
 
-              // Button
               _buildProceedButton(),
             ],
           ),
@@ -647,11 +553,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                icon,
-                color: AppTheme.barajaPrimary.primaryColor,
-                size: 20,
-              ),
+              Icon(icon, color: AppTheme.barajaPrimary.primaryColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -685,9 +587,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.barajaPrimary.primaryColor),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -711,10 +611,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           border: Border.all(color: Colors.grey[300]!),
         ),
         child: const Center(
-          child: Text(
-            'Belum ada meja dipilih',
-            style: TextStyle(color: Colors.grey),
-          ),
+          child: Text('Belum ada meja dipilih', style: TextStyle(color: Colors.grey)),
         ),
       );
     }
@@ -735,10 +632,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Area:',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
+                  const Text('Area:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                   Text(
                     areaName,
                     style: TextStyle(
@@ -753,10 +647,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Total Kapasitas:',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
+                  const Text('Total Kapasitas:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                   Text(
                     '$totalCapacity orang',
                     style: TextStyle(
@@ -790,47 +681,32 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Widget _buildProceedButton() {
-    String buttonText = 'Cek Ketersediaan & Lanjut';
-
-    final hasName = _nameController.text.trim().isNotEmpty;
-    final hasPhone = _phoneController.text.trim().isNotEmpty;
-    final hasGuestCount = _guestCountController.text.trim().isNotEmpty;
+    String buttonText = 'Lanjutkan';
 
     if (_selectedTables.isEmpty) {
       buttonText = 'Pilih Meja Terlebih Dahulu';
     } else if (!_isValidTime(_selectedTime, _selectedDate)) {
       buttonText = 'Waktu Tidak Valid (Minimal 5 Menit dari Sekarang)';
-    } else if (!hasName) {
+    } else if (_nameController.text.trim().isEmpty) {
       buttonText = 'Masukkan Nama Tamu';
-    } else if (!hasPhone) {
+    } else if (_phoneController.text.trim().isEmpty) {
       buttonText = 'Masukkan No. Telepon';
-    } else if (!hasGuestCount) {
+    } else if (_guestCountController.text.trim().isEmpty) {
       buttonText = 'Masukkan Jumlah Tamu';
     }
 
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _canProceed ? _checkAvailabilityAndProceed : null,
+        onPressed: _canProceed ? _checkFormAndProceed : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: _canProceed
               ? AppTheme.barajaPrimary.primaryColor
               : Colors.grey.shade300,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: _isCheckingAvailability
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            strokeWidth: 2,
-          ),
-        )
-            : Text(
+        child: Text(
           buttonText,
           style: TextStyle(
             fontSize: 16,

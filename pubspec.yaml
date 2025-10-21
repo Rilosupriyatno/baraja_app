@@ -57,7 +57,7 @@ dependencies:
   socket_io_client: ^3.1.2
   adaptive_theme: ^3.7.0
   qr_code_scanner_plus: ^2.0.10+1
-  flutter_localization: ^0.3.2
+  flutter_localization: ^0.3.3
   intl: ^0.19.0
   qr_flutter: ^4.1.0
   firebase_messaging: ^15.2.10

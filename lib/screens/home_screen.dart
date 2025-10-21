@@ -25,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
+  // ignore: unused_field
   List<Product> _products = [];
   List<Product> _forYouProducts = [];
   List<Product> _recommendedProducts = [];

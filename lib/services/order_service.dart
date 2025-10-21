@@ -12,8 +12,7 @@ import '../models/reservation_data.dart';
 class OrderService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
-// Update the createOrder method in your order_service.dart
-
+  // ✅ UPDATED: Add GRO mode parameters
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
     required String userId,
@@ -34,11 +33,28 @@ class OrderService {
     ReservationType? reservationType,
     required Map<String, dynamic> paymentDetails,
     OpenBillData? openBillData,
-    // Add tax-related parameters
     List<Map<String, dynamic>>? taxDetails,
     int? totalTax,
+    // ✅ TAMBAHAN: GRO mode parameters
+    bool isGroMode = false,
+    String? groId,
+    String? guestPhone,
   }) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // ✅ Get GRO ID dari SharedPreferences jika tidak dikirim
+      String? finalGroId = groId;
+      if (isGroMode && finalGroId == null) {
+        finalGroId = prefs.getString('userId'); // ID GRO yang sedang login
+      }
+
+      print("📤 OrderService.createOrder called with:");
+      print("  isGroMode: $isGroMode");
+      print("  groId: $finalGroId");
+      print("  userName: $userName");
+      print("  guestPhone: $guestPhone");
+
       String? pickupTimeString;
       if (pickupTime != null) {
         final hour = pickupTime.hour.toString().padLeft(2, '0');
@@ -48,15 +64,20 @@ class OrderService {
 
       final orderData = <String, dynamic>{
         'userId': userId,
+        'userName': userName,
         'items': items,
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
         'outlet': outletId ?? '67cbc9560f025d897d69f889',
-        // Add tax information
         'taxDetails': taxDetails ?? [],
         'totalTax': totalTax ?? 0,
         'subtotal': subtotal,
         'discount': discount,
+
+        // ✅ TAMBAHAN: Include GRO mode data
+        'isGroMode': isGroMode,
+        'groId': finalGroId,
+        'guestPhone': guestPhone,
       };
 
       if (voucherCode != null && voucherCode.isNotEmpty) {
@@ -79,7 +100,6 @@ class OrderService {
 
       if (orderType.toString().split('.').last == 'takeAway') {
         // Take away tidak memerlukan informasi tambahan khusus
-        // Mirip dengan dine-in tapi tanpa table number
       }
 
       if (orderType.toString().split('.').last == 'delivery' &&
@@ -116,8 +136,10 @@ class OrderService {
         }
       }
 
-      final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('authToken');
+
+      print("📤 Sending request to: $baseUrl/api/orderApp");
+      print("📦 Request body: ${jsonEncode(orderData)}");
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/orderApp'),
@@ -128,14 +150,27 @@ class OrderService {
         body: jsonEncode(orderData),
       );
 
+      print("📥 Response status: ${response.statusCode}");
+      print("📥 Response body: ${response.body}");
+
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final responseData = jsonDecode(response.body);
+
+        if (isGroMode) {
+          print("✅ GRO Reservation created successfully!");
+          print("  Created by GRO ID: $finalGroId");
+          print("  Guest name: $userName");
+          print("  Guest phone: $guestPhone");
+        }
+
+        return responseData;
       } else {
         final errorBody = jsonDecode(response.body);
         throw Exception(
             'Failed to create order: ${errorBody['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
+      print("❌ Error in createOrder: $e");
       throw Exception('Error creating order: $e');
     }
   }
@@ -240,9 +275,6 @@ class OrderService {
     }
   }
 
-  /// ========================================================
-  ///  Perubahan penting ada di sini
-  /// ========================================================
   Order _mapToOrder(Map<String, dynamic> orderData) {
     OrderStatus getOrderStatus(String statusString) {
       switch (statusString.toLowerCase()) {
@@ -281,7 +313,7 @@ class OrderService {
         case 'takeaway':
         case 'take-away':
         case 'take away':
-          return OrderType.takeAway; // ✅ BARU
+          return OrderType.takeAway;
         case 'reservation':
           return OrderType.reservation;
         default:
@@ -337,7 +369,7 @@ class OrderService {
     subtotal = total;
     discount = orderData['discount'] ?? 0;
 
-    // ✅ PATCH: kalau cartItems kosong tapi order valid → buat placeholder
+    // PATCH: kalau cartItems kosong tapi order valid → buat placeholder
     if (cartItems.isEmpty) {
       cartItems.add(CartItem(
         id: 'placeholder',

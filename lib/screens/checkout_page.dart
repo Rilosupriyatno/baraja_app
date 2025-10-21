@@ -777,6 +777,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       },
                     );
 
+                    // ignore: unused_local_variable
                     bool isDialogShown = false;
 
                     try {
@@ -826,7 +827,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       } else {
                         finalOrderType = selectedOrderType;
                       }
+                      String? groId;
+                      String? guestPhone;
+                      String? guestName;
+                      if (widget.isGroMode) {
+                        groId = prefs.getString('userId'); // ID GRO yang sedang login
+                        guestPhone = cartProvider.guestPhone; // Dari CartProvider
+                        guestName = cartProvider.guestName;
 
+                        print("🔍 GRO Mode Checkout:");
+                        print("  GRO ID: $groId");
+                        print("  Guest Name: $guestName");
+                        print("  Guest Phone: $guestPhone");
+                      }
                       print("✅ Sebelum createOrder - Memulai pembuatan pesanan...");
                       print("  User ID: $userId");
                       print("  User Name: $userName");
@@ -836,7 +849,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       final orderResult = await orderService.createOrder(
                         items: items,
                         userId: userId ?? 'guest',
-                        userName: userName,
+                        // userName: userName ,
+                        userName: guestName ?? 'Guest',
                         orderType: finalOrderType,
                         outletId: outletId ?? '',
                         tableNumber: cartProvider.isDineIn ? cartProvider.tableNumber :
@@ -856,6 +870,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             _shouldShowReservationType(cartProvider.reservationData!.areaCode)
                             ? selectedReservationType
                             : null,
+                        isGroMode: widget.isGroMode,
+                        groId: groId,
+                        guestPhone: guestPhone,
                       );
 
                       print("✅ createOrder berhasil: $orderResult");

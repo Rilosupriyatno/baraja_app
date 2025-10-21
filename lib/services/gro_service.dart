@@ -23,80 +23,80 @@ class GROService {
   }
 
   // Create reservation (updated to match backend)
-  Future<Map<String, dynamic>> createReservation({
-    required String guestName,
-    required String guestPhone,
-    required int guestCount,
-    required String reservationDate,
-    required String reservationTime,
-    required List<String> tableIds,
-    required String areaId,
-    String? notes,
-    String? outlet,
-    List<Map<String, dynamic>>? items,
-    String? voucherCode,
-    String reservationType = 'nonBlocking',
-    bool servingFood = false,
-    List<String>? equipment,
-    String foodServingOption = 'immediate',
-    String? foodServingTime,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-
-      final Map<String, dynamic> requestBody = {
-        'guest_name': guestName,
-        'guest_phone': guestPhone,
-        'guest_count': guestCount,
-        'reservation_date': reservationDate,
-        'reservation_time': reservationTime,
-        'table_ids': tableIds,
-        'area_id': areaId,
-        'reservation_type': reservationType,
-        'serving_food': servingFood,
-        'food_serving_option': foodServingOption,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
-        if (outlet != null) 'outlet': outlet,
-        if (items != null && items.isNotEmpty) 'items': items,
-        if (voucherCode != null && voucherCode.isNotEmpty) 'voucherCode': voucherCode,
-        if (equipment != null && equipment.isNotEmpty) 'equipment': equipment,
-        if (foodServingTime != null) 'food_serving_time': foodServingTime,
-      };
-
-      print('Creating reservation with data: $requestBody');
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/gro/reservations'),
-        headers: headers,
-        body: json.encode(requestBody),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        return {
-          'success': true,
-          'message': responseData['message'] ?? 'Reservasi berhasil dibuat',
-          'data': responseData['data'],
-          'order': responseData['order'],
-        };
-      } else {
-        final Map<String, dynamic> errorData = json.decode(response.body);
-        return {
-          'success': false,
-          'error': errorData['message'] ?? 'Gagal membuat reservasi',
-        };
-      }
-    } catch (e) {
-      print('Error creating reservation: $e');
-      return {
-        'success': false,
-        'error': 'Terjadi kesalahan: $e',
-      };
-    }
-  }
+  // Future<Map<String, dynamic>> createReservation({
+  //   required String guestName,
+  //   required String guestPhone,
+  //   required int guestCount,
+  //   required String reservationDate,
+  //   required String reservationTime,
+  //   required List<String> tableIds,
+  //   required String areaId,
+  //   String? notes,
+  //   String? outlet,
+  //   List<Map<String, dynamic>>? items,
+  //   String? voucherCode,
+  //   String reservationType = 'nonBlocking',
+  //   bool servingFood = false,
+  //   List<String>? equipment,
+  //   String foodServingOption = 'immediate',
+  //   String? foodServingTime,
+  // }) async {
+  //   try {
+  //     final headers = await _getHeaders();
+  //
+  //     final Map<String, dynamic> requestBody = {
+  //       'guest_name': guestName,
+  //       'guest_phone': guestPhone,
+  //       'guest_count': guestCount,
+  //       'reservation_date': reservationDate,
+  //       'reservation_time': reservationTime,
+  //       'table_ids': tableIds,
+  //       'area_id': areaId,
+  //       'reservation_type': reservationType,
+  //       'serving_food': servingFood,
+  //       'food_serving_option': foodServingOption,
+  //       if (notes != null && notes.isNotEmpty) 'notes': notes,
+  //       if (outlet != null) 'outlet': outlet,
+  //       if (items != null && items.isNotEmpty) 'items': items,
+  //       if (voucherCode != null && voucherCode.isNotEmpty) 'voucherCode': voucherCode,
+  //       if (equipment != null && equipment.isNotEmpty) 'equipment': equipment,
+  //       if (foodServingTime != null) 'food_serving_time': foodServingTime,
+  //     };
+  //
+  //     print('Creating reservation with data: $requestBody');
+  //
+  //     final response = await http.post(
+  //       Uri.parse('$baseUrl/api/gro/reservations'),
+  //       headers: headers,
+  //       body: json.encode(requestBody),
+  //     );
+  //
+  //     print('Response status: ${response.statusCode}');
+  //     print('Response body: ${response.body}');
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //       return {
+  //         'success': true,
+  //         'message': responseData['message'] ?? 'Reservasi berhasil dibuat',
+  //         'data': responseData['data'],
+  //         'order': responseData['order'],
+  //       };
+  //     } else {
+  //       final Map<String, dynamic> errorData = json.decode(response.body);
+  //       return {
+  //         'success': false,
+  //         'error': errorData['message'] ?? 'Gagal membuat reservasi',
+  //       };
+  //     }
+  //   } catch (e) {
+  //     print('Error creating reservation: $e');
+  //     return {
+  //       'success': false,
+  //       'error': 'Terjadi kesalahan: $e',
+  //     };
+  //   }
+  // }
 
   // Get all reservations with filters
   Future<Map<String, dynamic>> getReservations({
