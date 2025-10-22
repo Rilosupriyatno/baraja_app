@@ -6,19 +6,19 @@ import '../models/reservation_data.dart';
 import '../screens/menu_screen.dart';
 import '../widgets/gro/gro_order_detail_widget.dart';
 
-class WalkInOrderDetailSheet extends StatefulWidget {
+class DineInOrderDetailSheet extends StatefulWidget {
   final String orderId;
 
-  const WalkInOrderDetailSheet({
+  const DineInOrderDetailSheet({
     super.key,
     required this.orderId,
   });
 
   @override
-  State<WalkInOrderDetailSheet> createState() => _WalkInOrderDetailSheetState();
+  State<DineInOrderDetailSheet> createState() => _DineInOrderDetailSheetState();
 }
 
-class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
+class _DineInOrderDetailSheetState extends State<DineInOrderDetailSheet> {
   final GROService _groService = GROService();
   Map<String, dynamic>? _orderDetail;
   bool _isLoading = true;
@@ -37,7 +37,6 @@ class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
     });
 
     try {
-      // ✅ Gunakan method yang mengembalikan data lengkap seperti tracking
       final result = await _groService.getOrderDetailWithPayment(widget.orderId);
 
       if (!mounted) return;
@@ -76,32 +75,28 @@ class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
     }
   }
 
-  // ✅ Handler untuk tambah pesanan (OpenBill)
   void _handleAddOrder() {
     if (_orderDetail == null) return;
 
-    // Extract data yang dibutuhkan untuk OpenBill
     final tableNumber = _orderDetail!['tableNumber']?.toString() ?? '';
     final orderId = _orderDetail!['orderId']?.toString() ??
         _orderDetail!['order_id']?.toString() ??
         widget.orderId;
 
-    // Buat OpenBillData
     final openBillData = OpenBillData(
-      reservationId: orderId, // Gunakan orderId sebagai reference
+      reservationId: orderId,
       date: DateTime.now(),
       time: TimeOfDay.now(),
-      areaId: '', // Walk-in biasanya tidak ada area spesifik
-      areaCode: 'Walk-in',
+      areaId: '',
+      areaCode: 'Dine-in', //
       tableId: '',
       tableNumbers: tableNumber,
     );
 
-    print('🔷 Opening menu for additional order');
+    print('🔷 Opening menu for additional dine-in order');
     print('  Order ID: $orderId');
     print('  Table: $tableNumber');
 
-    // Navigate ke MenuScreen dengan OpenBill mode
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -111,40 +106,32 @@ class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
         ),
       ),
     ).then((_) {
-      // Refresh data setelah kembali dari menu
       _loadOrderDetail();
     });
   }
 
-  // ✅ Check apakah order masih bisa ditambah pesanan (dengan debug logging)
   bool _canAddOrder() {
     if (_orderDetail == null) {
       print('🔍 Can Add Order: false (orderDetail is null)');
       return false;
     }
 
-    // Coba berbagai kemungkinan field name (camelCase dan snake_case)
     final orderStatus = (_orderDetail!['orderStatus'] ??
         _orderDetail!['order_status'])?.toString().toLowerCase();
     final paymentStatus = (_orderDetail!['paymentStatus'] ??
         _orderDetail!['payment_status'])?.toString().toLowerCase();
 
-    // Debug logging
     print('🔍 Can Add Order Check:');
     print('  Order Status: $orderStatus');
     print('  Payment Status: $paymentStatus');
     print('  Order Detail Keys: ${_orderDetail!.keys.toList()}');
 
-    // Hanya bisa tambah order jika:
-    // 1. Order belum completed/cancelled
-    // 2. Payment belum settlement (masih bisa nambah)
     final canAdd = orderStatus != 'completed' &&
         orderStatus != 'cancelled' &&
         paymentStatus != 'settlement' &&
         paymentStatus != 'capture';
 
     print('  ✅ Can Add Order Result: $canAdd');
-
     return canAdd;
   }
 
@@ -184,7 +171,7 @@ class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'Detail Walk-in Order',
+            'Detail Dine-in Order', // ✅ Perbarui label
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -238,7 +225,6 @@ class _WalkInOrderDetailSheetState extends State<WalkInOrderDetailSheet> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // ✅ Gunakan GroOrderDetailWidget dengan tombol tambah pesanan
           GroOrderDetailWidget(
             orderData: _orderDetail!,
             showAddOrderButton: canAddOrder,

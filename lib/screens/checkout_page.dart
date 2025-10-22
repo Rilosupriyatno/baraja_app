@@ -745,7 +745,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         // print("  Guest Phone: ${cartProvider.reservationData!.guestPhone}");
                       } else {
                         userId = null;
-                        userName = 'Walk-in Guest';
+                        userName = 'Dine-In Guest';
                         print("⚠️ GRO Mode - No reservation data, using default");
                       }
                     } else {

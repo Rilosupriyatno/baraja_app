@@ -52,6 +52,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        print("ini adalah response: $responseData");
         return responseData;
       } else {
         throw Exception('Failed to load reservations: ${response.statusCode}');
@@ -84,7 +85,7 @@ class GROService {
     }
   }
 
-// Get dine-in order detail (dengan prefix /gro/)
+  // Get dine-in order detail (dengan prefix /gro/)
   Future<Map<String, dynamic>> getDineInOrderDetail(String orderId) async {
     try {
       final headers = await _getHeaders();
@@ -160,7 +161,6 @@ class GROService {
           'success': true,
           'data': data['data'] as Map<String, dynamic>,
         };
-
       } else if (response.statusCode == 404) {
         print('❌ Order not found (404)');
         return {
@@ -192,11 +192,7 @@ class GROService {
     }
   }
 
-  // services/gro_service.dart - UPDATED VERSION
-
-// ... kode sebelumnya tetap sama ...
-
-// ✅ TAMBAHAN METHOD BARU: Get order detail with payment info (seperti tracking)
+  // ✅ TAMBAHAN METHOD BARU: Get order detail with payment info (seperti tracking)
   Future<Map<String, dynamic>> getOrderDetailWithPayment(String orderId) async {
     try {
       final headers = await _getHeaders();
@@ -248,7 +244,6 @@ class GROService {
           'success': true,
           'data': data['orderData'] as Map<String, dynamic>,
         };
-
       } else if (response.statusCode == 404) {
         print('❌ Order not found (404)');
         return {
@@ -279,10 +274,6 @@ class GROService {
       };
     }
   }
-
-// ... sisa kode tetap sama ...
-
-  // Close open bill
 
   // Confirm reservation
   Future<Map<String, dynamic>> confirmReservation(String id) async {
@@ -350,13 +341,13 @@ class GROService {
     }
   }
 
-  // Check-in walk-in customer
-  Future<Map<String, dynamic>> checkInWalkInOrder(String orderId) async {
+  // ✅ Check-in dine-in customer
+  Future<Map<String, dynamic>> checkInDineInOrder(String orderId) async {
     try {
       final headers = await _getHeaders();
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/gro/orders/$orderId/walk-in/check-in'),
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/dine-in/check-in'),
         headers: headers,
       );
 
@@ -375,7 +366,7 @@ class GROService {
         };
       }
     } catch (e) {
-      print('Error checking in walk-in order: $e');
+      print('Error checking in dine-in order: $e');
       return {
         'success': false,
         'error': 'Terjadi kesalahan: $e',
@@ -383,13 +374,13 @@ class GROService {
     }
   }
 
-// Check-out walk-in customer
-  Future<Map<String, dynamic>> checkOutWalkInOrder(String orderId) async {
+  // ✅ Check-out dine-in customer
+  Future<Map<String, dynamic>> checkOutDineInOrder(String orderId) async {
     try {
       final headers = await _getHeaders();
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/gro/orders/$orderId/walk-in/check-out'),
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/dine-in/check-out'),
         headers: headers,
       );
 
@@ -408,7 +399,7 @@ class GROService {
         };
       }
     } catch (e) {
-      print('Error checking out walk-in order: $e');
+      print('Error checking out dine-in order: $e');
       return {
         'success': false,
         'error': 'Terjadi kesalahan: $e',
@@ -416,8 +407,8 @@ class GROService {
     }
   }
 
-// Complete walk-in order (gunakan endpoint yang sudah ada)
-  Future<Map<String, dynamic>> completeWalkInOrder(String orderId) async {
+  // ✅ Complete dine-in order
+  Future<Map<String, dynamic>> completeDineInOrder(String orderId) async {
     try {
       final headers = await _getHeaders();
 
@@ -441,7 +432,7 @@ class GROService {
         };
       }
     } catch (e) {
-      print('Error completing walk-in order: $e');
+      print('Error completing dine-in order: $e');
       return {
         'success': false,
         'error': 'Terjadi kesalahan: $e',
@@ -597,15 +588,18 @@ class GROService {
     }
   }
 
-  // Get dashboard statistics
-  Future<Map<String, dynamic>> getDashboardStats() async {
+  Future<Map<String, dynamic>> getDashboardStats({String? date}) async {
     try {
       final headers = await _getHeaders();
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/gro/dashboard-stats'),
-        headers: headers,
+      final queryParams = <String, String>{};
+      if (date != null) queryParams['date'] = date;
+
+      final uri = Uri.parse('$baseUrl/api/gro/dashboard-stats').replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
+
+      final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -651,40 +645,7 @@ class GROService {
     }
   }
 
-  // Close open bill
-  // Future<Map<String, dynamic>> closeOpenBill(String id) async {
-  //   try {
-  //     final headers = await _getHeaders();
-  //
-  //     final response = await http.put(
-  //       Uri.parse('$baseUrl/api/gro/reservations/$id/close-open-bill'),
-  //       headers: headers,
-  //     );
-  //
-  //     if (response.statusCode == 200) {
-  //       final Map<String, dynamic> responseData = json.decode(response.body);
-  //       return {
-  //         'success': true,
-  //         'message': responseData['message'] ?? 'Open bill berhasil ditutup',
-  //         'data': responseData['data'],
-  //       };
-  //     } else {
-  //       final Map<String, dynamic> errorData = json.decode(response.body);
-  //       return {
-  //         'success': false,
-  //         'error': errorData['message'] ?? 'Gagal menutup open bill',
-  //       };
-  //     }
-  //   } catch (e) {
-  //     print('Error closing open bill: $e');
-  //     return {
-  //       'success': false,
-  //       'error': 'Terjadi kesalahan: $e',
-  //     };
-  //   }
-  // }
   // Get table order detail
-// Get table order detail
   Future<Map<String, dynamic>> getTableOrderDetail({
     required String tableNumber,
     required String date,

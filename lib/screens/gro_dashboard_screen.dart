@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/gro_service.dart';
 import '../widgets/utils/role_based_widget.dart';
@@ -18,6 +19,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   Map<String, dynamic> _dashboardStats = {};
   bool _isLoading = true;
   String? _errorMessage;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -32,7 +34,10 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     });
 
     try {
-      final result = await _groService.getDashboardStats();
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+      // Pass date parameter to API
+      final result = await _groService.getDashboardStats(date: dateStr);
 
       if (result['success']) {
         setState(() {
@@ -50,6 +55,35 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         _errorMessage = 'Error loading dashboard: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF2E8B57),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      _loadDashboardStats();
     }
   }
 
@@ -87,7 +121,9 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       body: RefreshIndicator(
         onRefresh: _loadDashboardStats,
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(
+          color: Color(0xFF2E8B57),
+        ))
             : _errorMessage != null
             ? _buildErrorState()
             : _buildDashboardContent(),
@@ -102,16 +138,26 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red.shade400,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
               _errorMessage ?? 'Terjadi kesalahan',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -121,6 +167,11 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2E8B57),
                 foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
               ),
             ),
           ],
@@ -135,13 +186,49 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       children: [
         _buildWelcomeCard(),
         const SizedBox(height: 24),
-        const Text(
-          'Statistik Reservasi',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        _buildDateSelector(),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Statistik Reservasi',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E8B57).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFF2E8B57).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: Color(0xFF2E8B57),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    DateFormat('dd MMM', 'id_ID').format(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E8B57),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         _buildStatsGrid(),
@@ -205,6 +292,73 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     );
   }
 
+  Widget _buildDateSelector() {
+    return InkWell(
+      onTap: _selectDate,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E8B57).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.calendar_today,
+                color: Color(0xFF2E8B57),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tanggal',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              color: Colors.grey.shade600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -215,7 +369,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       childAspectRatio: 1.35,
       children: [
         _buildStatCard(
-          title: 'Riwayat Reservasi',
+          title: 'Riwayat',
           value: '${_dashboardStats['allReservations'] ?? 0}',
           icon: Icons.history,
           color: const Color(0xFF6366F1),
@@ -274,27 +428,35 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               value,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -305,8 +467,11 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
               style: const TextStyle(
                 fontSize: 11,
                 color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -315,14 +480,20 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   }
 
   void _navigateToReservations(String filter) {
-    // Gunakan queryParameters untuk GoRouter
-    context.push('/gro-reservation-management?filter=$filter').then((_) {
+    // Pass tanggal yang dipilih ke reservation management
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    context.push('/gro-reservation-management?filter=$filter&date=$dateStr').then((_) {
       // Refresh dashboard saat kembali
       _loadDashboardStats();
     });
   }
 
   void _navigateToTableManagement() {
-    context.push('/gro-table-availability');
+    // Pass tanggal yang dipilih ke table availability
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    context.push('/gro-table-availability?date=$dateStr').then((_) {
+      // Refresh dashboard saat kembali
+      _loadDashboardStats();
+    });
   }
 }

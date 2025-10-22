@@ -97,52 +97,29 @@ class ProductService {
                   0.0;
             }
 
-            // Process category
-            dynamic rawCategory =
-                productJson['category'] ?? {'name': 'Uncategorized'};
-
-            // Process subCategory
-            String subCategoryName = 'Lainnya';
-            if (productJson['subCategory'] != null) {
-              var subCat = productJson['subCategory'];
-              if (subCat is Map && subCat['name'] != null) {
-                subCategoryName = subCat['name'];
-              } else if (subCat is String) {
-                subCategoryName = subCat;
-              }
-            }
-
-            // Determine mainCategory
-            String mainCategory = 'Makanan'; // Default
-            if (rawCategory is Map && rawCategory['name'] != null) {
-              String categoryName = rawCategory['name'].toLowerCase();
-              if (categoryName.contains('minuman') ||
-                  categoryName.contains('drink') ||
-                  categoryName.contains('coffee') ||
-                  categoryName.contains('tea') ||
-                  categoryName.contains('beverage')) {
+            // ✅ Extract mainCategory (makanan/minuman)
+            String mainCategory = 'Makanan';
+            if (productJson['mainCategory'] != null &&
+                productJson['mainCategory'].toString().isNotEmpty) {
+              String rawMainCat = productJson['mainCategory'].toString().toLowerCase();
+              if (rawMainCat == 'minuman' || rawMainCat == 'drinks') {
                 mainCategory = 'Minuman';
-              } else if (categoryName.contains('makanan') ||
-                  categoryName.contains('food') ||
-                  categoryName.contains('meal')) {
+              } else {
                 mainCategory = 'Makanan';
               }
             }
 
-            if (mainCategory == 'Makanan' && subCategoryName.isNotEmpty) {
-              String subCatLower = subCategoryName.toLowerCase();
-              if (subCatLower.contains('minuman') ||
-                  subCatLower.contains('drink') ||
-                  subCatLower.contains('coffee') ||
-                  subCatLower.contains('tea') ||
-                  subCatLower.contains('espresso') ||
-                  subCatLower.contains('latte') ||
-                  subCatLower.contains('cappuccino')) {
-                mainCategory = 'Minuman';
+            // ✅ Extract category name (Pasta, Frappe, Mocktail, dll)
+            String categoryName = 'Lainnya';
+            if (productJson['category'] != null) {
+              var cat = productJson['category'];
+              if (cat is Map && cat['name'] != null && cat['name'].toString().isNotEmpty) {
+                categoryName = cat['name'];
+              } else if (cat is String && cat.isNotEmpty) {
+                categoryName = cat;
               }
             }
 
-            // ✅ Parse availableAt → ambil outletId
             // ✅ Parse availableAt → ambil outletId & name
             List<Outlet> outlets = [];
             if (productJson['availableAt'] != null) {
@@ -154,13 +131,12 @@ class ProductService {
                   .toList();
             }
 
-
             return Product(
               id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
-              category: rawCategory,
-              mainCategory: mainCategory,
-              subCategory: subCategoryName,
+              category: categoryName, // ✅ Sekarang pakai category.name
+              mainCategory: mainCategory, // ✅ makanan/minuman
+              subCategory: null, // ✅ Tidak digunakan lagi
               imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
@@ -175,8 +151,6 @@ class ProductService {
                   ? productJson['reviewCount']
                   : (productJson['reviewCount'] ?? 0),
               imageColor: generateImageColor(mainCategory),
-
-              // Tambahkan outletIds
               availableAt: outlets,
             );
           }).toList();

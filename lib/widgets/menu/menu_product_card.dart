@@ -195,7 +195,7 @@ class _MenuProductCardState extends State<MenuProductCard> {
         }
       },
       child: Container(
-        height: 250,
+        // height: 250,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -249,42 +249,40 @@ class _MenuProductCardState extends State<MenuProductCard> {
             ),
 
             // Informasi produk
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max, // 🔧 fix overflow
-                  children: [
-                    Text(
-                      widget.product.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatCurrency(widget.product.discountPrice?.round() ?? 0),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatCurrency(widget.product.discountPrice?.round() ?? 0),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.product.description,
-                      style: const TextStyle(fontSize: 10),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(), // 🔧 dorong rating ke bawah, mencegah overflow
-                    if (widget.product.averageRating > 0)
-                      _buildRatingWidget(widget.product.averageRating),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.product.description,
+                    style: const TextStyle(fontSize: 10),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6), // beri jarak manual
+                  if (widget.product.averageRating > 0)
+                    _buildRatingWidget(widget.product.averageRating),
+                ],
               ),
             ),
           ],

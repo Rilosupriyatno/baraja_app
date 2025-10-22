@@ -21,7 +21,7 @@ class MenuScreen extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
-  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
+  final bool isGroMode;
 
   const MenuScreen({
     super.key,
@@ -31,7 +31,7 @@ class MenuScreen extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
-    this.isGroMode = false, // Default false untuk user biasa
+    this.isGroMode = false,
   });
 
   @override
@@ -42,10 +42,10 @@ class _MenuScreenState extends State<MenuScreen> {
   final ProductService _productService = ProductService();
 
   List<Product> _allProducts = [];
-  Map<String, List<Category>> _categoriesMap = {};
+  Map<String, List<Category>> _categoriesMap = {}; // ✅ mainCategory → [categories]
 
-  String selectedMenu = 'Makanan';
-  String selectedSubMenu = '';
+  String selectedMenu = 'Makanan'; // ✅ mainCategory
+  String selectedCategory = ''; // ✅ category (dulu selectedSubMenu)
 
   bool _isLoading = true;
   String _errorMessage = '';
@@ -56,7 +56,7 @@ class _MenuScreenState extends State<MenuScreen> {
     _loadProducts();
     print(widget.reservationData);
     print("ini adalah data open bill: ${widget.openBillData}");
-    print("GRO Mode: ${widget.isGroMode}"); // Debug log
+    print("GRO Mode: ${widget.isGroMode}");
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
@@ -95,6 +95,73 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
+  // ✅ Generate categories berdasarkan mainCategory
+  void _generateCategoriesMap(List<Product> products) {
+    try {
+      Map<String, Set<String>> tempCategoriesMap = {};
+
+      for (var product in products) {
+        String mainCategory = product.mainCategory; // ✅ makanan/minuman
+        String category = product.category ?? 'Lainnya'; // ✅ category name
+
+        if (!tempCategoriesMap.containsKey(mainCategory)) {
+          tempCategoriesMap[mainCategory] = <String>{};
+        }
+
+        tempCategoriesMap[mainCategory]!.add(category);
+      }
+
+      _categoriesMap = {};
+      tempCategoriesMap.forEach((mainCategory, categories) {
+        _categoriesMap[mainCategory] = categories
+            .map((name) => Category(name: name))
+            .toList();
+      });
+
+      debugPrint("Generated categories: $_categoriesMap");
+    } catch (e) {
+      debugPrint("Error in _generateCategoriesMap: $e");
+      _categoriesMap = {
+        'Makanan': [Category(name: 'Pasta')],
+        'Minuman': [Category(name: 'Frappe')]
+      };
+    }
+  }
+
+  // ✅ Filter products berdasarkan mainCategory dan category
+  List<Product> _getFilteredProducts() {
+    return _allProducts.where((product) {
+      // Filter by mainCategory (Makanan/Minuman)
+      if (product.mainCategory != selectedMenu) {
+        return false;
+      }
+
+      // Jika tidak ada category yang dipilih, tampilkan semua
+      if (selectedCategory.isEmpty) {
+        return true;
+      }
+
+      // Filter by category
+      return product.category == selectedCategory;
+    }).toList();
+  }
+
+  void _setInitialSelections() {
+    if (_categoriesMap.isNotEmpty) {
+      if (_categoriesMap.containsKey('Makanan')) {
+        selectedMenu = 'Makanan';
+      } else if (_categoriesMap.containsKey('Minuman')) {
+        selectedMenu = 'Minuman';
+      } else {
+        selectedMenu = _categoriesMap.keys.first;
+      }
+
+      if (_categoriesMap[selectedMenu]!.isNotEmpty) {
+        selectedCategory = _categoriesMap[selectedMenu]![0].name;
+      }
+    }
+  }
+
   // Dummy products untuk skeleton
   List<Product> _getDummyProducts() {
     return List.generate(
@@ -104,7 +171,7 @@ class _MenuScreenState extends State<MenuScreen> {
         name: 'Loading Product Name',
         category: 'Loading',
         mainCategory: 'Loading',
-        subCategory: 'Loading',
+        subCategory: null,
         imageUrl: '',
         originalPrice: 50000.0,
         discountPrice: 45000.0,
@@ -122,124 +189,6 @@ class _MenuScreenState extends State<MenuScreen> {
         ],
       ),
     );
-  }
-
-  String _determineMainCategory(Product product) {
-    if (product.mainCategory.isNotEmpty) {
-      String mainCat = product.mainCategory.toLowerCase();
-      if (mainCat == 'minuman' || mainCat == 'minuman dingin' ||
-          mainCat.contains('drink') || mainCat.contains('coffee') ||
-          mainCat.contains('tea')) {
-        return 'Minuman';
-      } else if (mainCat == 'makanan' || mainCat.contains('food')) {
-        return 'Makanan';
-      }
-    }
-
-    String categoryName = '';
-    if (product.category is Map && product.category['name'] != null) {
-      categoryName = product.category['name'].toString();
-    } else if (product.category is String) {
-      categoryName = product.category;
-    }
-
-    if (categoryName.toLowerCase().contains('minuman') ||
-        categoryName.toLowerCase().contains('drink') ||
-        categoryName.toLowerCase().contains('coffee') ||
-        categoryName.toLowerCase().contains('tea')) {
-      return 'Minuman';
-    } else if (categoryName.toLowerCase().contains('makanan') ||
-        categoryName.toLowerCase().contains('food')) {
-      return 'Makanan';
-    }
-
-    String productName = product.name.toLowerCase();
-    if (productName.contains('es ') || productName.contains('teh ') ||
-        productName.contains('kopi ') || productName.contains('jus ') ||
-        productName.contains('minuman')) {
-      return 'Minuman';
-    }
-
-    return 'Makanan';
-  }
-
-  void _generateCategoriesMap(List<Product> products) {
-    try {
-      Map<String, Set<String>> tempCategoriesMap = {};
-
-      for (var product in products) {
-        String mainCategory = _determineMainCategory(product);
-        String subCategory = _extractSubCategory(product);
-
-        if (!tempCategoriesMap.containsKey(mainCategory)) {
-          tempCategoriesMap[mainCategory] = <String>{};
-        }
-
-        tempCategoriesMap[mainCategory]!.add(subCategory);
-      }
-
-      _categoriesMap = {};
-      tempCategoriesMap.forEach((mainCategory, subCategories) {
-        _categoriesMap[mainCategory] = subCategories
-            .map((name) => Category(name: name))
-            .toList();
-      });
-
-      debugPrint("Generated categories: $_categoriesMap");
-    } catch (e) {
-      debugPrint("Error in _generateCategoriesMap: $e");
-      _categoriesMap = {
-        'Makanan': [Category(name: 'Nasi Goreng')],
-        'Minuman': [Category(name: 'Minuman Dingin')]
-      };
-    }
-  }
-
-  List<Product> _getFilteredProducts() {
-    return _allProducts.where((product) {
-      String productMainCategory = _determineMainCategory(product);
-
-      if (productMainCategory != selectedMenu) {
-        return false;
-      }
-
-      if (selectedSubMenu.isEmpty) {
-        return true;
-      }
-
-      String productSubCategory = _extractSubCategory(product);
-      return productSubCategory == selectedSubMenu;
-    }).toList();
-  }
-
-  String _extractSubCategory(Product product) {
-    if (product.subCategory != null && product.subCategory!.isNotEmpty) {
-      return product.subCategory!;
-    }
-
-    if (product.category is Map && product.category['name'] != null) {
-      return product.category['name'];
-    } else if (product.category is String) {
-      return product.category;
-    }
-
-    return 'Lainnya';
-  }
-
-  void _setInitialSelections() {
-    if (_categoriesMap.isNotEmpty) {
-      if (_categoriesMap.containsKey('Makanan')) {
-        selectedMenu = 'Makanan';
-      } else if (_categoriesMap.containsKey('Minuman')) {
-        selectedMenu = 'Minuman';
-      } else {
-        selectedMenu = _categoriesMap.keys.first;
-      }
-
-      if (_categoriesMap[selectedMenu]!.isNotEmpty) {
-        selectedSubMenu = _categoriesMap[selectedMenu]![0].name;
-      }
-    }
   }
 
   Widget _buildReservationInfo() {
@@ -470,7 +419,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Category> subMenuList = _categoriesMap[selectedMenu] ?? [];
+    final List<Category> categoryList = _categoriesMap[selectedMenu] ?? [];
     final List<Product> filteredProducts = _isLoading
         ? _getDummyProducts()
         : _getFilteredProducts();
@@ -493,24 +442,26 @@ class _MenuScreenState extends State<MenuScreen> {
               _buildOpenBillInfo(),
               _buildDineInInfo(),
 
+              // ✅ Menu Selector (Makanan/Minuman)
               MenuSelector(
                 selectedMenu: selectedMenu,
                 onMenuSelected: (menu) {
                   setState(() {
                     selectedMenu = menu;
                     if (_categoriesMap[menu]!.isNotEmpty) {
-                      selectedSubMenu = _categoriesMap[menu]![0].name;
+                      selectedCategory = _categoriesMap[menu]![0].name;
                     }
                   });
                 },
               ),
 
+              // ✅ Category Slider (Pasta, Frappe, Mocktail, dll)
               SubMenuSlider(
-                subMenus: subMenuList,
-                selectedSubMenu: selectedSubMenu,
-                onSubMenuSelected: (subMenu) {
+                subMenus: categoryList,
+                selectedSubMenu: selectedCategory,
+                onSubMenuSelected: (category) {
                   setState(() {
-                    selectedSubMenu = subMenu;
+                    selectedCategory = category;
                   });
                 },
               ),
@@ -532,7 +483,7 @@ class _MenuScreenState extends State<MenuScreen> {
           tableNumber: widget.tableNumber,
           isOpenBill: widget.isOpenBill,
           openBillData: widget.openBillData,
-          isGroMode: widget.isGroMode, // PASS parameter ke checkout button
+          isGroMode: widget.isGroMode,
         ),
       ),
     );
