@@ -341,7 +341,9 @@ class GROService {
     }
   }
 
-  // ✅ Check-in dine-in customer
+// ✅ TAMBAHAN di gro_service.dart
+
+// Check-in dine-in order (Reserved → OnProcess)
   Future<Map<String, dynamic>> checkInDineInOrder(String orderId) async {
     try {
       final headers = await _getHeaders();
@@ -355,18 +357,55 @@ class GROService {
         final Map<String, dynamic> responseData = json.decode(response.body);
         return {
           'success': true,
-          'message': responseData['message'] ?? 'Check-in berhasil',
+          'message': responseData['message'] ?? 'Customer berhasil check-in',
           'data': responseData['data'],
         };
       } else {
         final Map<String, dynamic> errorData = json.decode(response.body);
         return {
           'success': false,
-          'error': errorData['message'] ?? 'Gagal check-in',
+          'error': errorData['message'] ?? 'Gagal check-in customer',
         };
       }
     } catch (e) {
       print('Error checking in dine-in order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+// Cancel dine-in order (Reserved → Canceled)
+  Future<Map<String, dynamic>> cancelDineInOrder(
+      String orderId, {
+        String? reason,
+      }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/cancel'),
+        headers: headers,
+        body: json.encode({'reason': reason}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Order berhasil dibatalkan',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal membatalkan order',
+        };
+      }
+    } catch (e) {
+      print('Error canceling dine-in order: $e');
       return {
         'success': false,
         'error': 'Terjadi kesalahan: $e',
