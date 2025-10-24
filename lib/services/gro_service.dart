@@ -39,7 +39,11 @@ class GROService {
         'limit': limit.toString(),
       };
 
-      if (status != null) queryParams['status'] = status;
+      // ✅ PERBAIKAN: Jangan kirim status jika 'all' atau null
+      if (status != null && status.isNotEmpty && status != 'all') {
+        queryParams['status'] = status;
+      }
+
       if (date != null) queryParams['date'] = date;
       if (areaId != null) queryParams['area_id'] = areaId;
       if (search != null) queryParams['search'] = search;

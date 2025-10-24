@@ -34,7 +34,7 @@ class CheckoutPage extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
-  final bool isGroMode; // NEW
+  final bool isGroMode;
 
   const CheckoutPage({
     super.key,
@@ -44,7 +44,7 @@ class CheckoutPage extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
-    this.isGroMode = false, // Default false
+    this.isGroMode = false,
   });
 
   @override
@@ -52,7 +52,6 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-
   // Pilihan tipe pesanan
   late OrderType selectedOrderType;
   String? outletId;
@@ -105,7 +104,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
-    _initializeTaxData();
 
     // Set default values
     selectedOrderType = OrderType.dineIn;
@@ -123,10 +121,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
           selectedPaymentType = PaymentType.fullPayment;
         });
       }
+
+      // ✅ PERBAIKAN: Set outletId terlebih dahulu
       if (cartProvider.items.isNotEmpty) {
         setState(() {
           outletId = cartProvider.items.first.outletId?.toString();
         });
+        print("✅ OutletId set to: $outletId");
+      } else {
+        print("⚠️ Cart is empty, no outletId available");
       }
 
       // Set initial order type based on the current context
@@ -139,10 +142,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         tableNumber = "";
       }
 
-      // Initial tax calculation
-      if (_taxesLoaded) {
-        _calculateTaxes();
-      }
+      // ✅ PERBAIKAN: Initialize tax data setelah outletId diset
+      _initializeTaxData();
 
       setState(() {});
     });
@@ -150,8 +151,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   // Listener untuk perubahan cart
   void _onCartChanged() {
-    if (_taxesLoaded && mounted) {
+    if (!mounted) return;
+
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // ✅ PERBAIKAN: Update outletId jika berubah
+    if (cartProvider.items.isNotEmpty) {
+      final newOutletId = cartProvider.items.first.outletId?.toString();
+      if (newOutletId != outletId) {
+        setState(() {
+          outletId = newOutletId;
+        });
+        print("🔄 OutletId updated to: $outletId");
+      }
+    }
+
+    if (_taxesLoaded && outletId != null) {
       _calculateTaxes();
+    } else {
+      print("⚠️ Cannot calculate taxes: taxesLoaded=$_taxesLoaded, outletId=$outletId");
     }
   }
 
@@ -161,25 +179,49 @@ class _CheckoutPageState extends State<CheckoutPage> {
         cartProvider.totalPrice == 25000;
   }
 
+  // ✅ PERBAIKAN: Update _initializeTaxData
   Future<void> _initializeTaxData() async {
     try {
+      print("🔄 Initializing tax data...");
       await _taxService.getTaxesAndServices();
       setState(() {
         _taxesLoaded = true;
       });
-      _calculateTaxes();
+      print("✅ Tax data loaded successfully");
+
+      // Calculate taxes immediately after loading
+      if (outletId != null) {
+        print("📊 Calculating taxes with outletId: $outletId");
+        _calculateTaxes();
+      } else {
+        print("⚠️ OutletId is null, waiting for cart items");
+      }
     } catch (e) {
-      print('Error initializing tax data: $e');
+      print('❌ Error initializing tax data: $e');
       setState(() {
         _taxesLoaded = true;
       });
     }
   }
 
+  // ✅ PERBAIKAN: Update _calculateTaxes dengan logging lebih detail
   void _calculateTaxes() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    if (!_taxesLoaded || outletId == null) {
+    print("\n🔍 DEBUG TAX CALCULATION:");
+    print("  _taxesLoaded: $_taxesLoaded");
+    print("  outletId: $outletId");
+    print("  isOpenBill: ${cartProvider.isOpenBill}");
+    print("  isReservation: ${cartProvider.isReservation}");
+
+    // ✅ PERBAIKAN: Tambahkan logging untuk debugging
+    if (!_taxesLoaded) {
+      print("⚠️ Taxes not loaded yet, skipping calculation");
+      return;
+    }
+
+    if (outletId == null) {
+      print("⚠️ OutletId is null, skipping calculation");
       if (_taxCalculation != null) {
         setState(() {
           _taxCalculation = null;
@@ -196,36 +238,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (_lastCalculatedSubtotal == subtotal &&
         _lastCalculatedDiscount == discount &&
         _lastCalculatedOutletId == outletId) {
-      return; // Skip if nothing changed
+      print("ℹ️ Values unchanged, skipping recalculation");
+      return;
     }
 
-    print("🔍 DEBUG TAX CALCULATION:");
-    print("- _taxesLoaded: $_taxesLoaded");
-    print("- outletId: $outletId");
-    print("- isOpenBill: ${cartProvider.isOpenBill}");
-    print("- isReservation: ${cartProvider.isReservation}");
-    print("- subtotal: $subtotal");
-    print("- discount: $discount");
-    print("- finalTotal: $finalTotal");
+    print("  subtotal: $subtotal");
+    print("  discount: $discount");
+    print("  finalTotal: $finalTotal");
 
-    final taxCalculation = _taxService.calculateTaxes(
-      subtotal: finalTotal.toDouble(),
-      outletId: outletId!,
-      isReservation: cartProvider.isReservation,
-      isOpenBill: cartProvider.isOpenBill,
-    );
+    try {
+      final taxCalculation = _taxService.calculateTaxes(
+        subtotal: finalTotal.toDouble(),
+        outletId: outletId!,
+        isReservation: cartProvider.isReservation,
+        isOpenBill: cartProvider.isOpenBill,
+      );
 
-    print("- taxCalculation result: ${taxCalculation.totalTaxAmount}");
-    print("- taxDetails: ${taxCalculation.taxDetails}");
+      print("  ✅ Tax calculation result:");
+      print("    totalTaxAmount: ${taxCalculation.totalTaxAmount}");
+      print("    taxDetails: ${taxCalculation.taxDetails}");
 
-    // Update last calculated values
-    _lastCalculatedSubtotal = subtotal;
-    _lastCalculatedDiscount = discount;
-    _lastCalculatedOutletId = outletId;
+      // Update last calculated values
+      _lastCalculatedSubtotal = subtotal;
+      _lastCalculatedDiscount = discount;
+      _lastCalculatedOutletId = outletId;
 
-    setState(() {
-      _taxCalculation = taxCalculation;
-    });
+      setState(() {
+        _taxCalculation = taxCalculation;
+      });
+
+      print("✅ Tax state updated successfully\n");
+    } catch (e) {
+      print("❌ Error calculating taxes: $e");
+    }
   }
 
   int calculateDiscount(int subtotal) {
@@ -414,9 +459,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Scaffold(
             backgroundColor: Colors.white,
             appBar: const ClassicAppBar(
-              title: 'Pembayaran',
-              usePopInsteadOfGo: true
-              // customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/history',
+                title: 'Pembayaran',
+                usePopInsteadOfGo: true
             ),
             resizeToAvoidBottomInset: true,
             body: Column(
@@ -673,10 +717,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   isOpenBill: cartProvider.isOpenBill,
                   selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
                   taxCalculation: _taxCalculation,
-                  // File: checkout_page.dart
-// Di dalam method onCheckoutPressed (sekitar line 718)
-// GANTI BAGIAN INI:
-
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan");
 
@@ -729,27 +769,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     final prefs = await SharedPreferences.getInstance();
 
-                    // ✅ PERBAIKAN UTAMA: Handle user data berbeda untuk GRO mode
                     String? userId;
                     String userName;
 
                     if (widget.isGroMode) {
-                      // Untuk GRO mode, gunakan guest data dari reservationData
                       if (cartProvider.reservationData != null) {
-                        // Backend akan create/find user berdasarkan phone
                         userId = null;
                         userName = 'null';
 
                         print("🔍 GRO Mode - Using Guest Data:");
                         print("  Guest Name: $userName");
-                        // print("  Guest Phone: ${cartProvider.reservationData!.guestPhone}");
                       } else {
                         userId = null;
                         userName = 'Dine-In Guest';
                         print("⚠️ GRO Mode - No reservation data, using default");
                       }
                     } else {
-                      // Normal user flow - gunakan data user yang login
                       userId = prefs.getString('userId');
                       userName = prefs.getString('userName') ?? 'Guest';
 
@@ -827,12 +862,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       } else {
                         finalOrderType = selectedOrderType;
                       }
+
                       String? groId;
                       String? guestPhone;
                       String? guestName;
                       if (widget.isGroMode) {
-                        groId = prefs.getString('userId'); // ID GRO yang sedang login
-                        guestPhone = cartProvider.guestPhone; // Dari CartProvider
+                        groId = prefs.getString('userId');
+                        guestPhone = cartProvider.guestPhone;
                         guestName = cartProvider.guestName;
 
                         print("🔍 GRO Mode Checkout:");
@@ -840,6 +876,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         print("  Guest Name: $guestName");
                         print("  Guest Phone: $guestPhone");
                       }
+
                       print("✅ Sebelum createOrder - Memulai pembuatan pesanan...");
                       print("  User ID: $userId");
                       print("  User Name: $userName");
@@ -849,7 +886,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       final orderResult = await orderService.createOrder(
                         items: items,
                         userId: userId ?? 'guest',
-                        // userName: userName ,
                         userName: guestName ?? 'Guest',
                         orderType: finalOrderType,
                         outletId: outletId ?? '',
@@ -906,49 +942,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       };
 
                       if (widget.isGroMode) {
-                        // Langsung ke PaymentConfirmationScreen seperti user biasa
                         context.push('/paymentConfirmation', extra: extraData);
                         cartProvider.clearCart();
                         return;
                       }
 
-
-                      // CONDITIONAL NAVIGATION berdasarkan isGroMode
-                      // if (widget.isGroMode) {
-                      //   // Jika dari GRO, kembali ke table availability dengan success message
-                      //   Navigator.of(context).pop(); // Close loading
-                      //
-                      //   // Show success dialog
-                      //   showDialog(
-                      //     context: context,
-                      //     builder: (context) => AlertDialog(
-                      //       title: const Row(
-                      //         children: [
-                      //           Icon(Icons.check_circle, color: Colors.green),
-                      //           SizedBox(width: 8),
-                      //           Text('Berhasil'),
-                      //         ],
-                      //       ),
-                      //       content: Text(
-                      //           'Pesanan berhasil dibuat!\nOrder ID: ${extraData['orderId']}'
-                      //       ),
-                      //       actions: [
-                      //         TextButton(
-                      //           onPressed: () {
-                      //             Navigator.of(context).pop();
-                      //             context.go('/gro-table-availability');
-                      //           },
-                      //           child: const Text('OK'),
-                      //         ),
-                      //       ],
-                      //     ),
-                      //   );
-                      //
-                      //   cartProvider.clearCart();
-                      //   return; // Stop execution here for GRO mode
-                      // }
-
-                      // Normal user flow continues...
                       if (cartProvider.isOpenBill && cartProvider.openBillData != null) {
                         extraData['isOpenBill'] = true;
                         extraData['openBillData'] = cartProvider.openBillData;

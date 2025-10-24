@@ -7,7 +7,6 @@ import '../screens/auth_redirect_page.dart';
 import '../screens/checkout_page.dart';
 import '../screens/favorit_screen.dart';
 import '../screens/gro_management_reservation_screen.dart';
-import '../screens/gro_reservation_detail_screen.dart';
 import '../screens/gro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
@@ -368,19 +367,6 @@ class AppRouter {
           },
         ),
 
-        GoRoute(
-          path: '/gro-reservation-detail/:id',
-          name: 'gro-reservation-detail',
-          builder: (context, state) {
-            // Ambil path parameter 'id' dari URL
-            // Contoh URL: /gro-reservation-detail/123abc
-            final reservationId = state.pathParameters['id'] ?? '';
-
-            return GroReservationDetailScreen(
-              reservationId: reservationId,
-            );
-          },
-        ),
 
         GoRoute(
           path: '/gro-table-availability',
