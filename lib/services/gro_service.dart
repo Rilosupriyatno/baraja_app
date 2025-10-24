@@ -688,7 +688,110 @@ class GROService {
     }
   }
 
-  // Get table order detail
+  // ✅ METHOD BARU: Force reset table status
+  Future<Map<String, dynamic>> forceResetTableStatus(String tableNumber) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/tables/$tableNumber/force-reset'),
+        headers: headers,
+      );
+
+      print('Force reset response status: ${response.statusCode}');
+      print('Force reset response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Table status berhasil direset',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal reset status meja',
+        };
+      }
+    } catch (e) {
+      print('Error force resetting table: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> syncTableStatus(String outletId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/gro/tables/sync-status'),
+        headers: headers,
+        body: json.encode({'outletId': outletId}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to sync table status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error syncing table status: $e');
+      throw Exception('Error syncing table status: $e');
+    }
+  }
+
+// Debug table status
+  Future<Map<String, dynamic>> debugTableStatus(String outletId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/gro/tables/debug-status'),
+        headers: headers,
+        body: json.encode({'outletId': outletId}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to debug table status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error debugging table status: $e');
+      throw Exception('Error debugging table status: $e');
+    }
+  }
+
+// Reset table status
+  Future<Map<String, dynamic>> resetTableStatus(String tableId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/tables/$tableId/reset-status'),
+        headers: headers,
+        body: json.encode({'status': 'available'}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to reset table status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error resetting table status: $e');
+      throw Exception('Error resetting table status: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getTableOrderDetail({
     required String tableNumber,
     required String date,
@@ -700,26 +803,101 @@ class GROService {
         queryParameters: {'date': date},
       );
 
+      print('🔍 Fetching table order detail for table: $tableNumber, date: $date');
+      print('🔍 URL: ${uri.toString()}');
+
       final response = await http.get(uri, headers: headers);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      // ✅ JIKA 404, COBA SYNC DULU KEMUDI RETRY
+      if (response.statusCode == 404) {
+        print('🔄 Order not found, syncing table status and retrying...');
+
+        // Sync table status terlebih dahulu
+        await syncTableStatus("67cbc9560f025d897d69f889"); // Ganti dengan outletId yang sesuai
+
+        // Tunggu sebentar untuk memastikan sync selesai
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Coba lagi
+        final retryResponse = await http.get(uri, headers: headers);
+
+        if (retryResponse.statusCode == 200) {
+          final Map<String, dynamic> responseData = json.decode(retryResponse.body);
+
+          if (responseData['success'] == false) {
+            print('❌ Still no order after sync');
+            return {
+              'success': false,
+              'error': responseData['message'] ?? 'Tidak ada data order',
+              'data': null,
+            };
+          }
+
+          print('✅ Order found after sync!');
+          return {
+            'success': true,
+            'data': responseData['data'],
+          };
+        }
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+
+        // Validasi response structure
+        if (responseData['success'] == false) {
+          print('❌ API returned success: false');
+          return {
+            'success': false,
+            'error': responseData['message'] ?? 'Tidak ada data order',
+            'data': null,
+          };
+        }
+
+        // Jika success true tapi data kosong
+        if (responseData['data'] == null ||
+            (responseData['data'] is Map && responseData['data'].isEmpty) ||
+            (responseData['data'] is List && responseData['data'].isEmpty)) {
+          print('⚠️ Data is empty or null');
+          return {
+            'success': false,
+            'error': 'Tidak ada data order untuk meja ini',
+            'data': null,
+          };
+        }
+
+        print('✅ Table order detail loaded successfully');
         return {
           'success': true,
           'data': responseData['data'],
         };
       } else {
-        final Map<String, dynamic> errorData = json.decode(response.body);
-        return {
-          'success': false,
-          'error': errorData['message'] ?? 'Gagal memuat detail order',
-        };
+        print('❌ Error response: ${response.statusCode}');
+        try {
+          final Map<String, dynamic> errorData = json.decode(response.body);
+          return {
+            'success': false,
+            'error': errorData['message'] ?? 'Gagal memuat detail order',
+            'data': null,
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'error': 'Gagal memuat detail order (${response.statusCode})',
+            'data': null,
+          };
+        }
       }
-    } catch (e) {
-      print('Error fetching table order detail: $e');
+    } catch (e, stackTrace) {
+      print('❌ Exception in getTableOrderDetail: $e');
+      print('Stack trace: $stackTrace');
       return {
         'success': false,
         'error': 'Terjadi kesalahan: $e',
+        'data': null,
       };
     }
   }

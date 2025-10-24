@@ -46,6 +46,9 @@ class _GroTableAvailabilityScreenState
     });
 
     try {
+      // ✅ STEP 1: Sync table status terlebih dahulu
+      await _syncTableStatus();
+
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
       print('Loading table availability with:');
@@ -79,6 +82,27 @@ class _GroTableAvailabilityScreenState
         _errorMessage = 'Error loading table availability: $e';
         _isLoading = false;
       });
+    }
+  }
+
+// ✅ METHOD BARU: Sync table status
+  Future<void> _syncTableStatus() async {
+    try {
+      // Ganti dengan outletId yang sesuai
+      const outletId = "67cbc9560f025d897d69f889";
+
+      print('🔄 Syncing table status for outlet: $outletId');
+
+      final result = await _groService.syncTableStatus(outletId);
+
+      if (result['success'] == true) {
+        print('✅ Table status synced successfully');
+      } else {
+        print('⚠️ Table sync completed with warnings: ${result['message']}');
+      }
+    } catch (e) {
+      print('❌ Error syncing table status: $e');
+      // Jangan throw error, biarkan continue dengan data yang ada
     }
   }
 

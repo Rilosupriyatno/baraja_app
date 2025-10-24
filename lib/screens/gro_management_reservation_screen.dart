@@ -24,8 +24,19 @@ class _GroReservationManagementScreenState
   bool _isLoading = true;
   String? _errorMessage;
 
-  // ✅ ALTERNATIF: Gunakan late dengan getter
-  late String _selectedFilter;
+  // ✅ Ubah ini jadi getter dengan log
+  String __selectedFilter = 'pending'; // Private variable
+
+  String get _selectedFilter {
+    print('📖 GET _selectedFilter: $__selectedFilter');
+    return __selectedFilter;
+  }
+
+  set _selectedFilter(String value) {
+    print('✏️ SET _selectedFilter: $__selectedFilter → $value');
+    print('📍 Called from: ${StackTrace.current}');
+    __selectedFilter = value;
+  }
 
   int _currentPage = 1;
   int _totalPages = 1;
@@ -36,19 +47,24 @@ class _GroReservationManagementScreenState
   void initState() {
     super.initState();
 
-    // Set tanggal
     _selectedDate = widget.initialDate != null && widget.initialDate!.isNotEmpty
         ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
         : DateTime.now();
 
-    // ✅ Pastikan filter default 'pending' dengan jelas
-    _selectedFilter = (widget.filter?.isNotEmpty == true)
-        ? widget.filter!
-        : 'pending'; // Default ke 'pending'
+    // ✅ Log SEBELUM set
+    print('🚀 initState START:');
+    print('   widget.filter = ${widget.filter}');
+    print('   _selectedFilter BEFORE = $_selectedFilter');
+
+    _selectedFilter = widget.filter ?? 'pending';
+
+    print('   _selectedFilter AFTER = $_selectedFilter');
+    print('🚀 initState END');
 
     _loadReservations();
   }
 
+  // ✅ UPDATE: Tambahkan mapping untuk filter 'all'
   String? _mapFilterToApiStatus(String filter) {
     switch (filter) {
       case 'pending':
@@ -59,6 +75,8 @@ class _GroReservationManagementScreenState
         return 'completed';
       case 'cancelled':
         return 'cancelled';
+      case 'all': // ✅ Tambahkan case untuk 'all'
+        return null;
       default:
         return null;
     }
@@ -71,7 +89,9 @@ class _GroReservationManagementScreenState
     });
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final apiStatus = _selectedFilter == 'pending'
+
+      // ✅ UPDATE: Untuk filter 'all', kirim null ke API
+      final apiStatus = _selectedFilter == 'pending' || _selectedFilter == 'all'
           ? null
           : _mapFilterToApiStatus(_selectedFilter);
 
@@ -88,7 +108,7 @@ class _GroReservationManagementScreenState
       if (result['success']) {
         List<dynamic> reservations = List.from(result['data']);
 
-        // Filter frontend untuk "pending"
+        // ✅ UPDATE: Filter frontend untuk "pending" dan "all"
         if (_selectedFilter == 'pending') {
           reservations = reservations.where((item) {
             final type = item['type'] ?? 'reservation';
@@ -103,6 +123,7 @@ class _GroReservationManagementScreenState
             }
           }).toList();
         }
+        // Untuk filter 'all', tampilkan semua data tanpa filter tambahan
 
         // ✅ URUTKAN DATA TERBARU DI ATAS
         reservations.sort((a, b) {
@@ -269,36 +290,45 @@ class _GroReservationManagementScreenState
   }
 
   // === DISPLAY STATUS ===
+  // === DISPLAY STATUS ===
   String _getDisplayStatus(Map<String, dynamic> item) {
     final type = item['type'] ?? 'reservation';
     final status = item['status'] ?? 'pending';
+
     if (type == 'dine-in-order') {
-      if (status == 'Pending' || status == 'Waiting' || status == 'Reserved') {
-        return 'Menunggu';
-      } else if (status == 'OnProcess') {
-        return 'Berlangsung';
-      } else if (status == 'Completed') {
-        return 'Selesai';
-      } else if (status == 'Canceled') {
-        return 'Dibatalkan';
-      }
-      return status;
-    } else {
-      if (status == 'pending') {
-        return 'Menunggu';
-      } else if (status == 'confirmed') {
-        if (item['check_in_time'] != null && item['check_out_time'] == null) {
-          return 'Berlangsung';
-        } else {
+      switch (status) {
+        case 'Pending':
+        case 'Waiting':
+        case 'Reserved':
           return 'Menunggu';
-        }
-      } else if (status == 'completed') {
-        return 'Selesai';
-      } else if (status == 'cancelled') {
-        return 'Dibatalkan';
+        case 'OnProcess':
+          return 'Berlangsung';
+        case 'Completed':
+          return 'Selesai';
+        case 'Canceled':
+          return 'Dibatalkan';
+        default:
+          return status;
+      }
+    } else {
+      // Untuk reservation biasa
+      switch (status) {
+        case 'pending':
+          return 'Menunggu';
+        case 'confirmed':
+          if (item['check_in_time'] != null && item['check_out_time'] == null) {
+            return 'Berlangsung';
+          } else {
+            return 'Menunggu';
+          }
+        case 'completed':
+          return 'Selesai';
+        case 'cancelled':
+          return 'Dibatalkan';
+        default:
+          return status;
       }
     }
-    return status;
   }
 
   Color _getDisplayStatusColor(String displayStatus) {
@@ -482,7 +512,8 @@ class _GroReservationManagementScreenState
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            // Hapus filter 'all'
+            _buildFilterChip('all', 'Riwayat', Icons.history), // ✅ TAMBAHKAN FILTER RIWAYAT
+            const SizedBox(width: 8),
             _buildFilterChip('pending', 'Menunggu', Icons.schedule),
             const SizedBox(width: 8),
             _buildFilterChip('ongoing', 'Berlangsung', Icons.dining),
@@ -498,8 +529,19 @@ class _GroReservationManagementScreenState
 
   Widget _buildFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedFilter == value;
+
+    // ✅ DEBUG: Print nilai aktual saat widget di-build
+    print('🔍 _buildFilterChip called:');
+    print('   value: $value');
+    print('   _selectedFilter: $_selectedFilter');
+    print('   isSelected: $isSelected');
+    print('   Are they equal? ${_selectedFilter == value}');
+    print('   _selectedFilter type: ${_selectedFilter.runtimeType}');
+    print('   value type: ${value.runtimeType}');
+
     return InkWell(
       onTap: () {
+        print('🔥 Tapped: $value');
         setState(() {
           _selectedFilter = value;
           _currentPage = 1;
