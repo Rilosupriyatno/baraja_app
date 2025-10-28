@@ -25,7 +25,7 @@ class _GroReservationManagementScreenState
   String? _errorMessage;
 
   // ✅ Ubah ini jadi getter dengan log
-  String __selectedFilter = 'pending'; // Private variable
+  String __selectedFilter = 'all'; // Private variable
 
   String get _selectedFilter {
     print('📖 GET _selectedFilter: $__selectedFilter');
@@ -56,7 +56,8 @@ class _GroReservationManagementScreenState
     print('   widget.filter = ${widget.filter}');
     print('   _selectedFilter BEFORE = $_selectedFilter');
 
-    _selectedFilter = widget.filter ?? 'pending';
+    // ✅ UBAH: Default menjadi 'all' jika widget.filter null
+    _selectedFilter = widget.filter ?? 'all';
 
     print('   _selectedFilter AFTER = $_selectedFilter');
     print('🚀 initState END');
@@ -512,7 +513,7 @@ class _GroReservationManagementScreenState
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('all', 'Riwayat', Icons.history), // ✅ TAMBAHKAN FILTER RIWAYAT
+            _buildFilterChip('all', 'Riwayat', Icons.history), // ✅ FILTER ALL DI DEPAN
             const SizedBox(width: 8),
             _buildFilterChip('pending', 'Menunggu', Icons.schedule),
             const SizedBox(width: 8),

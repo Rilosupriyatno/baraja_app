@@ -132,15 +132,59 @@ class AuthService with ChangeNotifier {
   }
 
   /// Get user outlet information
+// Di auth_service.dart - perbaiki method getUserOutlets()
+  /// Get user outlet information
   List<Map<String, dynamic>> getUserOutlets() {
-    if (_user == null || _user!['outlet'] == null) return [];
+    print('🔍 DEBUG getUserOutlets() called');
 
-    final outlets = _user!['outlet'];
-    if (outlets is List) {
-      return List<Map<String, dynamic>>.from(outlets);
+    if (_user == null) {
+      print('❌ User is null');
+      return [];
     }
 
+    // ✅ PERBAIKAN: Check jika user memiliki outlet
+    if (_user!['outlet'] == null) {
+      print('ℹ️ User does not have outlet data (might be customer)');
+      return [];
+    }
+
+    final outlets = _user!['outlet'];
+    print('🔍 Raw outlets data: $outlets');
+    print('🔍 Outlets type: ${outlets.runtimeType}');
+    print('🔍 Outlets length: ${outlets.length}');
+
+    // ✅ PERBAIKAN: Return empty array jika tidak ada outlet
+    if (outlets is List && outlets.isEmpty) {
+      print('ℹ️ User has empty outlets array (customer or no assigned outlets)');
+      return [];
+    }
+
+    if (outlets is List) {
+      final result = List<Map<String, dynamic>>.from(outlets);
+      print('✅ Processed outlets: ${result.length} outlets');
+
+      // Debug each outlet
+      for (var i = 0; i < result.length; i++) {
+        print('   Outlet $i: ${result[i]}');
+      }
+
+      return result;
+    }
+
+    print('❌ Outlets is not a List');
     return [];
+  }
+
+  /// Check if user has any outlets (for GRO dashboard)
+  bool hasOutlets() {
+    final outlets = getUserOutlets();
+    return outlets.isNotEmpty;
+  }
+
+  /// Get first outlet (for GRO dashboard)
+  Map<String, dynamic>? getFirstOutlet() {
+    final outlets = getUserOutlets();
+    return outlets.isNotEmpty ? outlets.first : null;
   }
 
   // ==============================

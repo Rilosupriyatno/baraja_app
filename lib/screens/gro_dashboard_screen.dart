@@ -96,17 +96,24 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         foregroundColor: Colors.black,
         title: Consumer<AuthService>(
           builder: (context, authService, _) {
-            return const Text(
-              'Dashboard GRO',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 20,
-                color: Colors.black,
-              ),
+            return const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dashboard GRO',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: Colors.black,
+                  ),
+                ),
+                // ✅ TAMBAHKAN OUTLET INFO DI APPBAR
+                // _buildAppBarOutletInfo(authService),
+              ],
             );
           },
         ),
-        centerTitle: true,
+        centerTitle: false, // ✅ UBAH KE false agar rata kiri
         elevation: 0,
         actions: [
           IconButton(
@@ -130,6 +137,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       ),
     );
   }
+
 
   Widget _buildErrorState() {
     return Center(
@@ -181,62 +189,274 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   }
 
   Widget _buildDashboardContent() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      children: [
-        _buildWelcomeCard(),
-        const SizedBox(height: 24),
-        _buildDateSelector(),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<AuthService>(
+      builder: (context, authService, _) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            const Text(
-              'Statistik Reservasi',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E8B57).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFF2E8B57).withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: Color(0xFF2E8B57),
+            // ✅ TAMBAHKAN OUTLET CARD DI ATAS WELCOME CARD
+            _buildOutletCard(authService),
+            const SizedBox(height: 16),
+            _buildWelcomeCard(),
+            const SizedBox(height: 24),
+            _buildDateSelector(),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Statistik Reservasi',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    DateFormat('dd MMM', 'id_ID').format(_selectedDate),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF2E8B57),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E8B57).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF2E8B57).withOpacity(0.3),
                     ),
                   ),
-                ],
-              ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Color(0xFF2E8B57),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        DateFormat('dd MMM', 'id_ID').format(_selectedDate),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2E8B57),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            _buildStatsGrid(),
+            const SizedBox(height: 24),
           ],
+        );
+      },
+    );
+  }
+
+// Di gro_dashboard_screen.dart - perbaiki _buildOutletCard()
+  Widget _buildOutletCard(AuthService authService) {
+    final outlets = authService.getUserOutlets();
+
+    // ✅ PERBAIKAN: Sembunyikan card jika user tidak memiliki outlet
+    if (outlets.isEmpty) {
+      print('ℹ️ User has no outlets, hiding outlet card');
+      return const SizedBox(); // Sembunyikan card
+    }
+
+    final outlet = outlets.first;
+    final outletName = outlet['name'] ?? 'Nama Outlet';
+    final outletAddress = outlet['address'] ?? 'Alamat Outlet';
+    final outletPhone = outlet['contactNumber'] ?? outlet['phone'] ?? 'No Telepon';
+    final outletCity = outlet['city'] ?? 'Kota';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icon Outlet
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E8B57).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.store,
+              color: Color(0xFF2E8B57),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Informasi Outlet
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  outletName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  outletAddress,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$outletCity • $outletPhone',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Status Buka/Tutup
+          _buildOpenStatus(outlet),
+        ],
+      ),
+    );
+  }
+
+// ✅ PERBAIKAN: Juga di appbar outlet info
+  Widget _buildAppBarOutletInfo(AuthService authService) {
+    final outlets = authService.getUserOutlets();
+
+    // ✅ PERBAIKAN: Sembunyikan jika tidak ada outlet
+    if (outlets.isEmpty) {
+      return const SizedBox();
+    }
+
+    final outlet = outlets.first;
+    final outletName = outlet['name'] ?? 'Nama Outlet';
+    final outletAddress = outlet['address'] ?? 'Alamat Outlet';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 2),
+        Text(
+          outletName,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        const SizedBox(height: 16),
-        _buildStatsGrid(),
-        const SizedBox(height: 24),
+        Text(
+          outletAddress,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }
 
+  // ✅ WIDGET BARU: Status buka/tutup outlet
+  Widget _buildOpenStatus(Map<String, dynamic> outlet) {
+    final now = DateTime.now();
+    final currentTime = DateFormat('HH:mm').format(now);
+
+    final openTime = outlet['openTime'] ?? '06:00';
+    final closeTime = outlet['closeTime'] ?? '02:00';
+
+    print('ℹ️ Outlet: $outlet');
+    // print('ℹ️ Open Time: $openTime');
+    // print('ℹ️ Close Time: $closeTime');
+    print('ℹ️ Current Time: $currentTime');
+
+    final isOpen = _isOutletOpen(openTime, closeTime, currentTime);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isOpen ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isOpen ? Colors.green.shade200 : Colors.red.shade200,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isOpen ? Icons.circle : Icons.circle_outlined,
+            size: 8,
+            color: isOpen ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isOpen ? 'BUKA' : 'TUTUP',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isOpen ? Colors.green : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ METHOD BARU: Cek status buka/tutup outlet
+  bool _isOutletOpen(String openTime, String closeTime, String currentTime) {
+    try {
+      final open = _timeToMinutes(openTime);
+      final close = _timeToMinutes(closeTime);
+      final current = _timeToMinutes(currentTime);
+
+      // Jika waktu tutup lebih kecil dari waktu buka (contoh: buka 06:00, tutup 02:00)
+      // berarti outlet buka sampai melewati tengah malam
+      if (close < open) {
+        // outlet buka jika current time >= open time ATAU current time <= close time
+        return current >= open || current <= close;
+      } else {
+        // outlet buka jika current time antara open dan close time
+        return current >= open && current <= close;
+      }
+    } catch (e) {
+      print('Error checking outlet status: $e');
+      return false;
+    }
+  }
+
+  int _timeToMinutes(String time) {
+    final parts = time.split(':');
+    if (parts.length != 2) return 0;
+
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+
+    return hour * 60 + minute;
+  }
+
+  // Widget lainnya tetap sama...
   Widget _buildWelcomeCard() {
     return Container(
       width: double.infinity,

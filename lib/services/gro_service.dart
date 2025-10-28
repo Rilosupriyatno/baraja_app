@@ -657,15 +657,22 @@ class GROService {
   }
 
   // Get table availability
+// services/gro_service.dart - Updated
+
+// Get table availability - TAMBAHKAN outletId
   Future<Map<String, dynamic>> getTableAvailability({
     String? date,
     String? time,
     String? areaId,
+    required String outletId, // ✅ WAJIB DITAMBAHKAN
   }) async {
     try {
       final headers = await _getHeaders();
 
-      final queryParams = <String, String>{};
+      final queryParams = <String, String>{
+        'outletId': outletId, // ✅ KIRIM outletId
+      };
+
       if (date != null) queryParams['date'] = date;
       if (time != null) queryParams['time'] = time;
       if (areaId != null) queryParams['area_id'] = areaId;
@@ -688,14 +695,82 @@ class GROService {
     }
   }
 
-  // ✅ METHOD BARU: Force reset table status
-  Future<Map<String, dynamic>> forceResetTableStatus(String tableNumber) async {
+  // ✅ METHOD BARU: Get semua meja tersedia di semua area
+  Future<Map<String, dynamic>> getAllAvailableTables({required String outletId}) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/gro/tables/available?outletId=$outletId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to load available tables: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching available tables: $e');
+      throw Exception('Error fetching available tables: $e');
+    }
+  }
+
+// ✅ METHOD BARU: Transfer order ke meja lain
+  Future<Map<String, dynamic>> transferOrderToTable({
+    required String orderId,
+    required String newTableNumber,
+    required String transferredBy,
+    String? reason,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/orders/$orderId/transfer-table'),
+        headers: headers,
+        body: json.encode({
+          'newTableNumber': newTableNumber,
+          'transferredBy': transferredBy,
+          'reason': reason,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Order berhasil dipindahkan ke meja baru',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal memindahkan order ke meja baru',
+        };
+      }
+    } catch (e) {
+      print('Error transferring order: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
+
+// ✅ METHOD BARU: Force reset table status
+  Future<Map<String, dynamic>> forceResetTableStatus(String tableNumber, String outletId) async {
     try {
       final headers = await _getHeaders();
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/gro/tables/$tableNumber/force-reset'),
         headers: headers,
+        body: json.encode({
+          'outletId': outletId,
+        }),
       );
 
       print('Force reset response status: ${response.statusCode}');
@@ -770,27 +845,27 @@ class GROService {
   }
 
 // Reset table status
-  Future<Map<String, dynamic>> resetTableStatus(String tableId) async {
-    try {
-      final headers = await _getHeaders();
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/gro/tables/$tableId/reset-status'),
-        headers: headers,
-        body: json.encode({'status': 'available'}),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        return responseData;
-      } else {
-        throw Exception('Failed to reset table status: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error resetting table status: $e');
-      throw Exception('Error resetting table status: $e');
-    }
-  }
+//   Future<Map<String, dynamic>> resetTableStatus(String tableId) async {
+//     try {
+//       final headers = await _getHeaders();
+//
+//       final response = await http.put(
+//         Uri.parse('$baseUrl/api/gro/tables/$tableId/reset-status'),
+//         headers: headers,
+//         body: json.encode({'status': 'available'}),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final Map<String, dynamic> responseData = json.decode(response.body);
+//         return responseData;
+//       } else {
+//         throw Exception('Failed to reset table status: ${response.statusCode}');
+//       }
+//     } catch (e) {
+//       print('Error resetting table status: $e');
+//       throw Exception('Error resetting table status: $e');
+//     }
+//   }
 
   Future<Map<String, dynamic>> getTableOrderDetail({
     required String tableNumber,

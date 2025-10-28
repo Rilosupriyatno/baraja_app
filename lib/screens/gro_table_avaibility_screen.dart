@@ -38,6 +38,8 @@ class _GroTableAvailabilityScreenState
     super.initState();
     _loadTableAvailability();
   }
+  final String outletId = "67cbc9560f025d897d69f889"; // Contoh outletId
+
 
   Future<void> _loadTableAvailability() async {
     setState(() {
@@ -55,11 +57,13 @@ class _GroTableAvailabilityScreenState
       print('Date: $dateStr');
       print('Time: $_selectedTime');
       print('Area ID: $_selectedAreaId');
+      print('Outlet ID: $outletId'); // ✅ DEBUG
 
       final result = await _groService.getTableAvailability(
         date: dateStr,
         time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
         areaId: _selectedAreaId,
+        outletId: outletId, // ✅ KIRIM outletId
       );
 
       print('Result: $result');
@@ -85,15 +89,12 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-// ✅ METHOD BARU: Sync table status
+  // ✅ UPDATE syncTableStatus juga
   Future<void> _syncTableStatus() async {
     try {
-      // Ganti dengan outletId yang sesuai
-      const outletId = "67cbc9560f025d897d69f889";
-
       print('🔄 Syncing table status for outlet: $outletId');
 
-      final result = await _groService.syncTableStatus(outletId);
+      final result = await _groService.syncTableStatus(outletId); // ✅ GUNAKAN outletId
 
       if (result['success'] == true) {
         print('✅ Table status synced successfully');
@@ -486,8 +487,12 @@ class _GroTableAvailabilityScreenState
 
     return InkWell(
       onTap: isActive ? () => _onTableTap(table) : null,
+      // Di dalam _buildTableCard, perbaiki onLongPress:
       onLongPress: isActive && !isAvailable
-          ? () => _showCompleteOrderDialog(table)
+          ? () {
+        // Cek dulu apakah ada order aktif
+        _checkAndShowTableOptions(table);
+      }
           : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -546,12 +551,67 @@ class _GroTableAvailabilityScreenState
 
   void _onTableTap(Map<String, dynamic> table) async {
     final isAvailable = table['is_available'] ?? false;
+    final isActive = table['is_active'] ?? false;
+
+    if (!isActive) {
+      // Meja nonaktif - tidak bisa dilakukan apapun
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Meja ini sedang nonaktif'),
+          backgroundColor: Colors.grey,
+        ),
+      );
+      return;
+    }
 
     if (isAvailable) {
-      // Tampilkan dialog pilihan: Dine-In atau Reservasi
+      // Meja tersedia - tampilkan pilihan order
       _showOrderTypeDialog(table);
     } else {
-      _showTableOrderDetail(table);
+      // Meja terisi - cek apakah ada order aktif
+      try {
+        _showTableOrderDetail(table);
+      } catch (e) {
+        // Fallback: langsung tampilkan dialog untuk membebaskan meja
+        _showNoOrderDialog(table);
+      }
+    }
+  }
+
+  void _checkAndShowTableOptions(Map<String, dynamic> table) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final result = await _groService.getTableOrderDetail(
+        tableNumber: tableNumber,
+        date: dateStr,
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success'] && result['data'] != null) {
+        // Ada order aktif - tampilkan dialog complete order
+        final orderData = result['data'];
+        _showCompleteOrderDialog(table, orderData: orderData);
+      } else {
+        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
+        _showNoOrderDialog(table);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        // Fallback ke dialog bebaskan meja
+        _showNoOrderDialog(table);
+      }
     }
   }
 
@@ -747,7 +807,6 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-  // Methods untuk order detail (unchanged)
   void _showTableOrderDetail(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -768,18 +827,13 @@ class _GroTableAvailabilityScreenState
 
       if (mounted) Navigator.pop(context);
 
-      if (result['success']) {
+      if (result['success'] && result['data'] != null) {
+        // Ada order aktif - tampilkan detail order
         final orderData = result['data'];
         _showOrderDetailBottomSheet(orderData, table);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal memuat detail order'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
+        _showNoOrderDialog(table);
       }
     } catch (e) {
       if (mounted) {
@@ -794,28 +848,102 @@ class _GroTableAvailabilityScreenState
     }
   }
 
+  void _showNoOrderDialog(Map<String, dynamic> table) {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Meja $tableNumber'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline,
+              size: 48,
+              color: Colors.orange,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Tidak Ada Order Aktif',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sistem tidak menemukan order aktif untuk meja $tableNumber. '
+                  'Status meja saat ini terdeteksi sebagai terisi, tetapi tidak ada data order.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: const Text(
+                'Anda dapat membebaskan meja ini untuk mengatur statusnya menjadi tersedia.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _freeUpTable(table);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E8B57),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Bebaskan Meja'),
+          ),
+        ],
+      ),
+    );
+  }
   void _showOrderDetailBottomSheet(
       Map<String, dynamic> orderData,
       Map<String, dynamic> table,
       ) {
+    final hasActiveOrder = orderData['order_id'] != null;
+    final tableNumber = table['table_number'] ?? 'N/A';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.8,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
+            // Header section (tetap sama)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
-                borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 border: Border(
                   bottom: BorderSide(color: Colors.grey[200]!),
                 ),
@@ -827,7 +955,7 @@ class _GroTableAvailabilityScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Meja ${table['table_number']}',
+                          'Meja $tableNumber',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -841,6 +969,23 @@ class _GroTableAvailabilityScreenState
                             color: Colors.grey[600],
                           ),
                         ),
+                        if (!hasActiveOrder)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Tidak ada order aktif',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -851,93 +996,154 @@ class _GroTableAvailabilityScreenState
                 ],
               ),
             ),
+
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoCard(
-                      'Informasi Pelanggan',
-                      [
-                        _buildInfoRow(
-                          Icons.person,
-                          'Nama',
-                          orderData['customerName'] ?? 'N/A',
-                        ),
-                        if (orderData['customerPhone'] != null)
+                    if (hasActiveOrder) ...[
+                      _buildInfoCard(
+                        'Informasi Pelanggan',
+                        [
                           _buildInfoRow(
-                            Icons.phone,
-                            'Telepon',
-                            orderData['customerPhone'],
+                            Icons.person,
+                            'Nama',
+                            orderData['customerName'] ?? 'N/A',
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoCard(
-                      'Pesanan',
-                      (orderData['items'] as List? ?? []).map((item) {
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(
-                            backgroundColor:
-                            const Color(0xFF2E8B57).withOpacity(0.1),
-                            child: Text(
-                              '${item['quantity']}x',
-                              style: const TextStyle(
-                                color: Color(0xFF2E8B57),
-                                fontWeight: FontWeight.bold,
+                          if (orderData['customerPhone'] != null)
+                            _buildInfoRow(
+                              Icons.phone,
+                              'Telepon',
+                              orderData['customerPhone'],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildInfoCard(
+                        'Pesanan',
+                        (orderData['items'] as List? ?? []).map((item) {
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0xFF2E8B57).withOpacity(0.1),
+                              child: Text(
+                                '${item['quantity']}x',
+                                style: const TextStyle(
+                                  color: Color(0xFF2E8B57),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          title: Text(
-                            item['menuItem']?['name'] ?? 'N/A',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          subtitle: item['notes'] != null &&
-                              item['notes'].toString().isNotEmpty
-                              ? Text(
-                            'Catatan: ${item['notes']}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                            title: Text(
+                              item['menuItem']?['name'] ?? 'N/A',
+                              style: const TextStyle(fontWeight: FontWeight.w500),
                             ),
-                          )
-                              : null,
-                          trailing: Text(
-                            'Rp ${(item['subtotal'] ?? 0).toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                            subtitle: item['notes'] != null && item['notes'].toString().isNotEmpty
+                                ? Text(
+                              'Catatan: ${item['notes']}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            )
+                                : null,
+                            trailing: Text(
+                              'Rp ${(item['subtotal'] ?? 0).toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildInfoCard(
+                        'Total Pembayaran',
+                        [
+                          _buildTotalRow(
+                            'Subtotal',
+                            orderData['totalBeforeDiscount'] ?? 0,
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoCard(
-                      'Total Pembayaran',
-                      [
-                        _buildTotalRow(
-                          'Subtotal',
-                          orderData['totalBeforeDiscount'] ?? 0,
+                          if ((orderData['totalTax'] ?? 0) > 0)
+                            _buildTotalRow('Pajak', orderData['totalTax']),
+                          if ((orderData['totalServiceFee'] ?? 0) > 0)
+                            _buildTotalRow('Service', orderData['totalServiceFee']),
+                          const Divider(),
+                          _buildTotalRow(
+                            'Grand Total',
+                            orderData['grandTotal'] ?? 0,
+                            isBold: true,
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      // Tampilan ketika tidak ada order aktif
+                      _buildInfoCard(
+                        'Status Meja',
+                        [
+                          _buildInfoRow(
+                            Icons.info,
+                            'Status',
+                            'Tersedia (Tidak ada order aktif)',
+                          ),
+                          _buildInfoRow(
+                            Icons.table_restaurant,
+                            'Meja',
+                            tableNumber,
+                          ),
+                          _buildInfoRow(
+                            Icons.people,
+                            'Kapasitas',
+                            '${table['seats'] ?? 0} orang',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange[200]!),
                         ),
-                        if ((orderData['totalTax'] ?? 0) > 0)
-                          _buildTotalRow('Pajak', orderData['totalTax']),
-                        if ((orderData['totalServiceFee'] ?? 0) > 0)
-                          _buildTotalRow('Service', orderData['totalServiceFee']),
-                        const Divider(),
-                        _buildTotalRow(
-                          'Grand Total',
-                          orderData['grandTotal'] ?? 0,
-                          isBold: true,
+                        child: Column(
+                          children: [
+                            Icon(Icons.warning, size: 40, color: Colors.orange[600]),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Tidak Ada Order Aktif',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Sistem tidak menemukan order aktif untuk meja ini. '
+                                  'Anda dapat membebaskan meja untuk mengatur statusnya menjadi tersedia.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
+
+            // Footer dengan tombol aksi
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -950,26 +1156,77 @@ class _GroTableAvailabilityScreenState
                   ),
                 ],
               ),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showCompleteOrderDialog(table, orderData: orderData);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E8B57),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Selesaikan Pesanan',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              child: Row(
+                children: [
+                  if (hasActiveOrder) ...[
+                    // Tombol untuk order aktif
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _transferOrderToNewTable(table, orderData);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF3B82F6),
+                          side: const BorderSide(color: Color(0xFF3B82F6)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.swap_horiz, size: 18),
+                            SizedBox(width: 8),
+                            Text('Pindah Meja'),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showCompleteOrderDialog(table, orderData: orderData);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E8B57),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Selesaikan Pesanan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Tombol untuk meja tanpa order aktif
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _freeUpTable(table);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E8B57),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.cleaning_services, size: 18),
+                            SizedBox(width: 8),
+                            Text('Bebaskan Meja'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -1060,6 +1317,7 @@ class _GroTableAvailabilityScreenState
       }) async {
     final tableNumber = table['table_number'] ?? 'N/A';
 
+    // Jika tidak ada orderData, coba ambil dari API
     Map<String, dynamic>? data = orderData;
     if (data == null) {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -1068,15 +1326,9 @@ class _GroTableAvailabilityScreenState
         date: dateStr,
       );
 
-      if (!result['success']) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal memuat detail order'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (!result['success'] || result['data'] == null) {
+        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
+        _showNoOrderDialog(table);
         return;
       }
       data = result['data'];
@@ -1146,6 +1398,354 @@ class _GroTableAvailabilityScreenState
 
     if (confirmed == true) {
       _completeOrder(data['_id']);
+    }
+  }
+
+  // ✅ METHOD: Bebaskan meja yang tidak ada order aktif
+  void _freeUpTable(Map<String, dynamic> table) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bebaskan Meja'),
+        content: Text(
+          'Apakah Anda yakin ingin membebaskan meja $tableNumber? '
+              'Tindakan ini akan mengatur status meja menjadi tersedia meskipun sistem '
+              'mendeteksi tidak ada order aktif untuk meja ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _performFreeUpTable(table);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E8B57),
+            ),
+            child: const Text('Ya, Bebaskan Meja'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performFreeUpTable(Map<String, dynamic> table) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // ✅ KIRIM outletId
+      final result = await _groService.forceResetTableStatus(tableNumber, outletId);
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Meja berhasil dibebaskan'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        _loadTableAvailability();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal membebaskan meja'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+// ✅ METHOD: Pindahkan order ke meja lain
+  void _transferOrderToNewTable(Map<String, dynamic> table, Map<String, dynamic> orderData) async {
+    final currentTableNumber = table['table_number'] ?? 'N/A';
+    final orderId = orderData['_id'];
+
+    // Tampilkan dialog loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Ambil semua meja tersedia
+      final result = await _groService.getAllAvailableTables(outletId: outletId);
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success'] == true) {
+        final availableTables = result['data']['tables'] ?? [];
+        final tablesByArea = result['data']['tablesByArea'] ?? {};
+
+        if (availableTables.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tidak ada meja tersedia saat ini'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Tampilkan dialog pilih meja
+        _showTableSelectionDialog(
+          currentTableNumber,
+          orderId,
+          availableTables,
+          tablesByArea,
+          orderData,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal memuat meja tersedia'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+// ✅ METHOD: Tampilkan dialog pemilihan meja
+  void _showTableSelectionDialog(
+      String currentTableNumber,
+      String orderId,
+      List<dynamic> availableTables,
+      Map<String, dynamic> tablesByArea,
+      Map<String, dynamic> orderData,
+      ) {
+    String? selectedTable;
+    String reason = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Pindah ke Meja Lain'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Memindahkan dari Meja: $currentTableNumber',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Alasan pemindahan
+                  const Text(
+                    'Alasan Pemindahan:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Contoh: Hujan, AC rusak, request customer...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    maxLines: 2,
+                    onChanged: (value) {
+                      setState(() {
+                        reason = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Daftar meja tersedia grouped by area
+                  const Text(
+                    'Pilih Meja Tujuan:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+
+                  ...tablesByArea.entries.map((areaEntry) {
+                    final areaName = areaEntry.key;
+                    final tables = areaEntry.value as List<dynamic>;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          areaName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2E8B57),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tables.map((table) {
+                            final tableNumber = table['table_number'];
+                            final seats = table['seats'];
+                            final isSelected = selectedTable == tableNumber;
+
+                            return ChoiceChip(
+                              label: Text('$tableNumber ($seats)'),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  selectedTable = selected ? tableNumber : null;
+                                });
+                              },
+                              backgroundColor: Colors.grey[200],
+                              selectedColor: const Color(0xFF2E8B57).withOpacity(0.2),
+                              labelStyle: TextStyle(
+                                color: isSelected ? const Color(0xFF2E8B57) : Colors.black,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: selectedTable != null
+                    ? () async {
+                  Navigator.pop(context);
+                  await _performTableTransfer(
+                    currentTableNumber,
+                    selectedTable!,
+                    orderId,
+                    reason,
+                    orderData,
+                  );
+                }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E8B57),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Pindahkan'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+// ✅ METHOD: Eksekusi pemindahan meja
+  Future<void> _performTableTransfer(
+      String currentTable,
+      String newTable,
+      String orderId,
+      String reason,
+      Map<String, dynamic> orderData,
+      ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final result = await _groService.transferOrderToTable(
+        orderId: orderId,
+        newTableNumber: newTable,
+        transferredBy: 'GRO Staff', // Bisa diganti dengan nama staff yang login
+        reason: reason.isNotEmpty ? reason : 'Pemindahan meja oleh GRO',
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Order berhasil dipindahkan ke meja $newTable'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        _loadTableAvailability();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'] ?? 'Gagal memindahkan order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
