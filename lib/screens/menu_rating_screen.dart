@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../services/rating_service.dart';
@@ -218,8 +219,8 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
       // URL 3: Simple Google Maps link
       'https://maps.google.com/?q=Baraja+Coffee+Amphitheater',
 
-      // URL 4: Geo URI untuk fallback
-      'geo:-6.7104288,108.5383514?q=Baraja+Coffee+Amphitheater',
+      // URL 4: Fallback ke browser dengan URL Google Maps
+      'https://www.google.com/maps/place/Baraja+Coffee+Amphitheater/@-6.7104235,108.5357765,17z',
     ];
 
     bool success = false;
@@ -232,14 +233,14 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
 
         // Coba launch dengan mode yang berbeda
         try {
-          // Try 1: platformDefault - biarkan sistem yang tentukan
+          // Try 1: externalApplication (akan buka browser jika Maps tidak ada)
           final launched = await launchUrl(
             uri,
-            mode: LaunchMode.platformDefault,
+            mode: LaunchMode.externalApplication,
           );
 
           if (launched) {
-            print('✅ Successfully launched with platformDefault: $url');
+            print('✅ Successfully launched with externalApplication: $url');
             success = true;
 
             if (mounted) {
@@ -249,17 +250,17 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
             break;
           }
         } catch (e1) {
-          print('⚠️ platformDefault failed, trying externalApplication: $e1');
+          print('⚠️ externalApplication failed, trying platformDefault: $e1');
 
-          // Try 2: externalApplication
+          // Try 2: platformDefault
           try {
             final launched = await launchUrl(
               uri,
-              mode: LaunchMode.externalApplication,
+              mode: LaunchMode.platformDefault,
             );
 
             if (launched) {
-              print('✅ Successfully launched with externalApplication: $url');
+              print('✅ Successfully launched with platformDefault: $url');
               success = true;
 
               if (mounted) {
@@ -269,7 +270,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
               break;
             }
           } catch (e2) {
-            print('⚠️ externalApplication failed, trying inAppWebView: $e2');
+            print('⚠️ platformDefault failed, trying inAppWebView: $e2');
 
             // Try 3: inAppWebView sebagai fallback terakhir
             try {
@@ -304,16 +305,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
     if (!success && mounted) {
       print('❌ All URLs failed. Last error: $errorMessage');
 
-      // Show error message in SnackBar untuk debugging
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tidak dapat membuka Google Maps\nError: $errorMessage'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.orange,
-        ),
-      );
-
-      // Jika semua URL gagal, tampilkan dialog alternatif
+      // Tampilkan dialog manual tanpa menyebutkan error teknis
       await Future.delayed(const Duration(milliseconds: 500));
       _showManualGoogleReviewDialog();
     }
@@ -328,7 +320,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Buka Google Maps',
+            'Beri Rating di Google',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: Column(
@@ -336,12 +328,12 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Untuk memberi rating di Google, silakan:',
+                'Silakan beri rating untuk Baraja Coffee Amphitheater di Google:',
                 style: TextStyle(fontSize: 15),
               ),
               const SizedBox(height: 12),
               const Text(
-                '1. Buka aplikasi Google Maps\n2. Cari "Baraja Coffee"\n3. Scroll ke bawah\n4. Tap "Write a review"',
+                '1. Buka Google Maps atau browser\n2. Cari "Baraja Coffee Amphitheater"\n3. Scroll ke bagian ulasan\n4. Tap "Tulis ulasan" atau "Write a review"',
                 style: TextStyle(fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 16),
@@ -353,11 +345,11 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
+                    Icon(Icons.link, color: AppTheme.barajaPrimary.primaryColor, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Atau cari tempat kami di Google Maps',
+                        'Atau kunjungi link berikut di browser:',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade700,
@@ -365,6 +357,41 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Tambahkan tombol copy link
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: googleMapsUrl));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Link berhasil disalin!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          googleMapsUrl.length > 40
+                              ? '${googleMapsUrl.substring(0, 40)}...'
+                              : googleMapsUrl,
+                          style: const TextStyle(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.copy, size: 16),
+                    ],
+                  ),
                 ),
               ),
             ],

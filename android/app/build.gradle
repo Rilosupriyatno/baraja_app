@@ -104,11 +104,11 @@ android {
         release {
             // Biarkan ini menggunakan signingConfigs.debug (atau signing config default Flutter)
             // Sesuai permintaan: APK build tetap normal/cepat.
-            signingConfig = signingConfigs.debug
-//            signingConfig signingConfigs.releaseKey
-//            minifyEnabled false
-//            shrinkResources false
-//            debuggable false
+//            signingConfig = signingConfigs.debug
+            signingConfig signingConfigs.releaseKey
+            minifyEnabled false
+            shrinkResources false
+            debuggable false
         }
         debug {
             // Tidak perlu diubah, gunakan signingConfigs.debug (default)

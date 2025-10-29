@@ -41,7 +41,7 @@ class _GroTableAvailabilityScreenState
   final String outletId = "67cbc9560f025d897d69f889"; // Contoh outletId
 
 
-  Future<void> _loadTableAvailability() async {
+  Future<void> _loadTableAvailability({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -53,17 +53,31 @@ class _GroTableAvailabilityScreenState
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
+      // ✅ TAMBAHKAN: Cache busting parameter untuk force refresh
+      final Map<String, String> queryParams = {
+        'date': dateStr,
+        'outletId': outletId,
+        '_t': DateTime.now().millisecondsSinceEpoch.toString(), // Cache busting
+      };
+
+      if (_selectedTime != null && _selectedTime!.isNotEmpty) {
+        queryParams['time'] = _selectedTime!;
+      }
+      if (_selectedAreaId != null) {
+        queryParams['area_id'] = _selectedAreaId!;
+      }
+
       print('Loading table availability with:');
       print('Date: $dateStr');
       print('Time: $_selectedTime');
       print('Area ID: $_selectedAreaId');
-      print('Outlet ID: $outletId'); // ✅ DEBUG
+      print('Outlet ID: $outletId');
 
       final result = await _groService.getTableAvailability(
         date: dateStr,
         time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
         areaId: _selectedAreaId,
-        outletId: outletId, // ✅ KIRIM outletId
+        outletId: outletId,
       );
 
       print('Result: $result');
@@ -1433,6 +1447,31 @@ class _GroTableAvailabilityScreenState
       ),
     );
   }
+// Method untuk debug status meja
+  Future<void> _debugTableStatus(Map<String, dynamic> table) async {
+    final tableNumber = table['table_number'] ?? 'N/A';
+
+    try {
+      final debugResult = await _groService.debugTableStatus(outletId);
+      print('🔍 Debug Table Status: $debugResult');
+
+      // Cari status meja ini di hasil debug
+      if (debugResult['success'] == true) {
+        final inconsistencies = debugResult['data']['inconsistencies'] ?? [];
+        final consistentTables = debugResult['data']['consistent_tables'] ?? [];
+
+        final tableDebug = [...inconsistencies, ...consistentTables]
+            .firstWhere((t) => t['table_number'] == tableNumber, orElse: () => null);
+
+        if (tableDebug != null) {
+          print('📊 Table $tableNumber Debug: $tableDebug');
+        }
+      }
+    } catch (e) {
+      print('❌ Debug error: $e');
+    }
+  }
+
 
   Future<void> _performFreeUpTable(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
@@ -1460,7 +1499,11 @@ class _GroTableAvailabilityScreenState
             ),
           );
         }
-        _loadTableAvailability();
+
+        // ✅ TAMBAHKAN: Refresh data dan tunggu sebentar
+        await Future.delayed(const Duration(seconds: 1));
+        await _loadTableAvailability();
+
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -7,8 +7,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- IMPORTANT: Tambahkan permission ini untuk Android 11+ -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+<!--    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"-->
+<!--        tools:ignore="QueryAllPackagesPermission" />-->
 
     <!-- Tambahkan queries untuk url_launcher -->
     <queries>
@@ -27,7 +27,7 @@
             <data android:scheme="geo" />
         </intent>
         <!-- Untuk membuka aplikasi Google Maps langsung -->
-        <package android:name="com.google.android.apps.maps" />
+<!--        <package android:name="com.google.android.apps.maps" />-->
 
         <!-- Yang sudah ada sebelumnya (jangan hapus) -->
         <intent>
