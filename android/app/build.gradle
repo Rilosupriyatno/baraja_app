@@ -62,7 +62,7 @@ def incrementVersionCode() {
 
 android {
     namespace = "com.baraja.baraja_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     // ---------------------------------------------------------------------------------------
@@ -84,6 +84,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -93,7 +94,7 @@ android {
     defaultConfig {
         applicationId = "com.baraja.baraja_app"
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35
 
         // Auto increment versionCode
         versionCode = incrementVersionCode()
@@ -104,11 +105,11 @@ android {
         release {
             // Biarkan ini menggunakan signingConfigs.debug (atau signing config default Flutter)
             // Sesuai permintaan: APK build tetap normal/cepat.
-//            signingConfig = signingConfigs.debug
-            signingConfig signingConfigs.releaseKey
-            minifyEnabled false
-            shrinkResources false
-            debuggable false
+            signingConfig = signingConfigs.debug
+//            signingConfig signingConfigs.releaseKey
+//            minifyEnabled false
+//            shrinkResources false
+//            debuggable false
         }
         debug {
             // Tidak perlu diubah, gunakan signingConfigs.debug (default)
@@ -126,6 +127,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.2.3')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
 
 
