@@ -121,6 +121,12 @@ class OrderService {
             'areaIds': reservationData.areaId,
             'tableIds': reservationData.selectedTableIds,
             'reservationDate': reservationData.formattedDate,
+
+            // ✅ TAMBAHAN BARU
+            if (reservationData.servingType != null)
+              'serving_type': reservationData.servingType,
+            if (reservationData.equipment.isNotEmpty)
+              'equipment': reservationData.equipment,
           };
 
           if (reservationType != null) {

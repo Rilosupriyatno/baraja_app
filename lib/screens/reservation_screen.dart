@@ -6,6 +6,8 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../models/table.dart';
 import '../providers/cart_provider.dart';
 import '../utils/base_screen_wrapper.dart';
+import '../widgets/reservation/equipment_selector.dart';
+import '../widgets/reservation/serving_type_selector.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
@@ -34,7 +36,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   List<TableModel> tables = [];
   List<String> selectedTableIds = [];
   bool isLoadingTables = false;
-
+  String? selectedServingType; // 'ala carte' or 'buffet'
+  List<String> selectedEquipment = [];
   List<Area> areas = [];
   bool isLoadingAreas = true;
   bool isCheckingAvailability = false;
@@ -554,13 +557,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     formattedDate: formattedDate,
                     formattedTime: formattedTime,
                     selectedTableIds: selectedTableIds,
+                    servingType: selectedServingType, // ✅ TAMBAHAN
+                    equipment: selectedEquipment, // ✅ TAMBAHAN
                   );
 
-                  // Set context ke CartProvider
                   final cartProvider = Provider.of<CartProvider>(context, listen: false);
                   cartProvider.setReservationData(true, reservationData);
 
-                  // Langsung ke checkout
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -576,7 +579,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   style: TextStyle(color: Colors.blue.shade600),
                 ),
               ),
-
 
               // Tombol "Lanjut ke Menu" - untuk reservasi dengan menu
               ElevatedButton(
@@ -636,6 +638,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
       formattedDate: formattedDate,
       formattedTime: formattedTime,
       selectedTableIds: selectedTableIds,
+      servingType: selectedServingType, // ✅ TAMBAHAN
+      equipment: selectedEquipment, // ✅ TAMBAHAN
     );
 
     Navigator.push(
@@ -1133,12 +1137,10 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     onAreaChanged: _onAreaChanged,
                     isLoading: isLoadingAreas,
                   ),
-
                   const SizedBox(height: 16),
 
                   // Table selection
                   _buildTableList(),
-
                   const SizedBox(height: 16),
 
                   // Person count
@@ -1148,6 +1150,28 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     onPersonCountChanged: (count) {
                       setState(() {
                         personCount = count;
+                      });
+                    },
+                  ),
+
+                  // ✅ TAMBAHAN BARU: Serving Type Selector
+                  const SizedBox(height: 16),
+                  ServingTypeSelector(
+                    selectedServingType: selectedServingType,
+                    onServingTypeChanged: (type) {
+                      setState(() {
+                        selectedServingType = type;
+                      });
+                    },
+                  ),
+
+                  // ✅ TAMBAHAN BARU: Equipment Selector
+                  const SizedBox(height: 16),
+                  EquipmentSelector(
+                    selectedEquipment: selectedEquipment,
+                    onEquipmentChanged: (equipment) {
+                      setState(() {
+                        selectedEquipment = equipment;
                       });
                     },
                   ),

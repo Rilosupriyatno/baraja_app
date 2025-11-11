@@ -9,7 +9,11 @@ class ReservationData {
   final int personCount;
   final String formattedDate;
   final String formattedTime;
-  final List<String> selectedTableIds; // New field for selected table IDs
+  final List<String> selectedTableIds;
+
+  // ✅ FIELD BARU
+  final String? servingType; // 'ala carte' or 'buffet'
+  final List<String> equipment; // Array equipment yang dipilih
 
   ReservationData({
     required this.date,
@@ -19,7 +23,9 @@ class ReservationData {
     required this.personCount,
     required this.formattedDate,
     required this.formattedTime,
-    this.selectedTableIds = const [], // Default to empty list
+    this.selectedTableIds = const [],
+    this.servingType, // Default null (opsional)
+    this.equipment = const [], // Default empty list
   });
 
   // Create a copy with updated values
@@ -32,6 +38,8 @@ class ReservationData {
     String? formattedDate,
     String? formattedTime,
     List<String>? selectedTableIds,
+    String? servingType,
+    List<String>? equipment,
   }) {
     return ReservationData(
       date: date ?? this.date,
@@ -42,6 +50,8 @@ class ReservationData {
       formattedDate: formattedDate ?? this.formattedDate,
       formattedTime: formattedTime ?? this.formattedTime,
       selectedTableIds: selectedTableIds ?? this.selectedTableIds,
+      servingType: servingType ?? this.servingType,
+      equipment: equipment ?? this.equipment,
     );
   }
 
@@ -54,6 +64,8 @@ class ReservationData {
       'area_code': areaCode,
       'person_count': personCount,
       'selected_table_ids': selectedTableIds,
+      if (servingType != null) 'serving_type': servingType,
+      if (equipment.isNotEmpty) 'equipment': equipment,
     };
   }
 
@@ -61,9 +73,11 @@ class ReservationData {
   String toString() {
     return 'ReservationData(date: $formattedDate, time: $formattedTime, '
         'areaCode: $areaCode, personCount: $personCount, '
-        'selectedTables: ${selectedTableIds.join(", ")})';
+        'selectedTables: ${selectedTableIds.join(", ")}, '
+        'servingType: $servingType, equipment: ${equipment.join(", ")})';
   }
 }
+
 /// Model lebih ringkas khusus untuk Open Bill
 class OpenBillData {
   final String reservationId;
@@ -72,7 +86,7 @@ class OpenBillData {
   final String areaId;
   final String areaCode;
   final String tableId;
-  final String tableNumbers; // Menambahkan field untuk tableNumbers
+  final String tableNumbers;
 
   OpenBillData({
     required this.reservationId,
@@ -81,7 +95,7 @@ class OpenBillData {
     required this.areaId,
     required this.areaCode,
     required this.tableId,
-    required this.tableNumbers, // Inisialisasi default
+    required this.tableNumbers,
   });
 
   Map<String, dynamic> toJson() {
@@ -90,12 +104,12 @@ class OpenBillData {
       'area_id': areaId,
       'area_code': areaCode,
       'tableId': tableId,
-      'table_numbers': tableNumbers, // Menambahkan tableNumbers ke JSON
+      'table_numbers': tableNumbers,
     };
   }
 
   @override
   String toString() {
-    return 'OpenBillData(reservationId: $reservationId, date: $date, time: $time, areaId: $areaId, areaCode: $areaCode, tableId: $tableId, tableNumbers: $tableNumbers)'; // Menambahkan tableNumbers ke string
+    return 'OpenBillData(reservationId: $reservationId, date: $date, time: $time, areaId: $areaId, areaCode: $areaCode, tableId: $tableId, tableNumbers: $tableNumbers)';
   }
 }

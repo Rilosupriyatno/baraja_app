@@ -44,7 +44,7 @@ class DineInInfoWidget extends StatelessWidget {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
           Text(
-            'Pesanan akan disajikan langsung ke meja Anda',
+            'Pesanan akan disajikan langsung ke meja Anda', //tidak ada kaitan dengan status order(hanya sekedar text)
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
         ],

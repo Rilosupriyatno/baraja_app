@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/order.dart';
 import '../../utils/order_tracking_helper.dart';
+import '../../utils/status_management_helper.dart';
 
 class OrderStatusCard extends StatelessWidget {
   final Order order;
@@ -9,8 +10,8 @@ class OrderStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = OrderTrackingHelper.getStatusColor(order.status);
-    final IconData statusIcon = OrderTrackingHelper.getStatusIcon(order.status);
+    final Color statusColor = StatusManagementHelper.getStatusColorFromEnum(order.status);
+    final IconData statusIcon = StatusManagementHelper.getStatusIconFromEnum(order.status);
 
     return Card(
       elevation: 3,
@@ -42,7 +43,7 @@ class OrderStatusCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    OrderTrackingHelper.getStatusDescription(order.status, order.orderType),
+                    StatusManagementHelper.getStatusDescriptionFromEnum(order.status, order.orderType as String?),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],

@@ -1,4 +1,11 @@
+// ============================================
+// STATUS SECTION WIDGET - REFACTORED VERSION
+// ============================================
+// Menggunakan StatusManagementHelper untuk centralized status management
+// File: widgets/tracking_detail/status_section_widget.dart
+
 import 'package:flutter/material.dart';
+import 'package:baraja_app/utils/status_management_helper.dart';
 
 class StatusSectionWidget extends StatelessWidget {
   final String orderStatus;
@@ -16,145 +23,52 @@ class StatusSectionWidget extends StatelessWidget {
     this.orderData,
   });
 
-  // Helper method to get comprehensive status info
+  // ✅ REFACTORED: Menggunakan StatusManagementHelper
   Map<String, dynamic> _getStatusInfo() {
     if (orderData == null) return {};
 
-    // PERBAIKAN: Cek multiple sources untuk payment status
-    String paymentStatus = '';
-    if (orderData!['paymentStatus'] != null) {
-      paymentStatus = orderData!['paymentStatus'].toString();
-    }
+    // Extract payment status
+    final paymentStatus = orderData!['paymentStatus']?.toString() ?? '';
 
-    // PERBAIKAN: Cek multiple sources untuk order status
-    String orderStatusValue = '';
-    if (orderData!['orderStatus'] != null) {
-      orderStatusValue = orderData!['orderStatus'].toString();
-    } else if (orderData!['status'] != null) {
-      orderStatusValue = orderData!['status'].toString();
-    }
+    // Extract order status
+    final orderStatusValue = orderData!['orderStatus']?.toString() ??
+        orderData!['status']?.toString() ?? '';
 
+    // Extract order type
+    final orderType = _extractOrderType();
 
-    print('🔍 StatusSectionWidget - Full orderData: $orderData');
     print('🔍 StatusSectionWidget - Payment Status: "$paymentStatus"');
     print('🔍 StatusSectionWidget - Order Status: "$orderStatusValue"');
-    print('🔍 StatusSectionWidget - orderData["orderStatus"]: ${orderData!['orderStatus']}');
-    print('🔍 StatusSectionWidget - orderData["status"]: ${orderData!['orderStatus']}');
+    print('🔍 StatusSectionWidget - Order Type: "$orderType"');
 
-    // Prioritize order status if payment is successful
-    if (paymentStatus == 'settlement' || paymentStatus == 'capture' ||
-        paymentStatus == 'paid' || paymentStatus == 'Paid') {
-      return _getOrderStatusInfo(orderStatusValue);
-    } else {
-      return _getPaymentStatusInfo(paymentStatus);
-    }
+    // ✅ Gunakan helper untuk mendapatkan status comprehensive
+    return StatusManagementHelper.getComprehensiveStatus(
+      paymentStatus: paymentStatus,
+      orderStatus: orderStatusValue,
+      orderType: orderType,
+    );
   }
 
-  // Get order status information when payment is successful
-  Map<String, dynamic> _getOrderStatusInfo(String orderStatusValue) {
-    print('Processing order status: "$orderStatusValue"');
+  // Helper untuk extract order type dari order data
+  String? _extractOrderType() {
+    if (orderData!['dineInData'] != null) return 'dine-in';
+    if (orderData!['pickupData'] != null) return 'pickup';
+    if (orderData!['takeAwayData'] != null) return 'take-away';
+    if (orderData!['deliveryData'] != null) return 'delivery';
 
-    switch (orderStatusValue) {
-      case 'Pending':
-        return {
-          'subtitle': 'Menunggu konfirmasi dari kasir',
-          'description': 'Pesanan Anda akan segera diproses',
-          'showPulse': true,
-        };
-      case 'Reserved':
-        return {
-          'subtitle': 'Di reservasi',
-          'description': 'Reservasi Anda telah diterima',
-          'showPulse': true,
-        };
-      case 'Waiting':
-        return {
-          'subtitle': 'Menunggu konfirmasi dari dapur',
-          'description': 'Pesanan Anda akan segera diproses oleh chef',
-          'showPulse': true,
-        };
-      case 'OnProcess':
-        return {
-          'subtitle': 'Sedang diproses oleh dapur',
-          'description': 'Chef sedang menyiapkan pesanan Anda',
-          'showPulse': true,
-        };
-      case 'Ready':
-        return {
-          'subtitle': 'Pesanan siap!',
-          'description': 'Silakan ambil pesanan Anda',
-          'showPulse': true,
-        };
-      case 'OnTheWay':
-        return {
-          'subtitle': 'Dalam perjalanan',
-          'description': 'Pesanan Anda sedang diantar ke alamat tujuan',
-          'showPulse': true,
-        };
-      case 'Completed':
-        return {
-          'subtitle': 'Pesanan selesai',
-          'description': 'Terima kasih telah memesan di Baraja Coffee',
-          'showPulse': false,
-        };
-      case 'Canceled':
-      case 'Cancelled':
-        return {
-          'subtitle': 'Pesanan dibatalkan',
-          'description': 'Pesanan telah dibatalkan',
-          'showPulse': false,
-        };
-      default:
-        print('Unknown order status: "$orderStatusValue", using default');
-        return {
-          'subtitle': 'Status pesanan',
-          'description': 'Pesanan Anda sedang diproses',
-          'showPulse': true,
-        };
-    }
-  }
-
-  // Get payment status information when payment is not successful
-  Map<String, dynamic> _getPaymentStatusInfo(String paymentStatus) {
-    switch (paymentStatus) {
-      case 'expire':
-      case 'Unpaid':
-        return {
-          'subtitle': 'Pembayaran telah kadaluarsa',
-          'description': 'Silakan buat pesanan baru untuk melanjutkan',
-          'showPulse': false,
-        };
-      case 'pending':
-        return {
-          'subtitle': 'Menunggu pembayaran Anda',
-          'description': 'Selesaikan pembayaran sebelum waktu habis',
-          'showPulse': true,
-        };
-      case 'partial':
-        return {
-          'subtitle': 'Menunggu pelunasan',
-          'description': 'Lakukan pelunasan di kasir',
-          'showPulse': true,
-        };
-      case 'cancel':
-        return {
-          'subtitle': 'Pembayaran dibatalkan',
-          'description': 'Pesanan telah dibatalkan',
-          'showPulse': false,
-        };
-      default:
-        return {
-          'subtitle': 'Status pembayaran',
-          'description': 'Menunggu konfirmasi pembayaran',
-          'showPulse': true,
-        };
-    }
+    // Fallback: cek dari field orderType jika ada
+    return orderData!['orderType']?.toString();
   }
 
   @override
   Widget build(BuildContext context) {
     final statusInfo = _getStatusInfo();
     final shouldPulse = statusInfo['showPulse'] ?? true;
+
+    // Get status dari helper (fallback ke parameter jika helper tidak ada data)
+    final displayStatus = statusInfo['status']?.toString() ?? orderStatus;
+    final displayColor = statusInfo['color'] as Color? ?? statusColor;
+    final displayIcon = statusInfo['icon'] as IconData? ?? statusIcon;
 
     return AnimatedBuilder(
       animation: pulseAnimation,
@@ -167,18 +81,18 @@ class StatusSectionWidget extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  statusColor.withOpacity(0.1),
-                  statusColor.withOpacity(0.05),
+                  displayColor.withOpacity(0.1),
+                  displayColor.withOpacity(0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: statusColor.withOpacity(0.3),
+                color: displayColor.withOpacity(0.3),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: statusColor.withOpacity(0.1),
+                  color: displayColor.withOpacity(0.1),
                   spreadRadius: 0,
                   blurRadius: 15,
                   offset: const Offset(0, 5),
@@ -190,12 +104,12 @@ class StatusSectionWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
+                    color: displayColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    statusIcon,
-                    color: statusColor,
+                    displayIcon,
+                    color: displayColor,
                     size: 24,
                   ),
                 ),
@@ -205,25 +119,27 @@ class StatusSectionWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        orderStatus,
+                        displayStatus,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: statusColor,
+                          color: displayColor,
                         ),
                       ),
-                      if (statusInfo['subtitle'] != null && statusInfo['subtitle'].isNotEmpty) ...[
+                      if (statusInfo['subtitle'] != null &&
+                          statusInfo['subtitle'].toString().isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           statusInfo['subtitle'],
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: statusColor.withOpacity(0.8),
+                            color: displayColor.withOpacity(0.8),
                           ),
                         ),
                       ],
-                      if (statusInfo['description'] != null && statusInfo['description'].isNotEmpty) ...[
+                      if (statusInfo['description'] != null &&
+                          statusInfo['description'].toString().isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
                           statusInfo['description'],
@@ -240,11 +156,11 @@ class StatusSectionWidget extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: statusColor,
+                    color: displayColor,
                     shape: BoxShape.circle,
                     boxShadow: shouldPulse ? [
                       BoxShadow(
-                        color: statusColor.withOpacity(0.4),
+                        color: displayColor.withOpacity(0.4),
                         spreadRadius: 2,
                         blurRadius: 8,
                       ),

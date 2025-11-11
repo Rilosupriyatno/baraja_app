@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:baraja_app/utils/status_management_helper.dart';
 
-class OrderTypeSectionWidget extends StatelessWidget {
+/// ============================================
+/// ORDER TYPE SECTION WIDGET - WITH EXPIRY COUNTDOWN
+/// ============================================
+/// Widget untuk menampilkan detail order type dengan countdown expiry
+///
+/// ✅ ENHANCEMENT: Tampilkan countdown expiry untuk payment pending
+/// ✅ BENEFIT: User aware kapan order akan expire
+/// ============================================
+
+class OrderTypeSectionWidget extends StatefulWidget {
   final Map<String, dynamic> orderData;
 
   const OrderTypeSectionWidget({
@@ -9,44 +19,124 @@ class OrderTypeSectionWidget extends StatelessWidget {
     required this.orderData,
   });
 
+  @override
+  State<OrderTypeSectionWidget> createState() => _OrderTypeSectionWidgetState();
+}
+
+class _OrderTypeSectionWidgetState extends State<OrderTypeSectionWidget> {
+  String? _remainingTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateRemainingTime();
+  }
+
+  @override
+  void didUpdateWidget(OrderTypeSectionWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.orderData != widget.orderData) {
+      _calculateRemainingTime();
+    }
+  }
+
+  // ✅ BARU: Hitung remaining time hingga expired
+  void _calculateRemainingTime() {
+    final paymentDetails = widget.orderData['paymentDetails'] as Map<String, dynamic>?;
+    final expiryTime = paymentDetails?['expiry_time'] as String?;
+
+    if (expiryTime == null || expiryTime.isEmpty) {
+      setState(() => _remainingTime = null);
+      return;
+    }
+
+    try {
+      // Parse expiry time from Midtrans format
+      final expiry = DateTime.parse(expiryTime);
+      final now = DateTime.now();
+      final difference = expiry.difference(now);
+
+      if (difference.isNegative) {
+        setState(() => _remainingTime = 'Expired');
+      } else {
+        final hours = difference.inHours;
+        final minutes = difference.inMinutes.remainder(60);
+
+        if (hours > 0) {
+          setState(() => _remainingTime = '$hours jam $minutes menit');
+        } else if (minutes > 0) {
+          setState(() => _remainingTime = '$minutes menit');
+        } else {
+          setState(() => _remainingTime = 'Kurang dari 1 menit');
+        }
+
+        // Update setiap menit
+        Future.delayed(const Duration(minutes: 1), () {
+          if (mounted) _calculateRemainingTime();
+        });
+      }
+    } catch (e) {
+      print('❌ Error parsing expiry time: $e');
+      setState(() => _remainingTime = null);
+    }
+  }
+
+  // ✅ Helper method untuk format waktu pickup
   String _formatPickupTime(String rawTime) {
     try {
-      // Contoh input: "Sun Sep 14 2025 17:54:00 GMT+0700 (Waktu Indonesia Barat)"
       final index = rawTime.indexOf(' GMT');
       final cleaned = index != -1 ? rawTime.substring(0, index) : rawTime;
 
-      // Parsing dengan format bahasa Inggris
       final formatterInput = DateFormat('EEE MMM dd yyyy HH:mm:ss', 'en_US');
       final dateTime = formatterInput.parse(cleaned);
 
-      // Format output dengan hari, tanggal, bulan singkat, tahun dan jam:menit dalam bahasa Indonesia
       final formatterOutput = DateFormat('EEEE, dd MMM yyyy HH:mm', 'id_ID');
       return formatterOutput.format(dateTime);
     } catch (e) {
-      return rawTime; // fallback jika gagal parsing
+      return rawTime;
     }
   }
 
-  // Helper method to get order type from data
+  // ✅ Helper method untuk mendapatkan order type dari data
   String _getOrderType() {
-    if (orderData['dineInData'] != null) {
-      return 'Dine-In';
-    } else if (orderData['pickupData'] != null) {
-      return 'Pickup';
-    } else if (orderData['takeAwayData'] != null) {
-      return 'Take Away';
-    } else if (orderData['deliveryData'] != null) {
-      return 'Delivery';
-    } else {
-      return 'Unknown';
-    }
+    if (widget.orderData['dineInData'] != null) return 'dine-in';
+    if (widget.orderData['pickupData'] != null) return 'pickup';
+    if (widget.orderData['takeAwayData'] != null) return 'take-away';
+    if (widget.orderData['deliveryData'] != null) return 'delivery';
+    return 'unknown';
   }
 
-  // Helper method to determine if we should show this widget
+  // ✅ Helper method untuk cek apakah widget harus ditampilkan
   bool _shouldShowOrderTypeSection() {
     final orderType = _getOrderType();
-    print("ini adalah isi orderData di section: $orderData");
-    return orderType != 'Unknown';
+    print("🔍 OrderTypeSectionWidget - Order Type: $orderType");
+
+    // Jangan tampilkan jika order type unknown
+    if (orderType == 'unknown') return false;
+
+    // ✅ PERBAIKAN: Cek payment status - jangan tampilkan jika payment belum sukses
+    final paymentStatus = widget.orderData['paymentStatus']?.toString().toLowerCase() ?? '';
+    final isPaymentSuccessful = ['settlement', 'capture', 'paid', 'partial'].contains(paymentStatus);
+
+    if (!isPaymentSuccessful) {
+      print("⚠️ OrderTypeSectionWidget - Payment not successful ($paymentStatus), hiding section");
+      return false;
+    }
+
+    print("✅ OrderTypeSectionWidget - Payment successful, showing section");
+    return true;
+  }
+
+  // ✅ BARU: Cek apakah payment masih pending
+  bool _isPaymentPending() {
+    final paymentStatus = widget.orderData['paymentStatus']?.toString().toLowerCase() ?? '';
+    return paymentStatus == 'pending';
+  }
+
+  // ✅ BARU: Cek apakah payment expired
+  bool _isPaymentExpired() {
+    final paymentStatus = widget.orderData['paymentStatus']?.toString().toLowerCase() ?? '';
+    return ['expire', 'unpaid'].contains(paymentStatus);
   }
 
   @override
@@ -57,481 +147,241 @@ class OrderTypeSectionWidget extends StatelessWidget {
 
     final orderType = _getOrderType();
 
-    switch (orderType) {
-      case 'Dine-In':
-        return _buildDineInSection();
-      case 'Pickup':
-        return _buildPickupSection();
-      case 'Take Away':
-        return _buildTakeAwaySection();
-      case 'Delivery':
-        return _buildDeliverySection();
-      default:
-        return const SizedBox.shrink();
+    // ✅ GUNAKAN: StatusManagementHelper untuk mendapatkan konfigurasi
+    final config = StatusManagementHelper.getOrderTypeConfig(orderType);
+
+    print("📦 OrderTypeSectionWidget - Config loaded for: $orderType");
+
+    // Build section berdasarkan order type dengan data dari helper
+    return _buildOrderTypeSection(config);
+  }
+
+  // ✅ REFACTORED: Universal builder yang menggunakan config dari helper
+  Widget _buildOrderTypeSection(Map<String, dynamic> config) {
+    final color = config['color'] as Color;
+    final icon = config['icon'] as IconData;
+    final title = config['title'] as String;
+    final subtitle = config['subtitle'] as String;
+    final badge = config['badge'] as String;
+    final details = config['details'] as Map<String, dynamic>;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ✅ Header - Menggunakan data dari config
+          _buildHeader(
+            color: color,
+            icon: icon,
+            title: title,
+            subtitle: subtitle,
+            badge: badge,
+          ),
+
+          // ✅ Details - Build rows berdasarkan config
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: _buildDetailRows(details),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Build header section
+  Widget _buildHeader({
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String badge,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withOpacity(0.3),
+              ),
+            ),
+            child: Text(
+              badge,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Build detail rows berdasarkan config dari helper
+  List<Widget> _buildDetailRows(Map<String, dynamic> details) {
+    final List<Widget> rows = [];
+    int index = 0;
+
+    details.forEach((key, detailConfig) {
+      if (index > 0) {
+        rows.add(const SizedBox(height: 16));
+      }
+
+      final rowWidget = _buildDetailRowFromConfig(key, detailConfig as Map<String, dynamic>);
+      if (rowWidget != null) {
+        rows.add(rowWidget);
+        index++;
+      }
+    });
+
+    return rows;
+  }
+
+  // ✅ ENHANCED: Build single detail row dengan logika expiry
+  Widget? _buildDetailRowFromConfig(String key, Map<String, dynamic> detailConfig) {
+    final icon = detailConfig['icon'] as IconData;
+    final iconColor = detailConfig['iconColor'] as Color;
+    final title = detailConfig['title'] as String;
+
+    // Determine value: static value or dari orderData
+    String value;
+
+    if (detailConfig.containsKey('value')) {
+      // Static value dari config
+      value = detailConfig['value'] as String;
+
+      // ✅ ENHANCEMENT: Jika ini adalah row "info" untuk dine-in, modifikasi valuenya
+      final orderType = _getOrderType();
+      if (orderType == 'dine-in' && key == 'info') {
+        if (_isPaymentExpired()) {
+          // Payment expired - hide row
+          return null;
+        } else if (_isPaymentPending() && _remainingTime != null) {
+          // Payment pending - show expiry countdown
+          if (_remainingTime == 'Expired') {
+            // Sudah expired - hide row
+            return null;
+          }
+          value = 'Pesanan akan otomatis dibatalkan dalam $_remainingTime';
+          // Override icon dan color untuk countdown
+          return _buildDetailRow(
+            icon: Icons.timer_outlined,
+            iconColor: Colors.orange,
+            title: title,
+            value: value,
+          );
+        }
+        // Payment success - tetap gunakan value default
+      }
+    } else if (detailConfig.containsKey('valueKey')) {
+      // Dynamic value dari orderData
+      final valueKey = detailConfig['valueKey'] as String;
+      final defaultValue = detailConfig['defaultValue'] as String? ?? 'Tidak tersedia';
+
+      // Get data berdasarkan order type
+      final orderType = _getOrderType();
+      Map<String, dynamic>? typeData;
+
+      switch (orderType) {
+        case 'dine-in':
+          typeData = widget.orderData['dineInData'] as Map<String, dynamic>?;
+          break;
+        case 'pickup':
+          typeData = widget.orderData['pickupData'] as Map<String, dynamic>?;
+          break;
+        case 'take-away':
+          typeData = widget.orderData['takeAwayData'] as Map<String, dynamic>?;
+          break;
+        case 'delivery':
+          typeData = widget.orderData['deliveryData'] as Map<String, dynamic>?;
+          break;
+      }
+
+      if (typeData == null || typeData[valueKey] == null) {
+        // Skip row jika valueKey adalah 'pickupTime' dan datanya null
+        if (valueKey == 'pickupTime') {
+          return null;
+        }
+        value = defaultValue;
+      } else {
+        value = typeData[valueKey]?.toString() ?? defaultValue;
+
+        // Format time jika diperlukan
+        if (detailConfig['formatTime'] == true && value.isNotEmpty) {
+          value = _formatPickupTime(value);
+        }
+      }
+    } else {
+      return null;
     }
-  }
 
-  Widget _buildDineInSection() {
-    final dineInData = orderData['dineInData'] as Map<String, dynamic>?;
-    if (dineInData == null) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.restaurant, color: Colors.orange, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informasi Dine In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.orange[700],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Makan di tempat',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.orange[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.orange.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Text(
-                    'Dine In',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  icon: Icons.table_restaurant_rounded,
-                  iconColor: Colors.orange,
-                  title: 'Nomor Meja',
-                  value: dineInData['tableNumber']?.toString() ?? 'Belum ditentukan',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.info_outline_rounded,
-                  iconColor: Colors.blue,
-                  title: 'Keterangan',
-                  value: 'Pesanan akan disajikan langsung ke meja Anda',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return _buildDetailRow(
+      icon: icon,
+      iconColor: iconColor,
+      title: title,
+      value: value,
     );
   }
 
-  Widget _buildPickupSection() {
-    final pickupData = orderData['pickupData'] as Map<String, dynamic>?;
-    if (pickupData == null) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.store_rounded, color: Colors.green, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informasi Pickup',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Ambil di lokasi',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.green[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.green.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Text(
-                    'Pickup',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                if (pickupData['pickupTime'] != null) ...[
-                  _buildDetailRow(
-                    icon: Icons.access_time_rounded,
-                    iconColor: Colors.green,
-                    title: 'Waktu Pickup',
-                    value: _formatPickupTime(pickupData['pickupTime'].toString()),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                _buildDetailRow(
-                  icon: Icons.location_on_rounded,
-                  iconColor: Colors.purple,
-                  title: 'Lokasi Pickup',
-                  value: 'Ambil pesanan di kasir outlet',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.info_outline_rounded,
-                  iconColor: Colors.blue,
-                  title: 'Keterangan',
-                  value: 'Tunjukkan nomor pesanan saat mengambil',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTakeAwaySection() {
-    final takeAwayData = orderData['takeAwayData'] as Map<String, dynamic>?;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.teal.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.takeout_dining_rounded, color: Colors.teal, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informasi Take Away',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.teal[700],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Dibawa pulang',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.teal[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.teal.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Text(
-                    'Take Away',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.teal,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  icon: Icons.shopping_bag_rounded,
-                  iconColor: Colors.teal,
-                  title: 'Kemasan',
-                  value: 'Pesanan dikemas untuk dibawa pulang',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.location_on_rounded,
-                  iconColor: Colors.purple,
-                  title: 'Pengambilan',
-                  value: 'Ambil pesanan di kasir outlet',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.info_outline_rounded,
-                  iconColor: Colors.blue,
-                  title: 'Keterangan',
-                  value: takeAwayData?['note']?.toString() ?? 'Pesanan siap dibawa pulang',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-Widget _buildDeliverySection() {
-    final deliveryData = orderData['deliveryData'] as Map<String, dynamic>?;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.indigo.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.delivery_dining_rounded, color: Colors.indigo, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Informasi Delivery',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.indigo[700],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Antar ke alamat',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.indigo[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.indigo.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Text(
-                    'Delivery',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  icon: Icons.location_on_rounded,
-                  iconColor: Colors.indigo,
-                  title: 'Alamat Pengiriman',
-                  value: deliveryData?['deliveryAddress']?.toString() ?? 'Alamat tidak tersedia',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.local_shipping_rounded,
-                  iconColor: Colors.purple,
-                  title: 'Metode Pengiriman',
-                  value: 'Kurir akan mengantar ke alamat Anda',
-                ),
-                const SizedBox(height: 16),
-                _buildDetailRow(
-                  icon: Icons.info_outline_rounded,
-                  iconColor: Colors.blue,
-                  title: 'Keterangan',
-                  value: 'Pastikan alamat dan nomor telepon dapat dihubungi',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ✅ Build single detail row UI
   Widget _buildDetailRow({
     required IconData icon,
     required Color iconColor,
@@ -578,3 +428,13 @@ Widget _buildDeliverySection() {
     );
   }
 }
+
+// ============================================
+// USAGE EXAMPLE IN TRACKING DETAIL SCREEN:
+// ============================================
+// if (orderData != null)
+//   SlideTransition(
+//     position: _slideAnimation,
+//     child: OrderTypeSectionWidget(orderData: orderData!),
+//   ),
+// ============================================

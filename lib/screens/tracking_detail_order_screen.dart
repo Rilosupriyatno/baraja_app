@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/order.dart';
 import '../providers/order_provider.dart';
 import '../services/socket_service.dart';
+import '../utils/status_management_helper.dart';
 import '../widgets/tracking_detail/coffee_animation_widget.dart';
 import '../widgets/tracking_detail/order_detail_widget.dart';
 import '../widgets/tracking_detail/order_type_section_widget.dart';
@@ -308,108 +309,93 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
     if (orderData == null) return;
 
     try {
-      final paymentStatus = orderData!['paymentStatus'] ?? '';
-      final orderStatusValue = orderData!['orderStatus'] ?? '';
+      final paymentStatus = orderData!['paymentStatus']?.toString() ?? '';
+      final orderStatusValue = orderData!['orderStatus']?.toString() ??
+          orderData!['status']?.toString() ?? '';
 
-      String finalStatus;
-      Color finalColor;
-      IconData finalIcon;
+      // Extract order type untuk status yang lebih contextual
+      final orderType = _extractOrderType();
 
-      // Prioritize order status if payment is successful
-      if (paymentStatus == 'settlement' || paymentStatus == 'capture') {
-        // Payment successful, show order status
-        switch (orderStatusValue) {
-          case 'Pending':
-            finalStatus = 'Menunggu konfirmasi kasir';
-            finalColor = const Color(0xFFF68F3B);
-            finalIcon = Icons.alarm_outlined;
-            break;
-          case 'Reserved':
-            finalStatus = 'Reservasi Anda telah diterima';
-            finalColor = const Color(0xFF3B82F6);
-            finalIcon = Icons.edit_note_sharp;
-            break;
-          case 'Waiting':
-            finalStatus = 'Menunggu konfirmasi kitchen';
-            finalColor = const Color(0xFF3B82F6);
-            finalIcon = Icons.restaurant_menu;
-            break;
-          case 'OnProcess':
-            finalStatus = 'Pesananmu sedang dibuat';
-            finalColor = const Color(0xFFF59E0B);
-            finalIcon = Icons.coffee_maker;
-            break;
-          case 'Ready':
-            finalStatus = 'Pesanan siap diambil';
-            finalColor = const Color(0xFF10B981);
-            finalIcon = Icons.check_circle;
-            break;
-          case 'OnTheWay':
-            finalStatus = 'Pesanan dalam perjalanan';
-            finalColor = const Color(0xFF8B5CF6);
-            finalIcon = Icons.local_shipping;
-            break;
-          case 'Completed':
-            finalStatus = 'Selamat Menikmati';
-            finalColor = const Color(0xFF10B981);
-            finalIcon = Icons.done_all;
-            break;
-          case 'Canceled':
-          case 'Cancelled':
-            finalStatus = 'Pesanan dibatalkan';
-            finalColor = const Color(0xFFEF4444);
-            finalIcon = Icons.cancel;
-            break;
-          default:
-            finalStatus = 'Status: $orderStatusValue';
-            finalColor = const Color(0xFFF68F3B);
-            finalIcon = Icons.info_outline;
-            break;
-        }
-      } else {
-        // Payment not successful, show payment status
-        switch (paymentStatus) {
-          case 'pending':
-            finalStatus = 'Menunggu Pembayaran';
-            finalColor = const Color(0xFFF59E0B);
-            finalIcon = Icons.access_time;
-            break;
-          case 'partial':
-            finalStatus = 'Reservasi Diterima';
-            finalColor = const Color(0xFFF59E0B);
-            finalIcon = Icons.access_time;
-            break;
-          case 'expire':
-          case 'Unpaid':
-            finalStatus = 'Pembayaran Kadaluarsa';
-            finalColor = const Color(0xFFEF4444);
-            finalIcon = Icons.timer_off;
-            break;
-          case 'cancel':
-            finalStatus = 'Pesanan Dibatalkan';
-            finalColor = const Color(0xFFEF4444);
-            finalIcon = Icons.cancel;
-            break;
-          default:
-            finalStatus = 'Status pembayaran: $paymentStatus';
-            finalColor = const Color(0xFF6B7280);
-            finalIcon = Icons.help_outline;
-            break;
-        }
-      }
+      print('🔄 Updating order status...');
+      print('   Payment: $paymentStatus');
+      print('   Order: $orderStatusValue');
+      print('   Type: $orderType');
+
+      // ✅ Gunakan StatusManagementHelper untuk mendapatkan status info
+      final statusInfo = StatusManagementHelper.getComprehensiveStatus(
+        paymentStatus: paymentStatus,
+        orderStatus: orderStatusValue,
+        orderType: orderType,
+      );
 
       setState(() {
-        orderStatus = finalStatus;
-        statusColor = finalColor;
-        statusIcon = finalIcon;
+        orderStatus = statusInfo['status']?.toString() ??
+            statusInfo['label']?.toString() ??
+            'Status tidak tersedia';
+        statusColor = statusInfo['color'] as Color? ?? const Color(0xFF6B7280);
+        statusIcon = statusInfo['icon'] as IconData? ?? Icons.help_outline;
       });
+
+      print('✅ Status updated: $orderStatus');
     } catch (e) {
+      print('❌ Error updating status: $e');
       setState(() {
         orderStatus = 'Status tidak dapat dimuat';
         statusColor = Colors.grey;
         statusIcon = Icons.help_outline;
       });
     }
+  }
+
+// ✅ HELPER: Extract order type dari order data
+  String? _extractOrderType() {
+    if (orderData == null) return null;
+
+    if (orderData!['dineInData'] != null) return 'dine-in';
+    if (orderData!['pickupData'] != null) return 'pickup';
+    if (orderData!['takeAwayData'] != null) return 'take-away';
+    if (orderData!['deliveryData'] != null) return 'delivery';
+
+    // Fallback: cek dari field orderType jika ada
+    return orderData!['orderType']?.toString();
+  }
+
+// ============================================
+// OPTIONAL: Helper methods yang bisa ditambahkan
+// ============================================
+
+// ✅ Cek apakah order bisa dibatalkan
+  bool _canCancelOrder() {
+    if (orderData == null) return false;
+
+    final paymentStatus = orderData!['paymentStatus']?.toString() ?? '';
+    final orderStatusValue = orderData!['orderStatus']?.toString() ?? '';
+
+    return StatusManagementHelper.canCancelOrder(
+      paymentStatus: paymentStatus,
+      orderStatus: orderStatusValue,
+    );
+  }
+
+// ✅ Cek apakah order bisa di-rating
+  bool _canRateOrder() {
+    if (orderData == null) return false;
+
+    final paymentStatus = orderData!['paymentStatus']?.toString() ?? '';
+    final orderStatusValue = orderData!['orderStatus']?.toString() ?? '';
+
+    return StatusManagementHelper.canRateOrder(
+      paymentStatus: paymentStatus,
+      orderStatus: orderStatusValue,
+    );
+  }
+
+// ✅ Get progress percentage untuk progress indicator
+  double _getOrderProgress() {
+    if (orderData == null) return 0.0;
+
+    final orderStatusValue = orderData!['orderStatus']?.toString() ?? '';
+    return StatusManagementHelper.getProgressPercentage(orderStatusValue);
   }
 
   // 🔄 ENHANCED: Method refresh dengan feedback visual

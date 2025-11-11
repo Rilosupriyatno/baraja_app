@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/order.dart';
 import '../../models/order_type.dart';
 import '../../utils/order_tracking_helper.dart';
+import '../../utils/status_management_helper.dart';
 
 class OrderDetailsCard extends StatelessWidget {
   final Order order;
@@ -30,7 +31,7 @@ class OrderDetailsCard extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Order type
-            _buildDetailItem('Tipe Pesanan', OrderTrackingHelper.getOrderTypeText(order.orderType)),
+            _buildDetailItem('Tipe Pesanan', StatusManagementHelper.getOrderTypeTextFromEnum(order.orderType)),
 
             // Order type specific details
             if (order.orderType == OrderType.dineIn && order.tableNumber.isNotEmpty)
