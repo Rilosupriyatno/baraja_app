@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/gro_service.dart';
 import '../widgets/utils/role_based_widget.dart';
+import '../providers/cart_provider.dart'; // ⭐ IMPORT CART PROVIDER
 
 class GroDashboardScreen extends StatefulWidget {
   const GroDashboardScreen({super.key});
@@ -25,6 +26,13 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   void initState() {
     super.initState();
     _loadDashboardStats();
+
+    // ⭐ INIT: Set GRO mode di cart provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.setGroMode(true);
+      debugPrint('📊 GRO Dashboard: GRO Mode activated');
+    });
   }
 
   Future<void> _loadDashboardStats() async {
@@ -87,6 +95,19 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     }
   }
 
+  // ⭐ METHOD BARU: Navigasi ke keranjang GRO
+  void _navigateToGroCart() {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // Debug log untuk memastikan mode GRO aktif
+    debugPrint('🛒 GRO Cart Navigation - isGroMode: ${cartProvider.isGroMode}');
+
+    // Navigasi ke menu GRO dengan mode GRO aktif
+    context.push('/menu', extra: {
+      'isGroMode': true,
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,15 +128,56 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                     color: Colors.black,
                   ),
                 ),
-                // ✅ TAMBAHKAN OUTLET INFO DI APPBAR
-                // _buildAppBarOutletInfo(authService),
               ],
             );
           },
         ),
-        centerTitle: false, // ✅ UBAH KE false agar rata kiri
+        centerTitle: false,
         elevation: 0,
         actions: [
+          // ⭐ TOMBOL LIHAT KERANJANG GRO
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              final totalItems = cartProvider.totalItems;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    onPressed: _navigateToGroCart,
+                    icon: const Icon(Icons.shopping_cart),
+                    color: Colors.black,
+                    tooltip: 'Lihat Keranjang GRO',
+                    splashRadius: 24,
+                  ),
+                  if (totalItems > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          totalItems.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             onPressed: _loadDashboardStats,
             icon: const Icon(Icons.refresh),
@@ -135,6 +197,63 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             ? _buildErrorState()
             : _buildDashboardContent(),
       ),
+      // ⭐ FLOATING ACTION BUTTON LIHAT KERANJANG
+      floatingActionButton: Consumer<CartProvider>(
+        builder: (context, cartProvider, child) {
+          if (cartProvider.items.isEmpty) {
+            return FloatingActionButton.extended(
+              onPressed: _navigateToGroCart,
+              backgroundColor: const Color(0xFF2E8B57),
+              icon: const Icon(Icons.shopping_cart, color: Colors.white),
+              label: const Text(
+                'Lihat Keranjang',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          return FloatingActionButton.extended(
+            onPressed: _navigateToGroCart,
+            backgroundColor: const Color(0xFF2E8B57),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.shopping_cart, color: Colors.white),
+                if (cartProvider.totalItems > 0)
+                  Positioned(
+                    right: -2,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        cartProvider.totalItems.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: Text(
+              'Lihat Keranjang (${cartProvider.totalItems})',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -180,6 +299,21 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                   borderRadius: BorderRadius.circular(10),
                 ),
                 elevation: 0,
+              ),
+            ),
+            // ⭐ TOMBOL LIHAT KERANJANG DI ERROR STATE JUGA
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _navigateToGroCart,
+              icon: const Icon(Icons.shopping_cart),
+              label: const Text('Lihat Keranjang'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF076A3B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -246,13 +380,146 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             const SizedBox(height: 16),
             _buildStatsGrid(),
             const SizedBox(height: 24),
+
+            // ⭐ CARD LIHAT KERANJANG GRO
+            _buildGroCartCard(),
           ],
         );
       },
     );
   }
 
-// Di gro_dashboard_screen.dart - perbaiki _buildOutletCard()
+  Widget _buildGroCartCard() {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        final totalItems = cartProvider.totalItems;
+        final totalPrice = cartProvider.totalPrice;
+
+        return GestureDetector(
+          onTap: _navigateToGroCart,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Icon Keranjang
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF076A3B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(
+                        Icons.shopping_cart,
+                        color: Color(0xFF076A3B),
+                        size: 24,
+                      ),
+                      if (totalItems > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              totalItems.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Informasi Keranjang
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Keranjang GRO',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        totalItems > 0
+                            ? '$totalItems item • ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(totalPrice)}'
+                            : 'Keranjang kosong',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: totalItems > 0 ? Colors.green.shade700 : Colors.grey.shade600,
+                          fontWeight: totalItems > 0 ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Tombol aksi
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF076A3B),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Lihat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildOutletCard(AuthService authService) {
     final outlets = authService.getUserOutlets();
 

@@ -56,13 +56,23 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     _loadProducts();
-    print(widget.reservationData);
-    print("ini adalah data open bill: ${widget.openBillData}");
-    print("GRO Mode: ${widget.isGroMode}");
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
+      // ⭐ PERBAIKAN KRITIS: Set GRO mode terlebih dahulu
+      if (widget.isGroMode) {
+        cartProvider.setGroMode(true);
+        debugPrint('📱 MenuScreen: GRO Mode activated');
+      } else {
+        // Jika mode user, pastikan cart provider tidak dalam mode GRO
+        if (cartProvider.isGroMode) {
+          debugPrint('⚠️ MenuScreen: Clearing GRO mode for user access');
+          cartProvider.clearContext();
+        }
+      }
+
+      // Set data sesuai parameter dengan validasi mode
       if (widget.isReservation && widget.reservationData != null) {
         cartProvider.setReservationData(widget.isReservation, widget.reservationData);
       } else if (widget.isDineIn && widget.tableNumber != null) {
@@ -72,6 +82,25 @@ class _MenuScreenState extends State<MenuScreen> {
       }
     });
   }
+  // void initState() {
+  //   super.initState();
+  //   _loadProducts();
+  //   print(widget.reservationData);
+  //   print("ini adalah data open bill: ${widget.openBillData}");
+  //   print("GRO Mode: ${widget.isGroMode}");
+  //
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+  //
+  //     if (widget.isReservation && widget.reservationData != null) {
+  //       cartProvider.setReservationData(widget.isReservation, widget.reservationData);
+  //     } else if (widget.isDineIn && widget.tableNumber != null) {
+  //       cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
+  //     } else if (widget.isOpenBill && widget.openBillData != null) {
+  //       cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData);
+  //     }
+  //   });
+  // }
 
   Future<void> _loadProducts() async {
     try {

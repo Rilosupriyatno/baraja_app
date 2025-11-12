@@ -16,7 +16,7 @@ class CartScreen extends StatefulWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
-  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
+  final bool isGroMode;
 
   const CartScreen({
     super.key,
@@ -26,13 +26,12 @@ class CartScreen extends StatefulWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
-    this.isGroMode = false, // Default false
+    this.isGroMode = false,
   });
 
   @override
   CartScreenState createState() => CartScreenState();
 }
-
 
 class CartScreenState extends State<CartScreen> {
   final bool _isLoading = false;
@@ -40,13 +39,14 @@ class CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    // Set reservation data in cart provider when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      print('isOpenBill: ${widget.isOpenBill}');
-      print('openBillData: ${widget.openBillData}');
-      print('isDineIn: ${widget.isDineIn}');
-      print('tableNumber: ${widget.tableNumber}');
+
+      // ⭐ PERBAIKAN: Set GRO mode terlebih dahulu sebelum set context lainnya
+      if (widget.isGroMode) {
+        cartProvider.setGroMode(true);
+        debugPrint('🛒 CartScreen: GRO Mode activated');
+      }
 
       // Set context hanya jika diberikan dari parameter
       if (widget.isReservation && widget.reservationData != null) {
@@ -56,7 +56,6 @@ class CartScreenState extends State<CartScreen> {
       } else if (widget.isOpenBill && widget.openBillData != null) {
         cartProvider.setOpenBillData(widget.isOpenBill, widget.openBillData);
       }
-      // Jika tidak ada parameter, gunakan context yang sudah tersimpan di provider
     });
   }
 
@@ -257,43 +256,46 @@ class CartScreenState extends State<CartScreen> {
   }
 
   // Method untuk mendapatkan title yang sesuai
-  String _getTitle(bool isReservation, bool isDineIn, bool isOpenBill) {
+  String _getTitle(bool isReservation, bool isDineIn, bool isOpenBill, bool isGroMode) {
+    if (isGroMode) {
+      if (isReservation) return 'Keranjang Reservasi (GRO)';
+      if (isOpenBill) return 'Keranjang Open Bill (GRO)';
+      return 'Keranjang (GRO)';
+    }
+
     if (isReservation) {
       return 'Keranjang Reservasi';
     } else if (isDineIn) {
       return 'Keranjang Dine In';
     } else if (isOpenBill) {
       return 'Keranjang Open Bill';
-    }  else {
+    } else {
       return 'Keranjang';
     }
   }
 
   // Method untuk mendapatkan empty state message
-  String _getEmptyStateMessage(bool isReservation, bool isDineIn, bool isOpenBill) {
+  String _getEmptyStateMessage(bool isReservation, bool isDineIn, bool isOpenBill, bool isGroMode) {
+    if (isGroMode) {
+      if (isReservation) return 'Tambahkan menu untuk reservasi';
+      if (isOpenBill) return 'Tambahkan menu untuk open bill';
+      return 'Tambahkan menu';
+    }
+
     if (isReservation) {
       return 'Tambahkan menu untuk reservasi Anda';
     } else if (isDineIn) {
       return 'Tambahkan menu untuk dine in Anda';
     } else if (isOpenBill) {
       return 'Tambahkan menu untuk open bill Anda';
-    }
-    else {
+    } else {
       return 'Tambahkan menu favorit Anda';
     }
   }
 
   // Method untuk mendapatkan checkout button text
-  String _getCheckoutButtonText(bool isReservation, bool isDineIn, bool isOpenBill) {
-    if (isReservation) {
-      return 'Konfirmasi Reservasi';
-    } else if (isDineIn) {
-      return 'Pesan Sekarang';
-    } else if (isOpenBill) {
-      return 'Lanjut Pesan';
-    } else {
-      return 'Lanjutkan Pesanan';
-    }
+  String _getCheckoutButtonText(bool isReservation, bool isDineIn, bool isOpenBill, bool isGroMode) {
+    return 'Lihat Keranjang';
   }
 
   @override
@@ -302,16 +304,20 @@ class CartScreenState extends State<CartScreen> {
       builder: (context, cartProvider, child) {
         final cartItems = cartProvider.items;
 
-        // Gunakan context dari provider, bukan dari widget parameter
+        // Gunakan context dari provider
         final bool isReservation = cartProvider.isReservation;
         final ReservationData? reservationData = cartProvider.reservationData;
         final bool isDineIn = cartProvider.isDineIn;
         final String? tableNumber = cartProvider.tableNumber;
         final bool isOpenBill = cartProvider.isOpenBill;
         final OpenBillData? openBillData = cartProvider.openBillData;
+        final bool isGroMode = cartProvider.isGroMode; // ⭐ AMBIL DARI PROVIDER
+
+        // ⭐ VALIDASI: Debug log untuk memastikan tidak ada kebocoran mode
+        debugPrint('🛒 CartScreen Build - isGroMode: $isGroMode, widget.isGroMode: ${widget.isGroMode}');
 
         return BaseScreenWrapper(
-          customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/menu',
+          customBackRoute: isGroMode ? '/gro-table-availability' : '/menu',
           canPop: false,
           child: Scaffold(
             backgroundColor: Colors.white,
@@ -328,15 +334,15 @@ class CartScreenState extends State<CartScreen> {
                   leading: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
                     onPressed: () {
-                      // ⭐ Conditional back navigation berdasarkan isGroMode
-                      if (widget.isGroMode) {
-                        Navigator.of(context).pop(); // Kembali ke screen sebelumnya (menu GRO)
+                      // ⭐ PERBAIKAN: Gunakan isGroMode dari provider
+                      if (isGroMode) {
+                        Navigator.of(context).pop();
                       } else {
-                        Navigator.of(context).pop(); // Kembali ke menu user biasa
+                        Navigator.of(context).pop();
                       }
                     },
                   ),
-                  title: Text(_getTitle(isReservation, isDineIn, isOpenBill),
+                  title: Text(_getTitle(isReservation, isDineIn, isOpenBill, isGroMode),
                       style: const TextStyle(color: Colors.black)),
                 ),
 
@@ -381,7 +387,7 @@ class CartScreenState extends State<CartScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _getEmptyStateMessage(isReservation, isDineIn, isOpenBill),
+                            _getEmptyStateMessage(isReservation, isDineIn, isOpenBill, isGroMode),
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -420,12 +426,10 @@ class CartScreenState extends State<CartScreen> {
                     padding: const EdgeInsets.only(top: 3, left: 16, right: 16, bottom: 16),
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // ⭐ Conditional navigation berdasarkan context
-                        if (widget.isGroMode) {
-                          // GRO mode: kembali langsung dengan pop
+                        // ⭐ PERBAIKAN: Gunakan isGroMode dari provider
+                        if (isGroMode) {
                           Navigator.of(context).pop();
                         } else {
-                          // User mode: ke menu screen dengan context yang sesuai
                           if (isReservation && reservationData != null) {
                             context.pop();
                           } else if (isDineIn && tableNumber != null) {
@@ -487,7 +491,7 @@ class CartScreenState extends State<CartScreen> {
                       ElevatedButton(
                         onPressed: cartItems.isEmpty ? null : () {
                           Map<String, dynamic> extraData = {
-                            'isGroMode': widget.isGroMode, // ⭐ ALWAYS pass isGroMode
+                            'isGroMode': isGroMode, // ⭐ GUNAKAN DARI PROVIDER
                           };
 
                           if (isReservation && reservationData != null) {
@@ -501,10 +505,10 @@ class CartScreenState extends State<CartScreen> {
                             extraData['tableNumber'] = tableNumber;
                           }
 
-                          if (extraData.length > 1) { // More than just isGroMode
+                          if (extraData.length > 1) {
                             context.go('/checkout', extra: extraData);
                           } else {
-                            context.go('/checkout', extra: {'isGroMode': widget.isGroMode});
+                            context.go('/checkout', extra: {'isGroMode': isGroMode});
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -512,7 +516,8 @@ class CartScreenState extends State<CartScreen> {
                           backgroundColor: AppTheme.primaryColor,
                         ),
                         child: Text(
-                          _getCheckoutButtonText(isReservation, isDineIn, isOpenBill),
+                          // ⭐ PERBAIKAN: Selalu "Lihat Keranjang"
+                          _getCheckoutButtonText(isReservation, isDineIn, isOpenBill, isGroMode),
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),

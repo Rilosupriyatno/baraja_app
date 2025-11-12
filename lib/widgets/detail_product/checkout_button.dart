@@ -11,7 +11,7 @@ class CheckoutButton extends StatelessWidget {
   final String? tableNumber;
   final bool isOpenBill;
   final OpenBillData? openBillData;
-  final bool isGroMode; // NEW
+  final bool isGroMode;
 
   const CheckoutButton({
     super.key,
@@ -21,7 +21,7 @@ class CheckoutButton extends StatelessWidget {
     this.tableNumber,
     this.isOpenBill = false,
     this.openBillData,
-    this.isGroMode = false, // Default false
+    this.isGroMode = false,
   });
 
   @override
@@ -29,42 +29,12 @@ class CheckoutButton extends StatelessWidget {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         if (cartProvider.items.isEmpty) {
-          return const SizedBox.shrink(); // Tidak menampilkan tombol jika keranjang kosong
+          return const SizedBox.shrink();
         }
-
-        // Ambil data dari provider
-        final bool isReservation = cartProvider.isReservation;
-        final ReservationData? reservationData = cartProvider.reservationData;
-        final bool isDineIn = cartProvider.isDineIn;
-        final String? tableNumber = cartProvider.tableNumber;
-        final bool isOpenBill = cartProvider.isOpenBill;
-        final OpenBillData? openBillData = cartProvider.openBillData;
 
         return FloatingActionButton.extended(
           onPressed: () {
-            // ⭐ FIX: Prepare extra data - JANGAN OVERWRITE!
-            Map<String, dynamic> extraData = {
-              'isGroMode': isGroMode, // ✅ ALWAYS include isGroMode
-            };
-
-            // ✅ TAMBAHKAN data, jangan overwrite
-            if (isReservation && reservationData != null) {
-              extraData['isReservation'] = true;
-              extraData['reservationData'] = reservationData;
-            }
-
-            if (isDineIn && tableNumber != null) {
-              extraData['isDineIn'] = true;
-              extraData['tableNumber'] = tableNumber;
-            }
-
-            if (isOpenBill && openBillData != null) {
-              extraData['isOpenBill'] = true;
-              extraData['openBillData'] = openBillData;
-            }
-
-            // Navigate to cart with data
-            context.push('/cart', extra: extraData);
+            _navigateToCart(context, cartProvider);
           },
           backgroundColor: const Color(0xFF076A3B),
           label: Row(
@@ -105,9 +75,10 @@ class CheckoutButton extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 8),
-              Text(
-                _getButtonText(isReservation, isDineIn, isOpenBill),
-                style: const TextStyle(
+              // ⭐ PERBAIKAN: Selalu "Lihat Keranjang"
+              const Text(
+                'Lihat Keranjang',
+                style: TextStyle(
                   fontSize: 16,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -120,16 +91,23 @@ class CheckoutButton extends StatelessWidget {
     );
   }
 
-  // Method untuk menentukan teks tombol berdasarkan context
-  String _getButtonText(bool isReservation, bool isDineIn, bool isOpenBill) {
-    if (isReservation) {
-      return 'Lanjut Reservasi';
-    } else if (isDineIn) {
-      return 'Pesan Sekarang';
-    } else if (isOpenBill) {
-      return 'Lanjut Pesan';
-    } else {
-      return 'Lanjut Bayar';
+  void _navigateToCart(BuildContext context, CartProvider cartProvider) {
+    Map<String, dynamic> extraData = {
+      'isGroMode': isGroMode,
+    };
+
+    // Tambahkan data context
+    if (isReservation && reservationData != null) {
+      extraData['isReservation'] = true;
+      extraData['reservationData'] = reservationData;
+    } else if (isDineIn && tableNumber != null) {
+      extraData['isDineIn'] = true;
+      extraData['tableNumber'] = tableNumber;
+    } else if (isOpenBill && openBillData != null) {
+      extraData['isOpenBill'] = true;
+      extraData['openBillData'] = openBillData;
     }
+
+    context.push('/cart', extra: extraData);
   }
 }
