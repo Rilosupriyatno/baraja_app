@@ -4,20 +4,42 @@ import '../../utils/currency_formatter.dart';
 
 class CartItemWidget extends StatelessWidget {
   final CartItem item;
-  // final VoidCallback onIncrease;
-  // final VoidCallback onDecrease;
-  // final VoidCallback onRemove;
 
   const CartItemWidget({
     super.key,
     required this.item,
-    // required this.onIncrease,
-    // required this.onDecrease,
-    // required this.onRemove,
   });
+
+  // Method untuk menghitung total harga item termasuk addons dan toppings
+  // SAMA PERSIS dengan cart_item_card.dart
+  int _calculateItemTotalPrice() {
+    int totalPrice = item.price;
+
+    // Add toppings price
+    if (item.toppings != null && item.toppings is List) {
+      for (var topping in item.toppings as List) {
+        if (topping is Map && topping.containsKey('price')) {
+          totalPrice += (topping['price'] as num).toInt();
+        }
+      }
+    }
+
+    // Add addons price
+    for (var addon in item.addons as List) {
+      if (addon is Map && addon.containsKey('price')) {
+        totalPrice += (addon['price'] as num).toInt();
+      }
+    }
+
+    return totalPrice;
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ PERBAIKAN: Gunakan perhitungan yang sama dengan cart_item_card
+    final itemTotalPrice = _calculateItemTotalPrice();
+    final totalForItem = itemTotalPrice * item.quantity;
+
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -44,13 +66,12 @@ class CartItemWidget extends StatelessWidget {
                 width: 70,
                 height: 70,
                 decoration: const BoxDecoration(
-                  color: Colors.white, // ✅ selalu putih
+                  color: Colors.white,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
                 ),
-
                 clipBehavior: Clip.antiAlias,
                 child: item.imageUrl.isNotEmpty
                     ? Image.network(
@@ -106,67 +127,23 @@ class CartItemWidget extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Tombol +/-
-                  Row(
-                    children: [
-                      // Tombol kurangi
-                      // GestureDetector(
-                      //   onTap: onDecrease,
-                      //   child: Container(
-                      //     padding: const EdgeInsets.all(4),
-                      //     decoration: BoxDecoration(
-                      //       color: Colors.grey.shade200,
-                      //       borderRadius: BorderRadius.circular(4),
-                      //     ),
-                      //     child: const Icon(Icons.remove, size: 16),
-                      //   ),
-                      // ),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          "x${item.quantity}",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black54,
-                          ),
-                        ),
+                  // Quantity display
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      "x${item.quantity}",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
                       ),
-
-                      // Tombol tambah
-                      // GestureDetector(
-                      //   onTap: onIncrease,
-                      //   child: Container(
-                      //     padding: const EdgeInsets.all(4),
-                      //     decoration: BoxDecoration(
-                      //       color: Colors.grey.shade200,
-                      //       borderRadius: BorderRadius.circular(4),
-                      //     ),
-                      //     child: const Icon(Icons.add, size: 16),
-                      //   ),
-                      // ),
-                    ],
+                    ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // // Tombol hapus
-                  // GestureDetector(
-                  //   onTap: onRemove,
-                  //   child: Text(
-                  //     "Hapus",
-                  //     style: TextStyle(
-                  //       fontSize: 12,
-                  //       color: Colors.red[600],
-                  //       fontWeight: FontWeight.w500,
-                  //     ),
-                  //   ),
-                  // ),
                 ],
               ),
             ],
@@ -180,7 +157,6 @@ class CartItemWidget extends StatelessWidget {
           if (item.addons.isNotEmpty) ...[
             const Row(
               children: [
-                // Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
                 SizedBox(width: 4),
                 Text(
                   'Tambahan:',
@@ -242,7 +218,6 @@ class CartItemWidget extends StatelessWidget {
               ((item.toppings as List).isNotEmpty)) ...[
             const Row(
               children: [
-                // Icon(Icons.cake, size: 16, color: Colors.deepOrange),
                 SizedBox(width: 4),
                 Text(
                   'Topping:',
@@ -262,58 +237,7 @@ class CartItemWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.deepOrange.withOpacity(0.2)),
               ),
-              child: item.toppings is List<Map<String, Object>>
-                  ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: (item.toppings as List<Map<String, Object>>).map((topping) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${topping["name"]}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (topping.containsKey("price") && topping["price"] != null)
-                        Text(
-                          formatCurrency(topping["price"] as num),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.deepOrange,
-                          ),
-                        ),
-                    ],
-                  ),
-                )).toList(),
-              )
-                  : Row(
-                children: [
-                  const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item.toppings is String
-                          ? item.toppings as String
-                      // ignore: unnecessary_type_check
-                          : item.toppings is List
-                          ? (item.toppings as List).join(', ')
-                          : '',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildToppingsWidget(item.toppings),
             ),
             const SizedBox(height: 8),
           ],
@@ -363,6 +287,8 @@ class CartItemWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
+
+          // ✅ PERBAIKAN: Gunakan perhitungan yang sama dengan cart_item_card
           // Total price at the bottom
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -375,11 +301,11 @@ class CartItemWidget extends StatelessWidget {
                 ),
               ),
               Text(
-                formatCurrency(item.totalprice),
-                style: TextStyle(
+                formatCurrency(totalForItem), // Gunakan totalForItem yang sudah dihitung
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: Colors.green,
                 ),
               ),
             ],
@@ -387,5 +313,68 @@ class CartItemWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ✅ TAMBAHKAN: Helper method yang sama dengan cart_item_card.dart
+  Widget _buildToppingsWidget(dynamic toppings) {
+    if (toppings is List && toppings.isNotEmpty && toppings.first is Map<String, dynamic>) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: (toppings).map<Widget>((topping) {
+          if (topping is Map) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${topping["name"]}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (topping.containsKey("price") && topping["price"] != null)
+                    Text(
+                      formatCurrency(topping["price"] as num),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          } else {
+            return const SizedBox.shrink();
+          }
+        }).toList(),
+      );
+    } else {
+      return Row(
+        children: [
+          const Icon(Icons.circle, size: 6, color: Colors.deepOrange),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              toppings is String
+                  ? toppings
+                  : toppings is List
+                  ? (toppings).join(', ')
+                  : '',
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }

@@ -24,7 +24,6 @@ import '../widgets/checkout/reservation_type_selector_widget.dart';
 import '../widgets/checkout/voucher_widget.dart';
 import '../widgets/utils/payment_method_with_validation.dart';
 
-// Enum untuk tipe reservasi
 enum ReservationType { nonBlocking, blocking }
 
 class CheckoutPage extends StatefulWidget {
@@ -52,32 +51,21 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  // Pilihan tipe pesanan
   late OrderType selectedOrderType;
   String? outletId;
-  // Data meja untuk Dine-in
   late String tableNumber;
-  // Data untuk Delivery
   String deliveryAddress = "";
-  // Data untuk Pickup
   TimeOfDay? pickupTime;
-  // Data metode pembayaran
   String? selectedPaymentMethod;
   String? selectedPaymentMethodName;
   String? selectedBankName;
   String? selectedBankCode;
-  // Data voucher - updated variables
   String? selectedVoucherCode;
   Voucher? selectedVoucher;
-
   String voucherDescription = "";
   int discountAmount = 0;
   PaymentType selectedPaymentType = PaymentType.fullPayment;
-
-  // Tambahan untuk reservation type
   ReservationType selectedReservationType = ReservationType.nonBlocking;
-
-  // Validation state variables
   Map<String, String> validationErrors = {};
   bool hasAttemptedSubmit = false;
 
@@ -86,15 +74,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   TaxCalculationResult? _taxCalculation;
   bool _taxesLoaded = false;
 
-  // Variables untuk track perubahan dan mencegah infinite loop
   int? _lastCalculatedSubtotal;
   int? _lastCalculatedDiscount;
   String? _lastCalculatedOutletId;
 
-  // Scroll controller untuk auto scroll ke error
   final ScrollController _scrollController = ScrollController();
-
-  // Global keys untuk setiap field yang perlu validasi
   final GlobalKey _deliveryAddressKey = GlobalKey();
   final GlobalKey _pickupTimeKey = GlobalKey();
   final GlobalKey _tableNumberKey = GlobalKey();
@@ -104,16 +88,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
-
-    // Set default values
     selectedOrderType = OrderType.dineIn;
     tableNumber = "";
 
-    // Get actual data from CartProvider and setup listener
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
-      // Add listener untuk track perubahan cart
       cartProvider.addListener(_onCartChanged);
 
       if (_isReservationWithoutMenu(cartProvider)) {
@@ -122,7 +101,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         });
       }
 
-      // ✅ PERBAIKAN: Set outletId terlebih dahulu
       if (cartProvider.items.isNotEmpty) {
         setState(() {
           outletId = cartProvider.items.first.outletId?.toString();
@@ -132,7 +110,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         print("⚠️ Cart is empty, no outletId available");
       }
 
-      // Set initial order type based on the current context
       if (cartProvider.isReservation) {
         // For reservations, we'll use a special handling in the UI
       } else if (cartProvider.isDineIn && cartProvider.tableNumber != null) {
@@ -142,20 +119,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
         tableNumber = "";
       }
 
-      // ✅ PERBAIKAN: Initialize tax data setelah outletId diset
       _initializeTaxData();
-
       setState(() {});
     });
   }
 
-  // Listener untuk perubahan cart
   void _onCartChanged() {
     if (!mounted) return;
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // ✅ PERBAIKAN: Update outletId jika berubah
     if (cartProvider.items.isNotEmpty) {
       final newOutletId = cartProvider.items.first.outletId?.toString();
       if (newOutletId != outletId) {
@@ -179,7 +152,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         cartProvider.totalPrice == 25000;
   }
 
-  // ✅ PERBAIKAN: Update _initializeTaxData
   Future<void> _initializeTaxData() async {
     try {
       print("🔄 Initializing tax data...");
@@ -189,7 +161,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       });
       print("✅ Tax data loaded successfully");
 
-      // Calculate taxes immediately after loading
       if (outletId != null) {
         print("📊 Calculating taxes with outletId: $outletId");
         _calculateTaxes();
@@ -204,17 +175,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // ✅ PERBAIKAN: Update _calculateTaxes dengan logging lebih detail
+  // ✅ PERBAIKAN UTAMA: Gunakan item.totalprice seperti di cart_screen
   void _calculateTaxes() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
     print("\n🔍 DEBUG TAX CALCULATION:");
     print("  _taxesLoaded: $_taxesLoaded");
     print("  outletId: $outletId");
-    print("  isOpenBill: ${cartProvider.isOpenBill}");
-    print("  isReservation: ${cartProvider.isReservation}");
 
-    // ✅ PERBAIKAN: Tambahkan logging untuk debugging
     if (!_taxesLoaded) {
       print("⚠️ Taxes not loaded yet, skipping calculation");
       return;
@@ -230,11 +198,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    final subtotal = cartProvider.totalPrice;
+    // ✅ PERBAIKAN: Hitung subtotal dengan cara yang sama seperti cart_screen
+    // Gunakan item.totalprice (sudah include addons & toppings) * quantity
+    final subtotal = cartProvider.items.fold(0, (sum, item) {
+      final itemTotal = item.totalprice * item.quantity;
+      print("  Item: ${item.name} | totalprice: ${item.totalprice} x ${item.quantity} = $itemTotal");
+      return sum + itemTotal;
+    });
+
     final discount = calculateDiscount(subtotal);
     final finalTotal = subtotal - discount;
 
-    // Check if values have actually changed to prevent unnecessary recalculation
     if (_lastCalculatedSubtotal == subtotal &&
         _lastCalculatedDiscount == discount &&
         _lastCalculatedOutletId == outletId) {
@@ -242,7 +216,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    print("  subtotal: $subtotal");
+    print("  subtotal (sum of item.totalprice * qty): $subtotal");
     print("  discount: $discount");
     print("  finalTotal: $finalTotal");
 
@@ -256,9 +230,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
       print("  ✅ Tax calculation result:");
       print("    totalTaxAmount: ${taxCalculation.totalTaxAmount}");
-      print("    taxDetails: ${taxCalculation.taxDetails}");
 
-      // Update last calculated values
       _lastCalculatedSubtotal = subtotal;
       _lastCalculatedDiscount = discount;
       _lastCalculatedOutletId = outletId;
@@ -288,7 +260,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   void dispose() {
-    // Remove listener sebelum dispose
     try {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       cartProvider.removeListener(_onCartChanged);
@@ -299,7 +270,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.dispose();
   }
 
-  // Method untuk scroll ke field yang error
   void _scrollToError(String errorKey) {
     GlobalKey? targetKey;
 
@@ -432,13 +402,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         final List<CartItem> cartItems = cartProvider.items;
+
+        // ✅ PERBAIKAN: Gunakan totalPrice dari cartProvider yang sudah benar
+        // Sesuai dengan cart_screen.dart yang menggunakan cartProvider.totalPrice
         final int subtotal = cartProvider.totalPrice;
+
         final int discount = calculateDiscount(subtotal);
         final int finalTotal = subtotal - discount;
         final int taxAmount = _taxCalculation?.totalTaxAmount.round() ?? 0;
         final int grandTotal = finalTotal + taxAmount;
-
         final int downPaymentAmount = (grandTotal * 0.5).round();
+
+        // Debug print untuk memastikan konsistensi
+        print("\n💰 CHECKOUT CALCULATION (CONSISTENT):");
+        print("  CartProvider.totalPrice: $subtotal");
+        print("  Discount: $discount");
+        print("  FinalTotal: $finalTotal");
+        print("  Tax: $taxAmount");
+        print("  GrandTotal: $grandTotal\n");
+        // Debug print untuk memastikan perhitungan
+        print("\n💰 CHECKOUT CALCULATION:");
+        print("  Items count: ${cartItems.length}");
+        for (var item in cartItems) {
+          print("  - ${item.name}: totalprice=${item.totalprice} x qty=${item.quantity} = ${item.totalprice * item.quantity}");
+        }
+        print("  Subtotal: $subtotal");
+        print("  Discount: $discount");
+        print("  FinalTotal: $finalTotal");
+        print("  Tax: $taxAmount");
+        print("  GrandTotal: $grandTotal\n");
 
         // Auto-set reservation type to non-blocking if blocking is not available
         if (cartProvider.isReservation &&
@@ -697,7 +689,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 selectedVoucherCode = voucher.code;
                                 discountAmount = calculateDiscount(subtotal);
                               });
-                              // Trigger tax recalculation after voucher changes
                               _calculateTaxes();
                             },
                           ),
@@ -831,17 +822,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       );
 
                       final orderService = serviceorder.OrderService();
+
+                      // ✅ PERBAIKAN: Gunakan totalprice dari CartItem yang sudah termasuk addons & toppings
                       final List<Map<String, dynamic>> items = cartItems
                           .map((item) => {
                         'productId': item.id,
                         'productName': item.name,
-                        'price': item.price,
+                        'price': item.price, // base price saja
                         'quantity': item.quantity,
                         'addons': item.addons,
                         'toppings': item.toppings,
                         'notes': item.notes,
                         'outletId': item.outletId,
                         'outletName': item.outletName,
+                        'totalprice': item.totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
                       })
                           .toList();
 
@@ -882,6 +876,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       print("  User Name: $userName");
                       print("  Order Type: ${finalOrderType.toString()}");
                       print("  Is GRO Mode: ${widget.isGroMode}");
+                      print("  Subtotal yang dikirim: $subtotal");
 
                       final orderResult = await orderService.createOrder(
                         items: items,

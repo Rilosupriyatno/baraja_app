@@ -30,7 +30,10 @@ class CheckoutSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int finalTotal = totalPrice - discount;
+    // ✅ PERBAIKAN: Gunakan totalPrice langsung dari cartProvider
+    // Sesuai dengan cart_screen.dart yang menggunakan cartProvider.totalPrice
+    final int subtotal = totalPrice; // Ini sudah benar sesuai cart_screen
+    final int finalTotal = subtotal - discount;
     final int taxAmount = taxCalculation?.totalTaxAmount.round() ?? 0;
     final int grandTotal = finalTotal + taxAmount;
     final int downPaymentAmount = (grandTotal * 0.5).round();
@@ -39,6 +42,15 @@ class CheckoutSummary extends StatelessWidget {
     if (isReservation && selectedPaymentType == PaymentType.downPayment) {
       amountToPay = downPaymentAmount;
     }
+
+    // Debug untuk memastikan konsistensi
+    print("🔄 CheckoutSummary Calculation:");
+    print("  Subtotal: $subtotal");
+    print("  Discount: $discount");
+    print("  FinalTotal: $finalTotal");
+    print("  Tax: $taxAmount");
+    print("  GrandTotal: $grandTotal");
+    print("  AmountToPay: $amountToPay");
 
     return SafeArea(
       child: Container(
@@ -71,7 +83,7 @@ class CheckoutSummary extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Subtotal"),
-                Text(formatCurrency(totalPrice)),
+                Text(formatCurrency(subtotal)),
               ],
             ),
 
