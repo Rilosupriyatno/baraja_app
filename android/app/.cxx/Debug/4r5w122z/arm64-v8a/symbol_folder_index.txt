@@ -1,0 +1,1 @@
+/home/rils/StudioProjects/baraja_app/build/app/intermediates/cxx/Debug/4r5w122z/obj/arm64-v8a

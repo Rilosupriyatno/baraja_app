@@ -97,7 +97,7 @@ class ProductService {
                   0.0;
             }
 
-            // ✅ Extract mainCategory (makanan/minuman)
+            // Extract mainCategory (makanan/minuman)
             String mainCategory = 'Makanan';
             if (productJson['mainCategory'] != null &&
                 productJson['mainCategory'].toString().isNotEmpty) {
@@ -109,7 +109,7 @@ class ProductService {
               }
             }
 
-            // ✅ Extract category name (Pasta, Frappe, Mocktail, dll)
+            // Extract category name (Pasta, Frappe, Mocktail, dll)
             String categoryName = 'Lainnya';
             if (productJson['category'] != null) {
               var cat = productJson['category'];
@@ -120,7 +120,7 @@ class ProductService {
               }
             }
 
-            // ✅ Parse availableAt → ambil outletId & name
+            // Parse availableAt → ambil outletId & name
             List<Outlet> outlets = [];
             if (productJson['availableAt'] != null) {
               outlets = (productJson['availableAt'] as List)
@@ -134,9 +134,9 @@ class ProductService {
             return Product(
               id: productJson['id'] ?? productJson['_id'] ?? '',
               name: productJson['name'] ?? '',
-              category: categoryName, // ✅ Sekarang pakai category.name
-              mainCategory: mainCategory, // ✅ makanan/minuman
-              subCategory: null, // ✅ Tidak digunakan lagi
+              category: categoryName,
+              mainCategory: mainCategory,
+              subCategory: null,
               imageUrl: productJson['imageUrl'] ?? '',
               originalPrice: originalPrice,
               discountPrice: discountPrice,
@@ -217,5 +217,152 @@ class ProductService {
     return products
         .where((product) => product.discountPercentage != null)
         .toList();
+  }
+
+  // ==================== SEARCH METHODS ====================
+
+  /// Search products by query (name, category, description)
+  Future<List<Product>> searchProducts(String query) async {
+    if (query.isEmpty) {
+      return [];
+    }
+
+    final products = await getProducts();
+    final lowercaseQuery = query.toLowerCase();
+
+    return products.where((product) {
+      final matchesName = product.name.toLowerCase().contains(lowercaseQuery);
+      final matchesCategory = product.category?.toLowerCase().contains(lowercaseQuery) ?? false;
+      final matchesDescription = product.description.toLowerCase().contains(lowercaseQuery);
+      final matchesMainCategory = product.mainCategory.toLowerCase().contains(lowercaseQuery);
+
+      return matchesName || matchesCategory || matchesDescription || matchesMainCategory;
+    }).toList();
+  }
+
+  /// Search products with ranking/scoring
+  Future<List<Product>> searchProductsWithRanking(String query) async {
+    if (query.isEmpty) {
+      return [];
+    }
+
+    final products = await getProducts();
+    final lowercaseQuery = query.toLowerCase();
+
+    // Create a list with products and their relevance score
+    final productsWithScore = products.map((product) {
+      int score = 0;
+
+      // Name match (highest priority)
+      if (product.name.toLowerCase() == lowercaseQuery) {
+        score += 100;
+      } else if (product.name.toLowerCase().startsWith(lowercaseQuery)) {
+        score += 50;
+      } else if (product.name.toLowerCase().contains(lowercaseQuery)) {
+        score += 25;
+      }
+
+      // Category match
+      if (product.category?.toLowerCase() == lowercaseQuery) {
+        score += 30;
+      } else if (product.category?.toLowerCase().contains(lowercaseQuery) ?? false) {
+        score += 15;
+      }
+
+      // Description match (lowest priority)
+      if (product.description.toLowerCase().contains(lowercaseQuery)) {
+        score += 5;
+      }
+
+      // Main category match
+      if (product.mainCategory.toLowerCase().contains(lowercaseQuery)) {
+        score += 10;
+      }
+
+      return {'product': product, 'score': score};
+    }).where((item) => (item['score'] as int) > 0).toList();
+
+    // Sort by score (descending)
+    productsWithScore.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+
+    // Return only products
+    return productsWithScore.map((item) => item['product'] as Product).toList();
+  }
+
+  /// Get search suggestions based on query
+  Future<List<String>> getSearchSuggestions(String query) async {
+    if (query.isEmpty) {
+      return [];
+    }
+
+    final products = await getProducts();
+    final lowercaseQuery = query.toLowerCase();
+    final suggestions = <String>{};
+
+    for (var product in products) {
+      // Add matching product names
+      if (product.name.toLowerCase().contains(lowercaseQuery)) {
+        suggestions.add(product.name);
+      }
+
+      // Add matching categories
+      if (product.category?.toLowerCase().contains(lowercaseQuery) ?? false) {
+        suggestions.add(product.category!);
+      }
+    }
+
+    return suggestions.take(5).toList();
+  }
+
+  /// Search products by multiple filters
+  Future<List<Product>> searchProductsAdvanced({
+    String? query,
+    String? mainCategory,
+    String? category,
+    double? minPrice,
+    double? maxPrice,
+    bool? hasDiscount,
+  }) async {
+    final products = await getProducts();
+
+    return products.where((product) {
+      // Query filter
+      if (query != null && query.isNotEmpty) {
+        final lowercaseQuery = query.toLowerCase();
+        final matchesQuery = product.name.toLowerCase().contains(lowercaseQuery) ||
+            (product.category?.toLowerCase().contains(lowercaseQuery) ?? false) ||
+            (product.description.toLowerCase().contains(lowercaseQuery));
+
+        if (!matchesQuery) return false;
+      }
+
+      // Main category filter
+      if (mainCategory != null && product.mainCategory != mainCategory) {
+        return false;
+      }
+
+      // Category filter
+      if (category != null && product.category != category) {
+        return false;
+      }
+
+      // Price range filter
+      if (minPrice != null && product.discountPrice! < minPrice) {
+        return false;
+      }
+
+      if (maxPrice != null && product.discountPrice! > maxPrice) {
+        return false;
+      }
+
+      // Discount filter
+      if (hasDiscount != null && hasDiscount) {
+        if (product.discountPercentage == null) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
   }
 }

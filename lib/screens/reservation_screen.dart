@@ -1,4 +1,4 @@
-// screens/reservation_screen.dart - Updated with real-time availability checking
+// screens/reservation_screen.dart - Updated with agenda and food serving
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,8 @@ import '../providers/cart_provider.dart';
 import '../utils/base_screen_wrapper.dart';
 import '../widgets/reservation/equipment_selector.dart';
 import '../widgets/reservation/serving_type_selector.dart';
+import '../widgets/reservation/agenda_selector.dart';
+import '../widgets/reservation/food_serving_selector.dart';
 import '../widgets/utils/classic_app_bar.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
@@ -17,7 +19,6 @@ import '../widgets/reservation/time_selector.dart';
 import '../models/reservation_data.dart';
 import '../models/area.dart';
 import '../services/reservation_service.dart';
-// import 'cart_screen.dart';
 import 'checkout_page.dart';
 import 'menu_screen.dart';
 
@@ -36,8 +37,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
   List<TableModel> tables = [];
   List<String> selectedTableIds = [];
   bool isLoadingTables = false;
-  String? selectedServingType; // 'ala carte' or 'buffet'
+  String? selectedServingType;
   List<String> selectedEquipment = [];
+  String? selectedAgenda;
+  String? selectedFoodServingOption;
+  DateTime? selectedFoodServingTime;
   List<Area> areas = [];
   bool isLoadingAreas = true;
   bool isCheckingAvailability = false;
@@ -53,15 +57,18 @@ class _ReservationScreenState extends State<ReservationScreen> {
   void _validateInitialDateTime() {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
-    final DateTime currentSelectedDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final DateTime currentSelectedDate = DateTime(
+        selectedDate.year, selectedDate.month, selectedDate.day);
 
     if (currentSelectedDate.isBefore(today)) {
       selectedDate = now;
     }
 
-    if (currentSelectedDate.isAtSameMomentAs(today) && !_isValidTime(selectedTime, selectedDate)) {
+    if (currentSelectedDate.isAtSameMomentAs(today) &&
+        !_isValidTime(selectedTime, selectedDate)) {
       final DateTime minimumTime = now.add(const Duration(minutes: 5));
-      selectedTime = TimeOfDay(hour: minimumTime.hour, minute: minimumTime.minute);
+      selectedTime =
+          TimeOfDay(hour: minimumTime.hour, minute: minimumTime.minute);
     }
   }
 
@@ -71,9 +78,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
         isLoadingAreas = true;
       });
 
-      // Load areas with real-time availability if date and time are selected
       final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+      final timeStr = '${selectedTime.hour.toString().padLeft(
+          2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final loadedAreas = await ReservationService.getAreas(
         date: dateStr,
@@ -92,43 +99,16 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
   }
 
-  // void _navigateToReservationOnly() {
-  //   if (selectedArea == null) return;
-  //
-  //   final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
-  //   final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-  //
-  //   final reservationData = ReservationData(
-  //     date: selectedDate,
-  //     time: selectedTime,
-  //     areaId: selectedArea!.id,
-  //     areaCode: selectedArea!.areaCode,
-  //     personCount: personCount,
-  //     formattedDate: formattedDate,
-  //     formattedTime: formattedTime,
-  //     selectedTableIds: selectedTableIds,
-  //   );
-  //
-  //   Navigator.push(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (context) => CartScreen(
-  //         isReservation: true,
-  //         reservationData: reservationData,
-  //       ),
-  //     ),
-  //   );
-  // }
-  //
-
   Future<void> _refreshAreasAvailability() async {
-    if (!_isValidReservationDate() || !_isValidTime(selectedTime, selectedDate)) {
+    if (!_isValidReservationDate() ||
+        !_isValidTime(selectedTime, selectedDate)) {
       return;
     }
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+      final timeStr = '${selectedTime.hour.toString().padLeft(
+          2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final refreshedAreas = await ReservationService.refreshAreaAvailability(
         date: dateStr,
@@ -138,7 +118,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
       setState(() {
         areas = refreshedAreas.where((area) => area.isActive).toList();
 
-        // Update selected area if it still exists
         if (selectedArea != null) {
           final updatedSelectedArea = areas.firstWhere(
                 (area) => area.id == selectedArea!.id,
@@ -161,7 +140,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+      final timeStr = '${selectedTime.hour.toString().padLeft(
+          2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final result = await ReservationService.getAreaTables(
         areaId,
@@ -182,13 +162,15 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   Future<void> _refreshTablesAvailability() async {
-    if (selectedArea == null || !_isValidReservationDate() || !_isValidTime(selectedTime, selectedDate)) {
+    if (selectedArea == null || !_isValidReservationDate() ||
+        !_isValidTime(selectedTime, selectedDate)) {
       return;
     }
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-      final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+      final timeStr = '${selectedTime.hour.toString().padLeft(
+          2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final result = await ReservationService.refreshTableAvailability(
         areaId: selectedArea!.id,
@@ -199,14 +181,14 @@ class _ReservationScreenState extends State<ReservationScreen> {
       setState(() {
         tables = result['tables'];
 
-        // Remove selected tables that are no longer available
         selectedTableIds.removeWhere((tableId) {
-          final table = tables.firstWhere((t) => t.id == tableId, orElse: () => TableModel(
-            id: '',
-            tableNumber: '',
-            areaId: '',
-            seats: 0,
-          ));
+          final table = tables.firstWhere((t) => t.id == tableId, orElse: () =>
+              TableModel(
+                id: '',
+                tableNumber: '',
+                areaId: '',
+                seats: 0,
+              ));
           return table.id.isEmpty || !table.canBeSelected;
         });
       });
@@ -218,10 +200,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
   void _onDateChanged(DateTime newDate) {
     setState(() {
       selectedDate = newDate;
-      selectedTableIds.clear(); // Clear selections when date changes
+      selectedTableIds.clear();
     });
 
-    // Refresh availability for new date
     _refreshAreasAvailability();
     if (selectedArea != null) {
       _refreshTablesAvailability();
@@ -232,10 +213,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
     if (_isValidTime(newTime, selectedDate)) {
       setState(() {
         selectedTime = newTime;
-        selectedTableIds.clear(); // Clear selections when time changes
+        selectedTableIds.clear();
       });
 
-      // Refresh availability for new time
       _refreshAreasAvailability();
       if (selectedArea != null) {
         _refreshTablesAvailability();
@@ -249,7 +229,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       if (personCount > area.capacity) {
         personCount = area.capacity;
       }
-      selectedTableIds.clear(); // Clear table selections when area changes
+      selectedTableIds.clear();
     });
     _loadTablesForArea(area.id);
   }
@@ -257,8 +237,10 @@ class _ReservationScreenState extends State<ReservationScreen> {
   bool _isValidReservationDate() {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
-    final DateTime selectedDateOnly = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-    return selectedDateOnly.isAfter(today) || selectedDateOnly.isAtSameMomentAs(today);
+    final DateTime selectedDateOnly = DateTime(
+        selectedDate.year, selectedDate.month, selectedDate.day);
+    return selectedDateOnly.isAfter(today) ||
+        selectedDateOnly.isAtSameMomentAs(today);
   }
 
   bool _isValidTime(TimeOfDay time, DateTime date) {
@@ -280,7 +262,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
     if (selectedDateOnly.isAtSameMomentAs(today)) {
       final DateTime minimumTime = now.add(const Duration(minutes: 5));
-      return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
+      return selectedDateTime.isAfter(minimumTime) ||
+          selectedDateTime.isAtSameMomentAs(minimumTime);
     }
 
     return false;
@@ -372,7 +355,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
     });
 
     final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-    final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+    final timeStr = '${selectedTime.hour.toString().padLeft(
+        2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
     try {
       final result = await ReservationService.checkAvailability(
@@ -392,7 +376,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
         _showAvailabilityDialog(result, true);
       } else {
         _showAvailabilityDialog(result, false);
-        // Refresh table availability after failed check
         await _refreshTablesAvailability();
       }
     } catch (e) {
@@ -410,7 +393,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   void _showTimeValidationDialog(TimeOfDay attemptedTime) {
     final DateTime now = DateTime.now();
     final DateTime minimumTime = now.add(const Duration(minutes: 5));
-    final String minimumTimeText = '${minimumTime.hour.toString().padLeft(2, '0')}:${minimumTime.minute.toString().padLeft(2, '0')}';
+    final String minimumTimeText = '${minimumTime.hour.toString().padLeft(
+        2, '0')}:${minimumTime.minute.toString().padLeft(2, '0')}';
 
     showDialog(
       context: context,
@@ -424,7 +408,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
             ],
           ),
           content: Text(
-            'Waktu ${attemptedTime.hour.toString().padLeft(2, '0')}:${attemptedTime.minute.toString().padLeft(2, '0')} tidak dapat dipilih.\n\n'
+            'Waktu ${attemptedTime.hour.toString().padLeft(
+                2, '0')}:${attemptedTime.minute.toString().padLeft(
+                2, '0')} tidak dapat dipilih.\n\n'
                 'Untuk reservasi hari ini, minimal waktu yang dapat dipilih adalah $minimumTimeText (5 menit dari sekarang).',
           ),
           actions: [
@@ -495,7 +481,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
               if (!isAvailable && result['conflicting_tables'] != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Meja yang bentrok: ${(result['conflicting_tables'] as List).join(', ')}',
+                  'Meja yang bentrok: ${(result['conflicting_tables'] as List)
+                      .join(', ')}',
                   style: TextStyle(
                     color: Colors.red.shade600,
                     fontWeight: FontWeight.w500,
@@ -521,10 +508,14 @@ class _ReservationScreenState extends State<ReservationScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildInfoRow('Area', result['data']['area_name'] ?? selectedArea?.areaName ?? ''),
-                      _buildInfoRow('Jumlah Tamu', '${result['data']['guest_count'] ?? personCount} orang'),
+                      _buildInfoRow('Area', result['data']['area_name'] ??
+                          selectedArea?.areaName ?? ''),
+                      _buildInfoRow('Jumlah Tamu',
+                          '${result['data']['guest_count'] ??
+                              personCount} orang'),
                       _buildInfoRow('Meja Dipilih', _getSelectedTableNumbers()),
-                      _buildInfoRow('Total Kapasitas', '${_calculateTotalCapacity()} orang'),
+                      _buildInfoRow('Total Kapasitas',
+                          '${_calculateTotalCapacity()} orang'),
                     ],
                   ),
                 ),
@@ -540,13 +531,17 @@ class _ReservationScreenState extends State<ReservationScreen> {
               ),
             ),
             if (isAvailable) ...[
-              // Tombol "Pesan Nanti" - untuk open bill tanpa menu
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
 
-                  final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
-                  final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+                  final String formattedDate = DateFormat(
+                      'dd MMMM yyyy', 'id_ID').format(selectedDate);
+                  final String formattedTime = '${selectedTime.hour
+                      .toString()
+                      .padLeft(2, '0')}:${selectedTime.minute
+                      .toString()
+                      .padLeft(2, '0')}';
 
                   final reservationData = ReservationData(
                     date: selectedDate,
@@ -557,20 +552,25 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     formattedDate: formattedDate,
                     formattedTime: formattedTime,
                     selectedTableIds: selectedTableIds,
-                    servingType: selectedServingType, // ✅ TAMBAHAN
-                    equipment: selectedEquipment, // ✅ TAMBAHAN
+                    servingType: selectedServingType,
+                    equipment: selectedEquipment,
+                    agenda: selectedAgenda,
+                    foodServingOption: selectedFoodServingOption,
+                    foodServingTime: selectedFoodServingTime,
                   );
 
-                  final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                  final cartProvider = Provider.of<CartProvider>(
+                      context, listen: false);
                   cartProvider.setReservationData(true, reservationData);
 
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CheckoutPage(
-                        isReservation: true,
-                        reservationData: reservationData,
-                      ),
+                      builder: (context) =>
+                          CheckoutPage(
+                            isReservation: true,
+                            reservationData: reservationData,
+                          ),
                     ),
                   );
                 },
@@ -579,8 +579,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   style: TextStyle(color: Colors.blue.shade600),
                 ),
               ),
-
-              // Tombol "Lanjut ke Menu" - untuk reservasi dengan menu
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -626,8 +624,10 @@ class _ReservationScreenState extends State<ReservationScreen> {
   void _navigateToMenuWithReservation() {
     if (selectedArea == null) return;
 
-    final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate);
-    final String formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+    final String formattedDate = DateFormat('dd MMMM yyyy', 'id_ID').format(
+        selectedDate);
+    final String formattedTime = '${selectedTime.hour.toString().padLeft(
+        2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
 
     final reservationData = ReservationData(
       date: selectedDate,
@@ -638,17 +638,21 @@ class _ReservationScreenState extends State<ReservationScreen> {
       formattedDate: formattedDate,
       formattedTime: formattedTime,
       selectedTableIds: selectedTableIds,
-      servingType: selectedServingType, // ✅ TAMBAHAN
-      equipment: selectedEquipment, // ✅ TAMBAHAN
+      servingType: selectedServingType,
+      equipment: selectedEquipment,
+      agenda: selectedAgenda,
+      foodServingOption: selectedFoodServingOption,
+      foodServingTime: selectedFoodServingTime,
     );
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MenuScreen(
-          isReservation: true,
-          reservationData: reservationData,
-        ),
+        builder: (context) =>
+            MenuScreen(
+              isReservation: true,
+              reservationData: reservationData,
+            ),
       ),
     );
   }
@@ -681,7 +685,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
     String buttonText = 'Cek Ketersediaan & Lanjut';
 
     if (!_isValidReservationDate()) {
-      buttonText = 'Tanggal Tidak Valid (Pilih Tanggal Hari Ini atau Sesudahnya)';
+      buttonText =
+      'Tanggal Tidak Valid (Pilih Tanggal Hari Ini atau Sesudahnya)';
     } else if (!_isValidTime(selectedTime, selectedDate)) {
       buttonText = 'Waktu Tidak Valid (Minimal 5 Menit dari Sekarang)';
     } else if (selectedArea == null) {
@@ -728,13 +733,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  // Import yang perlu ditambahkan di bagian atas file
-// import 'package:skeletonizer/skeletonizer.dart';
-
   Widget _buildTableList() {
     if (selectedArea == null) return const SizedBox();
 
-    // Skeleton ketika loading
     if (isLoadingTables) {
       return Skeletonizer(
         enabled: true,
@@ -774,14 +775,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Skeleton tables grid
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: List.generate(8, (index) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(6),
@@ -812,17 +812,17 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   );
                 }),
               ),
-
               const SizedBox(height: 8),
-
-              // Skeleton legend
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
                 children: [
-                  _buildLegendItem(Colors.white, Colors.grey.shade300, 'Tersedia'),
-                  _buildLegendItem(Colors.grey.shade400, Colors.grey.shade400, 'Dipilih'),
-                  _buildLegendItem(Colors.red.shade100, Colors.red.shade300, 'Direservasi'),
+                  _buildLegendItem(
+                      Colors.white, Colors.grey.shade300, 'Tersedia'),
+                  _buildLegendItem(
+                      Colors.grey.shade400, Colors.grey.shade400, 'Dipilih'),
+                  _buildLegendItem(
+                      Colors.red.shade100, Colors.red.shade300, 'Direservasi'),
                 ],
               ),
             ],
@@ -855,8 +855,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
       );
     }
 
-    // Filter tables by availability status
-    final availableTables = tables.where((table) => table.canBeSelected).toList();
+    final availableTables = tables
+        .where((table) => table.canBeSelected)
+        .toList();
 
     return Container(
       margin: const EdgeInsets.only(top: 16),
@@ -904,7 +905,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Selected tables info
           if (selectedTableIds.isNotEmpty) ...[
             Container(
               width: double.infinity,
@@ -933,10 +933,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Status: ${_isTableSelectionValid() ? "Mencukupi" : "Tidak Mencukupi"} untuk $personCount orang',
+                    'Status: ${_isTableSelectionValid()
+                        ? "Mencukupi"
+                        : "Tidak Mencukupi"} untuk $personCount orang',
                     style: TextStyle(
                       fontSize: 11,
-                      color: _isTableSelectionValid() ? Colors.green : Colors.red,
+                      color: _isTableSelectionValid() ? Colors.green : Colors
+                          .red,
                     ),
                   ),
                 ],
@@ -945,7 +948,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
             const SizedBox(height: 12),
           ],
 
-          // Area availability warning
           if (selectedArea!.isFullyBooked) ...[
             Container(
               width: double.infinity,
@@ -975,7 +977,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
             const SizedBox(height: 12),
           ],
 
-          // Tables grid
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1004,7 +1005,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
               return GestureDetector(
                 onTap: () => _toggleTableSelection(table.id),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
                     color: backgroundColor,
                     borderRadius: BorderRadius.circular(6),
@@ -1027,7 +1029,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                       Text(
                         '${table.seats} kursi',
                         style: TextStyle(
-                          color: isSelected ? Colors.white70 : Colors.grey.shade600,
+                          color: isSelected ? Colors.white70 : Colors.grey
+                              .shade600,
                           fontSize: 10,
                         ),
                       ),
@@ -1049,24 +1052,25 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
           const SizedBox(height: 8),
 
-          // Legend
           Wrap(
             spacing: 8,
             runSpacing: 4,
             children: [
               _buildLegendItem(Colors.white, Colors.grey.shade300, 'Tersedia'),
-              _buildLegendItem(AppTheme.barajaPrimary.primaryColor, AppTheme.barajaPrimary.primaryColor, 'Dipilih'),
-              _buildLegendItem(Colors.red.shade100, Colors.red.shade300, 'Direservasi/Tidak Tersedia'),
+              _buildLegendItem(AppTheme.barajaPrimary.primaryColor,
+                  AppTheme.barajaPrimary.primaryColor, 'Dipilih'),
+              _buildLegendItem(Colors.red.shade100, Colors.red.shade300,
+                  'Direservasi/Tidak Tersedia'),
             ],
           ),
 
-          // Refresh button
           const SizedBox(height: 8),
           Center(
             child: TextButton.icon(
               onPressed: _refreshTablesAvailability,
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Refresh Ketersediaan', style: TextStyle(fontSize: 12)),
+              label: const Text(
+                  'Refresh Ketersediaan', style: TextStyle(fontSize: 12)),
               style: TextButton.styleFrom(
                 foregroundColor: AppTheme.barajaPrimary.primaryColor,
               ),
@@ -1077,7 +1081,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  Widget _buildLegendItem(Color backgroundColor, Color borderColor, String label) {
+  Widget _buildLegendItem(Color backgroundColor, Color borderColor,
+      String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1114,14 +1119,12 @@ class _ReservationScreenState extends State<ReservationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Date selection
                   DateSelector(
                     selectedDate: selectedDate,
                     onDateChanged: _onDateChanged,
                   ),
                   const SizedBox(height: 16),
 
-                  // Time selection
                   TimeSelector(
                     selectedTime: selectedTime,
                     selectedDate: selectedDate,
@@ -1130,7 +1133,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Area selection
                   AreaSelector(
                     areas: areas,
                     selectedAreaId: selectedArea?.id,
@@ -1139,11 +1141,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Table selection
                   _buildTableList(),
                   const SizedBox(height: 16),
 
-                  // Person count
                   PersonCounter(
                     personCount: personCount,
                     maxPersons: selectedArea?.capacity ?? 30,
@@ -1154,7 +1154,16 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     },
                   ),
 
-                  // ✅ TAMBAHAN BARU: Serving Type Selector
+                  const SizedBox(height: 16),
+                  AgendaSelector(
+                    selectedAgenda: selectedAgenda,
+                    onAgendaChanged: (agenda) {
+                      setState(() {
+                        selectedAgenda = agenda;
+                      });
+                    },
+                  ),
+
                   const SizedBox(height: 16),
                   ServingTypeSelector(
                     selectedServingType: selectedServingType,
@@ -1165,7 +1174,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     },
                   ),
 
-                  // ✅ TAMBAHAN BARU: Equipment Selector
                   const SizedBox(height: 16),
                   EquipmentSelector(
                     selectedEquipment: selectedEquipment,
@@ -1176,9 +1184,20 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     },
                   ),
 
+                  const SizedBox(height: 16),
+                  FoodServingSelector(
+                    selectedServingOption: selectedFoodServingOption,
+                    selectedServingTime: selectedFoodServingTime,
+                    onServingChanged: (option, time) {
+                      setState(() {
+                        selectedFoodServingOption = option;
+                        selectedFoodServingTime = time;
+                      });
+                    },
+                  ),
+
                   const SizedBox(height: 24),
 
-                  // Reservation button
                   _buildReservationButton(),
                 ],
               ),

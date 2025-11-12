@@ -144,6 +144,7 @@ class _GroUnifiedOrderDetailSheetState
       try {
         final dateStr = _data!['reservation_date'];
         if (dateStr != null) reservationDate = DateTime.parse(dateStr);
+      // ignore: empty_catches
       } catch (e) {}
 
       TimeOfDay reservationTime = TimeOfDay.now();
@@ -156,6 +157,7 @@ class _GroUnifiedOrderDetailSheetState
             minute: int.parse(parts[1]),
           );
         }
+      // ignore: empty_catches
       } catch (e) {}
 
       openBillData = OpenBillData(

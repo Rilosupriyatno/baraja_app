@@ -368,22 +368,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   bool _shouldShowReservationType(String? areaCode) {
-    return areaCode == 'A' || areaCode == 'B';
+    return areaCode == 'I' || areaCode == 'F';
   }
 
   bool _canSelectBlocking(String? areaCode, int totalAmount) {
-    if (areaCode == 'A') {
+    if (areaCode == 'I') {
       return totalAmount >= 3000000;
-    } else if (areaCode == 'B') {
+    } else if (areaCode == 'F') {
       return totalAmount >= 2000000;
     }
     return false;
   }
 
   int _getMinimumAmountForBlocking(String? areaCode) {
-    if (areaCode == 'A') {
+    if (areaCode == 'I') {
       return 3000000;
-    } else if (areaCode == 'B') {
+    } else if (areaCode == 'F') {
       return 2000000;
     }
     return 0;

@@ -1,4 +1,8 @@
-// gro_dinein_guest_form_screen.dart
+// ============================================================================
+// FILE 2: gro_dinein_screen.dart
+// UPDATED: Multi-table support for dine-in
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
@@ -6,17 +10,28 @@ import '../theme/app_theme.dart';
 import 'menu_screen.dart';
 
 class GroDineInGuestFormScreen extends StatefulWidget {
-  final String tableNumber;
-  final String areaCode;
+// ✅ UPDATED: Support multiple tables
+  final String? tableNumber;
+  final String? areaCode;
+  final List<String>? tableNumbers;
+  final int? totalSeats;
+  final bool isMultiTable;
 
   const GroDineInGuestFormScreen({
     super.key,
-    required this.tableNumber,
-    required this.areaCode,
-  });
+    this.tableNumber,
+    this.areaCode,
+    this.tableNumbers,
+    this.totalSeats,
+    this.isMultiTable = false,
+  }) : assert(
+            (tableNumber != null && areaCode != null) ||
+                (tableNumbers != null && tableNumbers.length > 0),
+            'Either single table or multiple tables must be provided');
 
   @override
-  State<GroDineInGuestFormScreen> createState() => _GroDineInGuestFormScreenState();
+  State<GroDineInGuestFormScreen> createState() =>
+      _GroDineInGuestFormScreenState();
 }
 
 class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
@@ -25,9 +40,23 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
+  late String _displayTableInfo;
+  late bool _isMultiTable;
+
   @override
   void initState() {
     super.initState();
+    _isMultiTable = widget.isMultiTable;
+
+// Setup display info
+    if (_isMultiTable && widget.tableNumbers != null) {
+      _displayTableInfo = widget.tableNumbers!.join(', ');
+    } else if (widget.tableNumber != null) {
+      _displayTableInfo = widget.tableNumber!;
+    } else {
+      _displayTableInfo = 'N/A';
+    }
+
     _nameController.addListener(() => setState(() {}));
     _phoneController.addListener(() => setState(() {}));
   }
@@ -52,23 +81,29 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // Set guest data untuk GRO dine-in
+// Set guest data untuk GRO dine-in
     cartProvider.setGuestData(
       guestName: _nameController.text.trim(),
       guestPhone: _phoneController.text.trim(),
       notes: _notesController.text.trim(),
     );
 
-    // Set dine-in context
-    cartProvider.setDineInData(true, widget.tableNumber);
+// Set dine-in context
+    if (_isMultiTable && widget.tableNumbers != null) {
+// Multi-table dine-in
+      cartProvider.setDineInData(true, widget.tableNumbers!.join(', '));
+    } else if (widget.tableNumber != null) {
+// Single table dine-in
+      cartProvider.setDineInData(true, widget.tableNumber!);
+    }
 
-    // Navigate to menu
+// Navigate to menu
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => MenuScreen(
           isDineIn: true,
-          tableNumber: widget.tableNumber,
+          tableNumber: _displayTableInfo,
           isGroMode: true,
         ),
       ),
@@ -82,9 +117,9 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        title: const Text(
-          'Data Tamu Dine-In',
-          style: TextStyle(
+        title: Text(
+          _isMultiTable ? 'Data Tamu Multi-Meja' : 'Data Tamu Dine-In',
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 20,
             color: Colors.black,
@@ -100,52 +135,12 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Table Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.table_restaurant,
-                      color: Colors.blue.shade700,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Meja ${widget.tableNumber}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Area ${widget.areaCode}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.blue.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+// ✅ UPDATED: Table Info Card with multi-table support
+              _buildTableInfoCard(),
 
               const SizedBox(height: 24),
 
-              // Guest Information Section
+// Guest Information Section
               _buildSectionCard(
                 title: 'Informasi Tamu',
                 icon: Icons.person,
@@ -182,7 +177,7 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
 
               const SizedBox(height: 16),
 
-              // Notes Section
+// Notes Section
               _buildSectionCard(
                 title: 'Catatan (Opsional)',
                 icon: Icons.note_outlined,
@@ -198,7 +193,7 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
 
               const SizedBox(height: 24),
 
-              // Proceed Button
+// Proceed Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -222,9 +217,188 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
                   ),
                 ),
               ),
+
+// ✅ Multi-table info banner
+              if (_isMultiTable) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Dine-In Multi-Meja',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pesanan akan terkait dengan ${widget.tableNumbers?.length ?? 0} meja'
+                        '${widget.totalSeats != null ? " (Total kapasitas: ${widget.totalSeats} orang)" : ""}.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+// ✅ NEW: Build table info card with multi-table support
+  Widget _buildTableInfoCard() {
+    if (_isMultiTable && widget.tableNumbers != null) {
+// Multi-table display
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.table_restaurant,
+                  color: Colors.blue.shade700,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${widget.tableNumbers!.length} Meja Dipilih',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (widget.totalSeats != null)
+                        Text(
+                          'Total Kapasitas: ${widget.totalSeats} orang',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue.shade600,
+                          ),
+                        ),
+                      if (widget.areaCode != null)
+                        Text(
+                          'Area ${widget.areaCode}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade700,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.totalSeats ?? 0} 👤',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: widget.tableNumbers!.map((tableNum) {
+                return Chip(
+                  label: Text('Meja $tableNum'),
+                  backgroundColor: Colors.white,
+                  side: BorderSide(color: Colors.blue.shade700),
+                  labelStyle: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
+// Single table display
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.table_restaurant,
+            color: Colors.blue.shade700,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Meja ${widget.tableNumber ?? _displayTableInfo}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (widget.areaCode != null)
+                  Text(
+                    'Area ${widget.areaCode}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

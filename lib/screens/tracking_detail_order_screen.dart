@@ -365,6 +365,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
 // ============================================
 
 // ✅ Cek apakah order bisa dibatalkan
+  // ignore: unused_element
   bool _canCancelOrder() {
     if (orderData == null) return false;
 
@@ -378,6 +379,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
 // ✅ Cek apakah order bisa di-rating
+  // ignore: unused_element
   bool _canRateOrder() {
     if (orderData == null) return false;
 
@@ -391,6 +393,7 @@ class _TrackingDetailOrderScreenState extends State<TrackingDetailOrderScreen>
   }
 
 // ✅ Get progress percentage untuk progress indicator
+  // ignore: unused_element
   double _getOrderProgress() {
     if (orderData == null) return 0.0;
 

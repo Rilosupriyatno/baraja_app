@@ -1,0 +1,2 @@
+/home/rils/StudioProjects/baraja_app/android/app/.cxx/Debug/4r5w122z/armeabi-v7a/CMakeFiles/edit_cache.dir
+/home/rils/StudioProjects/baraja_app/android/app/.cxx/Debug/4r5w122z/armeabi-v7a/CMakeFiles/rebuild_cache.dir

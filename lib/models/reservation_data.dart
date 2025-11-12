@@ -11,9 +11,14 @@ class ReservationData {
   final String formattedTime;
   final List<String> selectedTableIds;
 
-  // ✅ FIELD BARU
+  // ✅ FIELD YANG SUDAH ADA
   final String? servingType; // 'ala carte' or 'buffet'
   final List<String> equipment; // Array equipment yang dipilih
+
+  // ✅ FIELD BARU
+  final String? agenda; // Meeting, Ulang Tahun, Anniversary, Keluarga, Lainnya
+  final String? foodServingOption; // 'immediate' or 'scheduled'
+  final DateTime? foodServingTime; // Waktu penyajian jika scheduled
 
   ReservationData({
     required this.date,
@@ -26,6 +31,9 @@ class ReservationData {
     this.selectedTableIds = const [],
     this.servingType, // Default null (opsional)
     this.equipment = const [], // Default empty list
+    this.agenda, // Default null (opsional)
+    this.foodServingOption, // Default null (opsional)
+    this.foodServingTime, // Default null (opsional)
   });
 
   // Create a copy with updated values
@@ -40,6 +48,9 @@ class ReservationData {
     List<String>? selectedTableIds,
     String? servingType,
     List<String>? equipment,
+    String? agenda,
+    String? foodServingOption,
+    DateTime? foodServingTime,
   }) {
     return ReservationData(
       date: date ?? this.date,
@@ -52,6 +63,9 @@ class ReservationData {
       selectedTableIds: selectedTableIds ?? this.selectedTableIds,
       servingType: servingType ?? this.servingType,
       equipment: equipment ?? this.equipment,
+      agenda: agenda ?? this.agenda,
+      foodServingOption: foodServingOption ?? this.foodServingOption,
+      foodServingTime: foodServingTime ?? this.foodServingTime,
     );
   }
 
@@ -66,6 +80,9 @@ class ReservationData {
       'selected_table_ids': selectedTableIds,
       if (servingType != null) 'serving_type': servingType,
       if (equipment.isNotEmpty) 'equipment': equipment,
+      if (agenda != null) 'agenda': agenda,
+      if (foodServingOption != null) 'food_serving_option': foodServingOption,
+      if (foodServingTime != null) 'food_serving_time': foodServingTime!.toIso8601String(),
     };
   }
 
@@ -74,7 +91,9 @@ class ReservationData {
     return 'ReservationData(date: $formattedDate, time: $formattedTime, '
         'areaCode: $areaCode, personCount: $personCount, '
         'selectedTables: ${selectedTableIds.join(", ")}, '
-        'servingType: $servingType, equipment: ${equipment.join(", ")})';
+        'servingType: $servingType, equipment: ${equipment.join(", ")}, '
+        'agenda: $agenda, foodServingOption: $foodServingOption, '
+        'foodServingTime: ${foodServingTime?.toIso8601String() ?? "null"})';
   }
 }
 

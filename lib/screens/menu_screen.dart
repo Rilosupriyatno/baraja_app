@@ -12,6 +12,7 @@ import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/menu/menu_selector.dart';
+import '../widgets/menu/search_menu_widget.dart'; // ✅ Import widget search
 import '../widgets/utils/classic_app_bar.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -42,10 +43,11 @@ class _MenuScreenState extends State<MenuScreen> {
   final ProductService _productService = ProductService();
 
   List<Product> _allProducts = [];
-  Map<String, List<Category>> _categoriesMap = {}; // ✅ mainCategory → [categories]
+  Map<String, List<Category>> _categoriesMap = {};
 
-  String selectedMenu = 'Makanan'; // ✅ mainCategory
-  String selectedCategory = ''; // ✅ category (dulu selectedSubMenu)
+  String selectedMenu = 'Makanan';
+  String selectedCategory = '';
+  String _searchQuery = ''; // ✅ Tambah state untuk search
 
   bool _isLoading = true;
   String _errorMessage = '';
@@ -95,14 +97,13 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // ✅ Generate categories berdasarkan mainCategory
   void _generateCategoriesMap(List<Product> products) {
     try {
       Map<String, Set<String>> tempCategoriesMap = {};
 
       for (var product in products) {
-        String mainCategory = product.mainCategory; // ✅ makanan/minuman
-        String category = product.category ?? 'Lainnya'; // ✅ category name
+        String mainCategory = product.mainCategory;
+        String category = product.category ?? 'Lainnya';
 
         if (!tempCategoriesMap.containsKey(mainCategory)) {
           tempCategoriesMap[mainCategory] = <String>{};
@@ -128,9 +129,19 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // ✅ Filter products berdasarkan mainCategory dan category
+  // ✅ Update filter products dengan search functionality
   List<Product> _getFilteredProducts() {
     return _allProducts.where((product) {
+      // Filter by search query first
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final matchesName = product.name.toLowerCase().contains(query);
+        final matchesCategory = product.category?.toLowerCase().contains(query) ?? false;
+        final matchesDescription = product.description.toLowerCase().contains(query);
+
+        return matchesName || matchesCategory || matchesDescription;
+      }
+
       // Filter by mainCategory (Makanan/Minuman)
       if (product.mainCategory != selectedMenu) {
         return false;
@@ -162,7 +173,20 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  // Dummy products untuk skeleton
+  // ✅ Handler untuk search
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
+  // ✅ Handler untuk clear search
+  void _onClearSearch() {
+    setState(() {
+      _searchQuery = '';
+    });
+  }
+
   List<Product> _getDummyProducts() {
     return List.generate(
       6,
@@ -397,6 +421,41 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  // ✅ Widget untuk menampilkan hasil search
+  Widget _buildSearchResultsInfo() {
+    if (_searchQuery.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final filteredProducts = _getFilteredProducts();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: Colors.blue.shade700, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Ditemukan ${filteredProducts.length} hasil untuk "$_searchQuery"',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.blue.shade900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getAppBarTitle() {
     if (widget.isGroMode) {
       return 'Menu (GRO Mode)';
@@ -442,35 +501,76 @@ class _MenuScreenState extends State<MenuScreen> {
               _buildOpenBillInfo(),
               _buildDineInInfo(),
 
-              // ✅ Menu Selector (Makanan/Minuman)
-              MenuSelector(
-                selectedMenu: selectedMenu,
-                onMenuSelected: (menu) {
-                  setState(() {
-                    selectedMenu = menu;
-                    if (_categoriesMap[menu]!.isNotEmpty) {
-                      selectedCategory = _categoriesMap[menu]![0].name;
-                    }
-                  });
-                },
+              // ✅ Search Widget
+              SearchMenuWidget(
+                onSearchChanged: _onSearchChanged,
+                onClearSearch: _onClearSearch,
               ),
 
-              // ✅ Category Slider (Pasta, Frappe, Mocktail, dll)
-              SubMenuSlider(
-                subMenus: categoryList,
-                selectedSubMenu: selectedCategory,
-                onSubMenuSelected: (category) {
-                  setState(() {
-                    selectedCategory = category;
-                  });
-                },
-              ),
+              // ✅ Search Results Info
+              _buildSearchResultsInfo(),
+
+              // ✅ Hide menu selector & category slider saat search aktif
+              if (_searchQuery.isEmpty) ...[
+                MenuSelector(
+                  selectedMenu: selectedMenu,
+                  onMenuSelected: (menu) {
+                    setState(() {
+                      selectedMenu = menu;
+                      if (_categoriesMap[menu]!.isNotEmpty) {
+                        selectedCategory = _categoriesMap[menu]![0].name;
+                      }
+                    });
+                  },
+                ),
+                SubMenuSlider(
+                  subMenus: categoryList,
+                  selectedSubMenu: selectedCategory,
+                  onSubMenuSelected: (category) {
+                    setState(() {
+                      selectedCategory = category;
+                    });
+                  },
+                ),
+              ],
 
               Expanded(
                 child: Skeletonizer(
                   enabled: _isLoading,
                   enableSwitchAnimation: true,
-                  child: ProductGrid(products: filteredProducts),
+                  child: filteredProducts.isEmpty && !_isLoading
+                      ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tidak ada menu yang ditemukan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'Coba kata kunci lain'
+                              : 'Belum ada menu tersedia',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : ProductGrid(products: filteredProducts),
                 ),
               ),
             ],

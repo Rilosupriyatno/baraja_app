@@ -37,6 +37,7 @@ class UnifiedPaymentView extends StatefulWidget {
   final bool isDownPayment;
   final ReservationData? reservationData;
   // Tax-related parameters
+  final bool isGroMode;
   final int taxAmount;
   final List<Map<String, dynamic>> taxDetails;
 
@@ -65,6 +66,7 @@ class UnifiedPaymentView extends StatefulWidget {
     // Tax parameters
     this.taxAmount = 0,
     this.taxDetails = const [],
+    this.isGroMode = false,
   });
 
   @override
@@ -335,11 +337,37 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
         ),
 
         // Bottom button
+        // Padding(
+        //   padding: const EdgeInsets.all(16.0),
+        //   child: ElevatedButton(
+        //     onPressed: () {
+        //       context.go('/orderDetail', extra: widget.order.id);
+        //     },
+        //     style: ElevatedButton.styleFrom(
+        //       backgroundColor: AppTheme.primaryColor,
+        //       foregroundColor: Colors.white,
+        //       minimumSize: const Size.fromHeight(50),
+        //       shape: RoundedRectangleBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //       ),
+        //     ),
+        //     child: const Text(
+        //       'Lihat Pesanan Saya',
+        //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        //     ),
+        //   ),
+        // )
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
             onPressed: () {
-              context.go('/orderDetail', extra: widget.order.id);
+              if (widget.isGroMode == true) {
+                // Kalau GRO mode, arahkan ke dashboard GRO
+                context.go('/gro-dashboard');
+              } else {
+                // Kalau bukan, arahkan ke tab "Riwayat" (History)
+                context.go('/main', extra: {'initialTab': 3});
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -355,6 +383,7 @@ class _UnifiedPaymentViewState extends State<UnifiedPaymentView> {
             ),
           ),
         )
+
       ],
     );
   }

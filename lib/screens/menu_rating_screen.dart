@@ -363,7 +363,7 @@ class _MenuRatingPageState extends State<MenuRatingPage> {
               // Tambahkan tombol copy link
               GestureDetector(
                 onTap: () {
-                  Clipboard.setData(ClipboardData(text: googleMapsUrl));
+                  Clipboard.setData(const ClipboardData(text: googleMapsUrl));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Link berhasil disalin!'),

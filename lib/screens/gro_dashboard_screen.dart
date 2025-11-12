@@ -341,6 +341,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   }
 
 // ✅ PERBAIKAN: Juga di appbar outlet info
+  // ignore: unused_element
   Widget _buildAppBarOutletInfo(AuthService authService) {
     final outlets = authService.getUserOutlets();
 

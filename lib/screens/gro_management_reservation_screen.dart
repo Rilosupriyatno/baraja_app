@@ -1027,20 +1027,18 @@ class _GroReservationManagementScreenState
   Widget _buildActionButtons(Map<String, dynamic> reservation) {
     final type = reservation['type'];
     final id = reservation['_id'];
+    final status = reservation['status'];
 
     // === DINE-IN ORDER ACTIONS ===
     if (type == 'dine-in-order') {
-      final status = reservation['status'];
-      if (status == 'Reserved') {
+      // ✅ PERBAIKAN: Untuk Dine-In, Reserved = siap check-in (tidak perlu konfirmasi lagi)
+      if (status == 'Reserved' || status == 'Waiting') {
         return Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             SizedBox(
-              width: (MediaQuery
-                  .of(context)
-                  .size
-                  .width - 64) / 2 - 4,
+              width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
               child: ElevatedButton.icon(
                 onPressed: () => _checkInDineInOrder(id),
                 icon: const Icon(Icons.login, size: 16),
@@ -1057,10 +1055,7 @@ class _GroReservationManagementScreenState
               ),
             ),
             SizedBox(
-              width: (MediaQuery
-                  .of(context)
-                  .size
-                  .width - 64) / 2 - 4,
+              width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
               child: OutlinedButton.icon(
                 onPressed: () => _cancelDineInOrder(id),
                 icon: const Icon(Icons.close, size: 16),
@@ -1078,6 +1073,37 @@ class _GroReservationManagementScreenState
           ],
         );
       }
+
+      // ✅ Pending untuk Dine-In = menunggu konfirmasi KASIR (bukan GRO)
+      // Jadi GRO tidak bisa konfirmasi, hanya bisa lihat
+      if (status == 'Pending') {
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Menunggu konfirmasi kasir',
+                  style: TextStyle(
+                    color: Colors.orange.shade700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // ✅ OnProcess menampilkan tombol Selesai
       if (status == 'OnProcess') {
         return SizedBox(
           width: double.infinity,
@@ -1097,13 +1123,15 @@ class _GroReservationManagementScreenState
           ),
         );
       }
+
+      // ✅ Status lainnya (Completed, Canceled) tidak menampilkan tombol
       return const SizedBox.shrink();
     }
 
     // === RESERVATION ACTIONS ===
-    final status = reservation['status'];
     final checkInTime = reservation['check_in_time'];
     final checkOutTime = reservation['check_out_time'];
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1145,10 +1173,7 @@ class _GroReservationManagementScreenState
         ],
         if (status == 'confirmed' && checkInTime == null) ...[
           SizedBox(
-            width: (MediaQuery
-                .of(context)
-                .size
-                .width - 64) / 2 - 4,
+            width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
             child: ElevatedButton.icon(
               onPressed: () => _checkInReservation(id),
               icon: const Icon(Icons.login, size: 16),
@@ -1165,10 +1190,7 @@ class _GroReservationManagementScreenState
             ),
           ),
           SizedBox(
-            width: (MediaQuery
-                .of(context)
-                .size
-                .width - 64) / 2 - 4,
+            width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
             child: OutlinedButton.icon(
               onPressed: () => _cancelReservation(id),
               icon: const Icon(Icons.close, size: 16),
@@ -1184,20 +1206,15 @@ class _GroReservationManagementScreenState
             ),
           ),
         ],
-        if (status == 'confirmed' && checkInTime != null &&
-            checkOutTime == null) ...[
+        if (status == 'confirmed' && checkInTime != null && checkOutTime == null) ...[
           SizedBox(
-            width: (MediaQuery
-                .of(context)
-                .size
-                .width - 64) / 2 - 4,
+            width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
             child: ElevatedButton.icon(
               onPressed: () => _checkOutReservation(id),
               icon: const Icon(Icons.logout, size: 16),
               label: const Text('Check-out', style: TextStyle(fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
-                // ✅ Warna oranye konsisten
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 elevation: 0,
@@ -1208,10 +1225,7 @@ class _GroReservationManagementScreenState
             ),
           ),
           SizedBox(
-            width: (MediaQuery
-                .of(context)
-                .size
-                .width - 64) / 2 - 4,
+            width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
             child: OutlinedButton.icon(
               onPressed: () => _cancelReservation(id),
               icon: const Icon(Icons.close, size: 16),

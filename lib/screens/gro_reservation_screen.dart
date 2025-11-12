@@ -1,4 +1,8 @@
-// gro_reservation_screen.dart - UPDATED: Remove createReservation, pass guest data
+// ============================================================================
+// FILE 1: gro_reservation_screen.dart
+// UPDATED: Full multi-table support
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -7,21 +11,30 @@ import '../models/reservation_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/reservation/date_selector.dart';
 import '../widgets/reservation/time_selector.dart';
+import '../widgets/reservation/agenda_selector.dart';
+import '../widgets/reservation/serving_type_selector.dart';
+import '../widgets/reservation/equipment_selector.dart';
+import '../widgets/reservation/food_serving_selector.dart';
 import 'menu_screen.dart';
 import 'checkout_page.dart';
 
 class CreateReservationScreen extends StatefulWidget {
+  // ✅ UPDATED: Support both single and multiple tables
   final Map<String, dynamic>? selectedTable;
+  final List<Map<String, dynamic>>? selectedTables;
   final DateTime? selectedDate;
   final String? selectedTime;
   final bool isGroMode;
+  final int? totalSeats;
 
   const CreateReservationScreen({
     super.key,
     this.selectedTable,
+    this.selectedTables,
     this.selectedDate,
     this.selectedTime,
     this.isGroMode = false,
+    this.totalSeats,
   });
 
   @override
@@ -37,20 +50,63 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _guestCountController = TextEditingController();
+  String? get _areaCode {
+    if (_selectedTables.isEmpty) return null;
+    return _selectedTables.first['area']['area_code'] as String?;
+  }
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = const TimeOfDay(hour: 19, minute: 0);
-  List<Map<String, dynamic>> _selectedTables = [];
+
+  // ✅ NEW: Working tables list
+  late List<Map<String, dynamic>> _selectedTables;
+  late int _totalCapacity;
+  late bool _isMultiTable;
+
   int personCount = 1;
+
+  // Optional reservation features
+  String? selectedAgenda;
+  String? selectedServingType;
+  List<String> selectedEquipment = [];
+  String? selectedFoodServingOption;
+  DateTime? selectedFoodServingTime;
+
+  DateTime get _selectedDateTime {
+    return DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.selectedTable != null) {
+
+    // ✅ INITIALIZE: Setup tables based on input
+    if (widget.selectedTables != null && widget.selectedTables!.isNotEmpty) {
+      // Multi-table mode
+      _selectedTables = widget.selectedTables!;
+      _isMultiTable = true;
+    } else if (widget.selectedTable != null) {
+      // Single table mode (backward compatibility)
       _selectedTables = [widget.selectedTable!];
-      personCount = widget.selectedTable!['seats'] ?? 1;
-      _guestCountController.text = personCount.toString();
+      _isMultiTable = false;
+    } else {
+      _selectedTables = [];
+      _isMultiTable = false;
     }
+
+    // ✅ CALCULATE: Total capacity
+    _totalCapacity = widget.totalSeats ?? _calculateTotalCapacity();
+
+    // Set initial person count to total capacity
+    personCount = _totalCapacity;
+    _guestCountController.text = personCount.toString();
+
     if (widget.selectedDate != null) {
       _selectedDate = widget.selectedDate!;
     }
@@ -67,7 +123,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     _phoneController.addListener(() => setState(() {}));
     _guestCountController.addListener(() => setState(() {}));
   }
+  bool _shouldShowReservationType(String? areaCode) {
+    return areaCode == 'I' || areaCode == 'F';
+  }
 
+  int _calculateTotalCapacity() {
+    return _selectedTables.fold(0, (sum, table) => sum + (table['seats'] as int));
+  }
   void _validateInitialDateTime() {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
@@ -219,32 +281,47 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Text('Konfirmasi Reservasi', style: TextStyle(fontSize: 18)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Data reservasi yang akan dibuat:'),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Data reservasi yang akan dibuat:'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInfoRow('Nama Tamu', _nameController.text),
+                      _buildInfoRow('No. Telepon', _phoneController.text),
+                      _buildInfoRow('Jumlah Tamu', '${_guestCountController.text} orang'),
+                      _buildInfoRow('Area', _selectedTables.first['area']['area_name'] ?? ''),
+                      _buildInfoRow(_isMultiTable ? 'Meja-meja' : 'Meja', _getSelectedTableNumbers()),
+                      if (_isMultiTable)
+                        _buildInfoRow('Total Kapasitas', '$_totalCapacity orang'),
+                      _buildInfoRow('Tanggal', DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate)),
+                      _buildInfoRow('Waktu', timeStr),
+                      if (selectedAgenda != null)
+                        _buildInfoRow('Agenda', selectedAgenda!),
+                      if (selectedServingType != null)
+                        _buildInfoRow('Tipe Penyajian', selectedServingType!),
+                      if (selectedEquipment.isNotEmpty)
+                        _buildInfoRow('Equipment', selectedEquipment.join(', ')),
+                      if (selectedFoodServingOption != null)
+                        _buildInfoRow('Penyajian Makanan',
+                            selectedFoodServingOption == 'immediate'
+                                ? 'Segera saat tamu datang'
+                                : 'Dijadwalkan ${selectedFoodServingTime != null ? DateFormat('HH:mm').format(selectedFoodServingTime!) : ''}'),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoRow('Nama Tamu', _nameController.text),
-                    _buildInfoRow('No. Telepon', _phoneController.text),
-                    _buildInfoRow('Jumlah Tamu', '${_guestCountController.text} orang'),
-                    _buildInfoRow('Area', _selectedTables.first['area']['area_name'] ?? ''),
-                    _buildInfoRow('Meja', _getSelectedTableNumbers()),
-                    _buildInfoRow('Tanggal', DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate)),
-                    _buildInfoRow('Waktu', timeStr),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -303,7 +380,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     final reservationData = _buildReservationData();
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // Set guest data untuk GRO
     cartProvider.setGuestData(
       guestName: _nameController.text.trim(),
       guestPhone: _phoneController.text.trim(),
@@ -328,7 +404,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     final reservationData = _buildReservationData();
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // Set guest data untuk GRO
     cartProvider.setGuestData(
       guestName: _nameController.text.trim(),
       guestPhone: _phoneController.text.trim(),
@@ -365,6 +440,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       formattedDate: formattedDate,
       formattedTime: formattedTime,
       selectedTableIds: tableIds,
+      agenda: selectedAgenda,
+      servingType: selectedServingType,
+      equipment: selectedEquipment,
+      foodServingOption: selectedFoodServingOption,
+      foodServingTime: selectedFoodServingTime,
     );
   }
 
@@ -394,9 +474,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     return _selectedTables.map((table) => table['table_number']).join(', ');
   }
 
-  int _calculateTotalCapacity() {
-    return _selectedTables.fold(0, (sum, table) => sum + (table['seats'] as int));
-  }
 
   bool get _canProceed {
     final hasName = _nameController.text.trim().isNotEmpty;
@@ -410,6 +487,219 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         _isValidTime(_selectedTime, _selectedDate);
   }
 
+  // ✅ NEW: Build multi-table info section
+  Widget _buildMultiTableInfoSection() {
+    if (_selectedTables.isEmpty) return const SizedBox();
+
+    if (_selectedTables.length == 1) {
+      // Single table display
+      final table = _selectedTables.first;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.barajaPrimary.primaryColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.table_restaurant,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Meja ${table['table_number']}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppTheme.barajaPrimary.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kapasitas: ${table['seats']} orang',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  Text(
+                    'Area: ${table['area']?['area_name'] ?? 'N/A'}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ✅ MULTIPLE TABLES DISPLAY
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.barajaPrimary.primaryColor.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.barajaPrimary.primaryColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.table_restaurant,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_selectedTables.length} Meja Dipilih',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppTheme.barajaPrimary.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Total Kapasitas: $_totalCapacity orang',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.barajaPrimary.primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$_totalCapacity 👤',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // List of selected tables
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedTables.map((table) {
+              return Chip(
+                avatar: CircleAvatar(
+                  backgroundColor: AppTheme.barajaPrimary.primaryColor,
+                  child: Text(
+                    '${table['seats']}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                label: Text('Meja ${table['table_number']}'),
+                backgroundColor: Colors.white,
+                side: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Area grouping info
+          Builder(
+            builder: (context) {
+              final areas = _selectedTables
+                  .map((t) => t['area']?['area_name'] ?? 'Unknown')
+                  .toSet()
+                  .toList();
+
+              if (areas.length > 1) {
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, size: 16, color: Colors.orange[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Meja tersebar di ${areas.length} area: ${areas.join(", ")}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Text(
+                'Area: ${areas.first}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -417,9 +707,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        title: const Text(
-          'Buat Reservasi',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
+        title: Text(
+          _isMultiTable ? 'Reservasi Multi-Meja' : 'Buat Reservasi',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 20, color: Colors.black),
         ),
         centerTitle: true,
         elevation: 0,
@@ -431,6 +721,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ✅ TAMPILKAN MULTI-TABLE INFO DI ATAS
+              _buildMultiTableInfoSection(),
+
+              // Date & Time Selectors
               DateSelector(
                 selectedDate: _selectedDate,
                 onDateChanged: _onDateChanged,
@@ -445,6 +739,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Guest Information
               _buildSectionCard(
                 title: 'Informasi Tamu',
                 icon: Icons.person,
@@ -487,9 +782,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       if (number == null || number < 1) {
                         return 'Jumlah tamu minimal 1';
                       }
-                      final capacity = _calculateTotalCapacity();
-                      if (number > capacity) {
-                        return 'Kapasitas meja hanya $capacity orang';
+                      if (number > _totalCapacity) {
+                        return 'Kapasitas meja hanya $_totalCapacity orang';
                       }
                       return null;
                     },
@@ -499,14 +793,83 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
               const SizedBox(height: 16),
 
+              // Selected Tables Info (OLD VERSION - for reference)
               _buildSectionCard(
-                title: 'Meja Dipilih',
+                title: 'Detail Meja',
                 icon: Icons.table_restaurant,
                 children: [_buildSelectedTablesInfo()],
               ),
 
               const SizedBox(height: 16),
 
+              // Agenda Selector
+              AgendaSelector(
+                selectedAgenda: selectedAgenda,
+                onAgendaChanged: (agenda) {
+                  setState(() {
+                    selectedAgenda = agenda;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Serving Type Selector
+              ServingTypeSelector(
+                selectedServingType: selectedServingType,
+                onServingTypeChanged: (type) {
+                  setState(() {
+                    selectedServingType = type;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Equipment Selector
+              // EquipmentSelector(
+              //   selectedEquipment: selectedEquipment,
+              //   onEquipmentChanged: (equipment) {
+              //     setState(() {
+              //       selectedEquipment = equipment;
+              //     });
+              //   },
+              // ),
+              if (_areaCode != null && _shouldShowReservationType(_areaCode)) ...[
+                const SizedBox(height: 16),
+                EquipmentSelector(
+                  selectedEquipment: selectedEquipment,
+                  onEquipmentChanged: (equipment) {
+                    setState(() {
+                      selectedEquipment = equipment;
+                    });
+                  },
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Food Serving Selector
+              FoodServingSelector(
+                selectedServingOption: selectedFoodServingOption,
+                selectedServingTime: selectedFoodServingOption == 'scheduled'
+                    ? (selectedFoodServingTime ?? _selectedDateTime)
+                    : null,
+                onServingChanged: (option, time) {
+                  setState(() {
+                    selectedFoodServingOption = option;
+                    if (option == 'scheduled') {
+                      selectedFoodServingTime = time ?? _selectedDateTime;
+                    } else {
+                      selectedFoodServingTime = null;
+                    }
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Notes
               _buildSectionCard(
                 title: 'Catatan (Opsional)',
                 icon: Icons.note_outlined,
@@ -523,6 +886,46 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               const SizedBox(height: 24),
 
               _buildProceedButton(),
+
+              // ✅ Multi-table info banner
+              if (_isMultiTable) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Reservasi Multi-Meja',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Anda akan mereservasi ${_selectedTables.length} meja sekaligus '
+                            'dengan total kapasitas $_totalCapacity orang.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -658,6 +1061,23 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   ),
                 ],
               ),
+              if (_isMultiTable) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Jumlah Meja:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                    Text(
+                      '${_selectedTables.length} meja',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.barajaPrimary.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

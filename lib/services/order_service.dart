@@ -1,3 +1,4 @@
+// services/order_service.dart - Updated with agenda and food serving
 import 'dart:convert';
 import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import '../models/reservation_data.dart';
 class OrderService {
   final String? baseUrl = dotenv.env['BASE_URL'];
 
-  // ✅ UPDATED: Add GRO mode parameters
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> items,
     required String userId,
@@ -35,7 +35,6 @@ class OrderService {
     OpenBillData? openBillData,
     List<Map<String, dynamic>>? taxDetails,
     int? totalTax,
-    // ✅ TAMBAHAN: GRO mode parameters
     bool isGroMode = false,
     String? groId,
     String? guestPhone,
@@ -43,10 +42,9 @@ class OrderService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // ✅ Get GRO ID dari SharedPreferences jika tidak dikirim
       String? finalGroId = groId;
       if (isGroMode && finalGroId == null) {
-        finalGroId = prefs.getString('userId'); // ID GRO yang sedang login
+        finalGroId = prefs.getString('userId');
       }
 
       print("📤 OrderService.createOrder called with:");
@@ -73,8 +71,6 @@ class OrderService {
         'totalTax': totalTax ?? 0,
         'subtotal': subtotal,
         'discount': discount,
-
-        // ✅ TAMBAHAN: Include GRO mode data
         'isGroMode': isGroMode,
         'groId': finalGroId,
         'guestPhone': guestPhone,
@@ -122,11 +118,21 @@ class OrderService {
             'tableIds': reservationData.selectedTableIds,
             'reservationDate': reservationData.formattedDate,
 
-            // ✅ TAMBAHAN BARU
+            // ✅ Serving type & equipment
             if (reservationData.servingType != null)
               'serving_type': reservationData.servingType,
             if (reservationData.equipment.isNotEmpty)
               'equipment': reservationData.equipment,
+
+            // ✅ BARU: Agenda
+            if (reservationData.agenda != null)
+              'agenda': reservationData.agenda,
+
+            // ✅ BARU: Food serving options
+            if (reservationData.foodServingOption != null)
+              'food_serving_option': reservationData.foodServingOption,
+            if (reservationData.foodServingTime != null)
+              'food_serving_time': reservationData.foodServingTime!.toIso8601String(),
           };
 
           if (reservationType != null) {
@@ -375,7 +381,6 @@ class OrderService {
     subtotal = total;
     discount = orderData['discount'] ?? 0;
 
-    // PATCH: kalau cartItems kosong tapi order valid → buat placeholder
     if (cartItems.isEmpty) {
       cartItems.add(CartItem(
         id: 'placeholder',

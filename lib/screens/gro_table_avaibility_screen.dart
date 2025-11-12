@@ -1,3 +1,8 @@
+// ============================================================================
+// FILE: gro_table_availability_screen.dart
+// FULL CODE dengan Multi-Select Table Feature
+// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
@@ -5,11 +10,11 @@ import 'gro_dinein_screen.dart';
 import 'gro_reservation_screen.dart';
 
 class GroTableAvailabilityScreen extends StatefulWidget {
-  final bool isGroMode; // NEW: Parameter untuk menandai akses dari GRO
+  final bool isGroMode;
 
   const GroTableAvailabilityScreen({
     super.key,
-    this.isGroMode = true, // Default true karena ini screen khusus GRO
+    this.isGroMode = true,
   });
 
   @override
@@ -28,18 +33,23 @@ class _GroTableAvailabilityScreenState
   String? _selectedTime;
   String? _selectedAreaId;
 
+  // ✅ MULTI-SELECT STATE
+  bool _isMultiSelectMode = false;
+  final List<Map<String, dynamic>> _selectedTables = [];
+  int _totalSelectedSeats = 0;
+
   final List<String> _timeSlots = [
     '09:00', '10:00', '11:00', '12:00', '13:00', '14:00',
     '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
   ];
+
+  final String outletId = "67cbc9560f025d897d69f889";
 
   @override
   void initState() {
     super.initState();
     _loadTableAvailability();
   }
-  final String outletId = "67cbc9560f025d897d69f889"; // Contoh outletId
-
 
   Future<void> _loadTableAvailability({bool forceRefresh = false}) async {
     setState(() {
@@ -48,16 +58,14 @@ class _GroTableAvailabilityScreenState
     });
 
     try {
-      // ✅ STEP 1: Sync table status terlebih dahulu
       await _syncTableStatus();
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      // ✅ TAMBAHKAN: Cache busting parameter untuk force refresh
       final Map<String, String> queryParams = {
         'date': dateStr,
         'outletId': outletId,
-        '_t': DateTime.now().millisecondsSinceEpoch.toString(), // Cache busting
+        '_t': DateTime.now().millisecondsSinceEpoch.toString(),
       };
 
       if (_selectedTime != null && _selectedTime!.isNotEmpty) {
@@ -67,20 +75,12 @@ class _GroTableAvailabilityScreenState
         queryParams['area_id'] = _selectedAreaId!;
       }
 
-      print('Loading table availability with:');
-      print('Date: $dateStr');
-      print('Time: $_selectedTime');
-      print('Area ID: $_selectedAreaId');
-      print('Outlet ID: $outletId');
-
       final result = await _groService.getTableAvailability(
         date: dateStr,
         time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
         areaId: _selectedAreaId,
         outletId: outletId,
       );
-
-      print('Result: $result');
 
       if (result['success'] == true || result['data'] != null) {
         setState(() {
@@ -95,7 +95,6 @@ class _GroTableAvailabilityScreenState
         });
       }
     } catch (e) {
-      print('Error loading table availability: $e');
       setState(() {
         _errorMessage = 'Error loading table availability: $e';
         _isLoading = false;
@@ -103,21 +102,111 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-  // ✅ UPDATE syncTableStatus juga
   Future<void> _syncTableStatus() async {
     try {
-      print('🔄 Syncing table status for outlet: $outletId');
-
-      final result = await _groService.syncTableStatus(outletId); // ✅ GUNAKAN outletId
-
+      final result = await _groService.syncTableStatus(outletId);
       if (result['success'] == true) {
         print('✅ Table status synced successfully');
-      } else {
-        print('⚠️ Table sync completed with warnings: ${result['message']}');
       }
     } catch (e) {
       print('❌ Error syncing table status: $e');
-      // Jangan throw error, biarkan continue dengan data yang ada
+    }
+  }
+
+  // ✅ MULTI-SELECT METHODS
+  void _enterMultiSelectMode() {
+    setState(() {
+      _isMultiSelectMode = true;
+      _selectedTables.clear();
+      _totalSelectedSeats = 0;
+    });
+  }
+
+  void _exitMultiSelectMode() {
+    setState(() {
+      _isMultiSelectMode = false;
+      _selectedTables.clear();
+      _totalSelectedSeats = 0;
+    });
+  }
+
+  void _toggleTableSelection(Map<String, dynamic> table) {
+    setState(() {
+      final tableNumber = table['table_number'];
+      final isAlreadySelected = _selectedTables.any(
+              (t) => t['table_number'] == tableNumber
+      );
+
+      if (isAlreadySelected) {
+        _selectedTables.removeWhere((t) => t['table_number'] == tableNumber);
+      } else {
+        _selectedTables.add(table);
+      }
+
+      _totalSelectedSeats = _selectedTables.fold(
+          0,
+              (sum, table) => sum + (table['seats'] as int? ?? 0)
+      );
+    });
+  }
+
+  void _proceedWithMultiTableReservation() async {
+    if (_selectedTables.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih minimal 1 meja untuk reservasi'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Validasi: cek apakah semua meja dari area yang sama
+    final areas = _selectedTables.map((t) => t['area']['_id']).toSet();
+    if (areas.length > 1) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Peringatan'),
+          content: const Text(
+              'Anda memilih meja dari area yang berbeda. '
+                  'Apakah Anda yakin ingin melanjutkan?'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+              ),
+              child: const Text('Lanjutkan'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true) return;
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateReservationScreen(
+          selectedTables: _selectedTables,
+          selectedDate: _selectedDate,
+          selectedTime: _selectedTime,
+          isGroMode: true,
+          totalSeats: _totalSelectedSeats,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _exitMultiSelectMode();
+      _loadTableAvailability();
     }
   }
 
@@ -128,9 +217,11 @@ class _GroTableAvailabilityScreenState
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        title: const Text(
-          'Ketersediaan Meja',
-          style: TextStyle(
+        title: Text(
+          _isMultiSelectMode
+              ? '${_selectedTables.length} Meja Dipilih'
+              : 'Ketersediaan Meja',
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 20,
             color: Colors.black,
@@ -138,18 +229,41 @@ class _GroTableAvailabilityScreenState
         ),
         centerTitle: true,
         elevation: 0,
+        leading: _isMultiSelectMode
+            ? IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _exitMultiSelectMode,
+        )
+            : null,
         actions: [
-          IconButton(
-            onPressed: _loadTableAvailability,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            splashRadius: 24,
-          ),
+          if (!_isMultiSelectMode) ...[
+            IconButton(
+              onPressed: _enterMultiSelectMode,
+              icon: const Icon(Icons.add_box_outlined),
+              tooltip: 'Pilih Banyak Meja',
+              splashRadius: 24,
+            ),
+            IconButton(
+              onPressed: _loadTableAvailability,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh',
+              splashRadius: 24,
+            ),
+          ] else ...[
+            if (_selectedTables.isNotEmpty)
+              IconButton(
+                onPressed: _proceedWithMultiTableReservation,
+                icon: const Icon(Icons.check, color: Color(0xFF2E8B57)),
+                tooltip: 'Lanjutkan Reservasi',
+                splashRadius: 24,
+              ),
+          ],
           const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
+          if (_isMultiSelectMode) _buildMultiSelectBanner(),
           _buildFilters(),
           _buildSummaryCard(),
           Expanded(
@@ -159,6 +273,83 @@ class _GroTableAvailabilityScreenState
                 ? _buildErrorState()
                 : _buildTableGrid(),
           ),
+        ],
+      ),
+      floatingActionButton: _isMultiSelectMode && _selectedTables.isNotEmpty
+          ? FloatingActionButton.extended(
+        onPressed: _proceedWithMultiTableReservation,
+        backgroundColor: const Color(0xFF2E8B57),
+        icon: const Icon(Icons.check, color: Colors.white),
+        label: Text(
+          'Reservasi ${_selectedTables.length} Meja',
+          style: const TextStyle(color: Colors.white),
+        ),
+      )
+          : null,
+    );
+  }
+
+  Widget _buildMultiSelectBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E8B57).withOpacity(0.1),
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFF2E8B57).withOpacity(0.3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E8B57),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.touch_app,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Mode Pilih Banyak Meja',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E8B57),
+                  ),
+                ),
+                Text(
+                  _selectedTables.isEmpty
+                      ? 'Tap meja untuk memilih'
+                      : 'Total kapasitas: $_totalSelectedSeats orang',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_selectedTables.isNotEmpty)
+            Chip(
+              label: Text(
+                '$_totalSelectedSeats 👤',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E8B57),
+                ),
+              ),
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFF2E8B57)),
+            ),
         ],
       ),
     );
@@ -481,6 +672,9 @@ class _GroTableAvailabilityScreenState
     final isAvailable = table['is_available'] ?? false;
     final isActive = table['is_active'] ?? false;
 
+    final isSelected = _isMultiSelectMode &&
+        _selectedTables.any((t) => t['table_number'] == tableNumber);
+
     Color backgroundColor;
     Color textColor;
     IconData icon;
@@ -489,6 +683,10 @@ class _GroTableAvailabilityScreenState
       backgroundColor = Colors.grey[300]!;
       textColor = Colors.grey[600]!;
       icon = Icons.block;
+    } else if (isSelected) {
+      backgroundColor = const Color(0xFF2E8B57);
+      textColor = Colors.white;
+      icon = Icons.check_circle;
     } else if (isAvailable) {
       backgroundColor = const Color(0xFF10B981).withOpacity(0.1);
       textColor = const Color(0xFF10B981);
@@ -501,12 +699,8 @@ class _GroTableAvailabilityScreenState
 
     return InkWell(
       onTap: isActive ? () => _onTableTap(table) : null,
-      // Di dalam _buildTableCard, perbaiki onLongPress:
       onLongPress: isActive && !isAvailable
-          ? () {
-        // Cek dulu apakah ada order aktif
-        _checkAndShowTableOptions(table);
-      }
+          ? () => _checkAndShowTableOptions(table)
           : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -514,8 +708,10 @@ class _GroTableAvailabilityScreenState
           color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: textColor.withOpacity(0.3),
-            width: 2,
+            color: isSelected
+                ? const Color(0xFF2E8B57)
+                : textColor.withOpacity(0.3),
+            width: isSelected ? 3 : 2,
           ),
         ),
         child: Column(
@@ -548,7 +744,9 @@ class _GroTableAvailabilityScreenState
             ),
             const SizedBox(height: 4),
             Text(
-              isActive
+              isSelected
+                  ? 'Dipilih'
+                  : isActive
                   ? (isAvailable ? 'Tersedia' : 'Terisi')
                   : 'Nonaktif',
               style: TextStyle(
@@ -568,7 +766,6 @@ class _GroTableAvailabilityScreenState
     final isActive = table['is_active'] ?? false;
 
     if (!isActive) {
-      // Meja nonaktif - tidak bisa dilakukan apapun
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Meja ini sedang nonaktif'),
@@ -578,15 +775,17 @@ class _GroTableAvailabilityScreenState
       return;
     }
 
+    if (_isMultiSelectMode && isAvailable) {
+      _toggleTableSelection(table);
+      return;
+    }
+
     if (isAvailable) {
-      // Meja tersedia - tampilkan pilihan order
       _showOrderTypeDialog(table);
     } else {
-      // Meja terisi - cek apakah ada order aktif
       try {
         _showTableOrderDetail(table);
       } catch (e) {
-        // Fallback: langsung tampilkan dialog untuk membebaskan meja
         _showNoOrderDialog(table);
       }
     }
@@ -613,24 +812,25 @@ class _GroTableAvailabilityScreenState
       if (mounted) Navigator.pop(context);
 
       if (result['success'] && result['data'] != null) {
-        // Ada order aktif - tampilkan dialog complete order
         final orderData = result['data'];
         _showCompleteOrderDialog(table, orderData: orderData);
       } else {
-        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
         _showNoOrderDialog(table);
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        // Fallback ke dialog bebaskan meja
         _showNoOrderDialog(table);
       }
     }
   }
 
-  // Dialog untuk memilih tipe order: Dine-In atau Reservasi
   void _showOrderTypeDialog(Map<String, dynamic> table) {
+    if (_isMultiSelectMode) {
+      _toggleTableSelection(table);
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -647,6 +847,72 @@ class _GroTableAvailabilityScreenState
               ),
             ),
             const SizedBox(height: 16),
+
+            // Option Multi-Select
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _enterMultiSelectMode();
+                _toggleTableSelection(table);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.add_box,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pilih Banyak Meja',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF8B5CF6),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gabungkan beberapa meja untuk grup besar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Color(0xFF8B5CF6),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
             // Dine-In Option
             InkWell(
               onTap: () {
@@ -710,6 +976,7 @@ class _GroTableAvailabilityScreenState
               ),
             ),
             const SizedBox(height: 12),
+
             // Reservation Option
             InkWell(
               onTap: () {
@@ -784,7 +1051,6 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  // Navigate to Dine-In (Menu Screen)
   void _navigateToDineIn(Map<String, dynamic> table) {
     Navigator.push(
       context,
@@ -801,8 +1067,6 @@ class _GroTableAvailabilityScreenState
     });
   }
 
-
-  // Navigate to Reservation Screen
   void _navigateToReservation(Map<String, dynamic> table) async {
     final result = await Navigator.push(
       context,
@@ -811,7 +1075,7 @@ class _GroTableAvailabilityScreenState
           selectedTable: table,
           selectedDate: _selectedDate,
           selectedTime: _selectedTime,
-          isGroMode: true, // ⭐ PENTING: Set true untuk GRO mode
+          isGroMode: true,
         ),
       ),
     );
@@ -842,11 +1106,9 @@ class _GroTableAvailabilityScreenState
       if (mounted) Navigator.pop(context);
 
       if (result['success'] && result['data'] != null) {
-        // Ada order aktif - tampilkan detail order
         final orderData = result['data'];
         _showOrderDetailBottomSheet(orderData, table);
       } else {
-        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
         _showNoOrderDialog(table);
       }
     } catch (e) {
@@ -933,6 +1195,7 @@ class _GroTableAvailabilityScreenState
       ),
     );
   }
+
   void _showOrderDetailBottomSheet(
       Map<String, dynamic> orderData,
       Map<String, dynamic> table,
@@ -952,7 +1215,6 @@ class _GroTableAvailabilityScreenState
         ),
         child: Column(
           children: [
-            // Header section (tetap sama)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1096,7 +1358,6 @@ class _GroTableAvailabilityScreenState
                         ],
                       ),
                     ] else ...[
-                      // Tampilan ketika tidak ada order aktif
                       _buildInfoCard(
                         'Status Meja',
                         [
@@ -1157,7 +1418,6 @@ class _GroTableAvailabilityScreenState
               ),
             ),
 
-            // Footer dengan tombol aksi
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1173,7 +1433,6 @@ class _GroTableAvailabilityScreenState
               child: Row(
                 children: [
                   if (hasActiveOrder) ...[
-                    // Tombol untuk order aktif
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
@@ -1217,7 +1476,6 @@ class _GroTableAvailabilityScreenState
                       ),
                     ),
                   ] else ...[
-                    // Tombol untuk meja tanpa order aktif
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
@@ -1331,7 +1589,6 @@ class _GroTableAvailabilityScreenState
       }) async {
     final tableNumber = table['table_number'] ?? 'N/A';
 
-    // Jika tidak ada orderData, coba ambil dari API
     Map<String, dynamic>? data = orderData;
     if (data == null) {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -1341,7 +1598,6 @@ class _GroTableAvailabilityScreenState
       );
 
       if (!result['success'] || result['data'] == null) {
-        // Tidak ada order aktif - tampilkan dialog untuk membebaskan meja
         _showNoOrderDialog(table);
         return;
       }
@@ -1415,7 +1671,6 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-  // ✅ METHOD: Bebaskan meja yang tidak ada order aktif
   void _freeUpTable(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
 
@@ -1447,31 +1702,6 @@ class _GroTableAvailabilityScreenState
       ),
     );
   }
-// Method untuk debug status meja
-  Future<void> _debugTableStatus(Map<String, dynamic> table) async {
-    final tableNumber = table['table_number'] ?? 'N/A';
-
-    try {
-      final debugResult = await _groService.debugTableStatus(outletId);
-      print('🔍 Debug Table Status: $debugResult');
-
-      // Cari status meja ini di hasil debug
-      if (debugResult['success'] == true) {
-        final inconsistencies = debugResult['data']['inconsistencies'] ?? [];
-        final consistentTables = debugResult['data']['consistent_tables'] ?? [];
-
-        final tableDebug = [...inconsistencies, ...consistentTables]
-            .firstWhere((t) => t['table_number'] == tableNumber, orElse: () => null);
-
-        if (tableDebug != null) {
-          print('📊 Table $tableNumber Debug: $tableDebug');
-        }
-      }
-    } catch (e) {
-      print('❌ Debug error: $e');
-    }
-  }
-
 
   Future<void> _performFreeUpTable(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
@@ -1485,7 +1715,6 @@ class _GroTableAvailabilityScreenState
     );
 
     try {
-      // ✅ KIRIM outletId
       final result = await _groService.forceResetTableStatus(tableNumber, outletId);
 
       if (mounted) Navigator.pop(context);
@@ -1500,7 +1729,6 @@ class _GroTableAvailabilityScreenState
           );
         }
 
-        // ✅ TAMBAHKAN: Refresh data dan tunggu sebentar
         await Future.delayed(const Duration(seconds: 1));
         await _loadTableAvailability();
 
@@ -1527,12 +1755,10 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-// ✅ METHOD: Pindahkan order ke meja lain
   void _transferOrderToNewTable(Map<String, dynamic> table, Map<String, dynamic> orderData) async {
     final currentTableNumber = table['table_number'] ?? 'N/A';
     final orderId = orderData['_id'];
 
-    // Tampilkan dialog loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1542,7 +1768,6 @@ class _GroTableAvailabilityScreenState
     );
 
     try {
-      // Ambil semua meja tersedia
       final result = await _groService.getAllAvailableTables(outletId: outletId);
 
       if (mounted) Navigator.pop(context);
@@ -1563,7 +1788,6 @@ class _GroTableAvailabilityScreenState
           return;
         }
 
-        // Tampilkan dialog pilih meja
         _showTableSelectionDialog(
           currentTableNumber,
           orderId,
@@ -1594,7 +1818,6 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-// ✅ METHOD: Tampilkan dialog pemilihan meja
   void _showTableSelectionDialog(
       String currentTableNumber,
       String orderId,
@@ -1626,7 +1849,6 @@ class _GroTableAvailabilityScreenState
                   ),
                   const SizedBox(height: 16),
 
-                  // Alasan pemindahan
                   const Text(
                     'Alasan Pemindahan:',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -1647,7 +1869,6 @@ class _GroTableAvailabilityScreenState
                   ),
                   const SizedBox(height: 16),
 
-                  // Daftar meja tersedia grouped by area
                   const Text(
                     'Pilih Meja Tujuan:',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -1698,7 +1919,7 @@ class _GroTableAvailabilityScreenState
                         const SizedBox(height: 16),
                       ],
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -1733,7 +1954,6 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-// ✅ METHOD: Eksekusi pemindahan meja
   Future<void> _performTableTransfer(
       String currentTable,
       String newTable,
@@ -1753,7 +1973,7 @@ class _GroTableAvailabilityScreenState
       final result = await _groService.transferOrderToTable(
         orderId: orderId,
         newTableNumber: newTable,
-        transferredBy: 'GRO Staff', // Bisa diganti dengan nama staff yang login
+        transferredBy: 'GRO Staff',
         reason: reason.isNotEmpty ? reason : 'Pemindahan meja oleh GRO',
       );
 
