@@ -198,62 +198,62 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             : _buildDashboardContent(),
       ),
       // ⭐ FLOATING ACTION BUTTON LIHAT KERANJANG
-      floatingActionButton: Consumer<CartProvider>(
-        builder: (context, cartProvider, child) {
-          if (cartProvider.items.isEmpty) {
-            return FloatingActionButton.extended(
-              onPressed: _navigateToGroCart,
-              backgroundColor: const Color(0xFF2E8B57),
-              icon: const Icon(Icons.shopping_cart, color: Colors.white),
-              label: const Text(
-                'Lihat Keranjang',
-                style: TextStyle(color: Colors.white),
-              ),
-            );
-          }
-
-          return FloatingActionButton.extended(
-            onPressed: _navigateToGroCart,
-            backgroundColor: const Color(0xFF2E8B57),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shopping_cart, color: Colors.white),
-                if (cartProvider.totalItems > 0)
-                  Positioned(
-                    right: -2,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        cartProvider.totalItems.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            label: Text(
-              'Lihat Keranjang (${cartProvider.totalItems})',
-              style: const TextStyle(color: Colors.white),
-            ),
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // floatingActionButton: Consumer<CartProvider>(
+      //   builder: (context, cartProvider, child) {
+      //     if (cartProvider.items.isEmpty) {
+      //       return FloatingActionButton.extended(
+      //         onPressed: _navigateToGroCart,
+      //         backgroundColor: const Color(0xFF2E8B57),
+      //         icon: const Icon(Icons.shopping_cart, color: Colors.white),
+      //         label: const Text(
+      //           'Lihat Keranjang',
+      //           style: TextStyle(color: Colors.white),
+      //         ),
+      //       );
+      //     }
+      //
+      //     return FloatingActionButton.extended(
+      //       onPressed: _navigateToGroCart,
+      //       backgroundColor: const Color(0xFF2E8B57),
+      //       icon: Stack(
+      //         clipBehavior: Clip.none,
+      //         children: [
+      //           const Icon(Icons.shopping_cart, color: Colors.white),
+      //           if (cartProvider.totalItems > 0)
+      //             Positioned(
+      //               right: -2,
+      //               top: -6,
+      //               child: Container(
+      //                 padding: const EdgeInsets.all(2),
+      //                 decoration: BoxDecoration(
+      //                   color: Colors.red,
+      //                   borderRadius: BorderRadius.circular(10),
+      //                 ),
+      //                 constraints: const BoxConstraints(
+      //                   minWidth: 18,
+      //                   minHeight: 18,
+      //                 ),
+      //                 child: Text(
+      //                   cartProvider.totalItems.toString(),
+      //                   style: const TextStyle(
+      //                     color: Colors.white,
+      //                     fontSize: 10,
+      //                     fontWeight: FontWeight.bold,
+      //                   ),
+      //                   textAlign: TextAlign.center,
+      //                 ),
+      //               ),
+      //             ),
+      //         ],
+      //       ),
+      //       label: Text(
+      //         'Lihat Keranjang (${cartProvider.totalItems})',
+      //         style: const TextStyle(color: Colors.white),
+      //       ),
+      //     );
+      //   },
+      // ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
