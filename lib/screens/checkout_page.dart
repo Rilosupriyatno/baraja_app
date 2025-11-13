@@ -12,6 +12,7 @@ import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
 import '../services/table_service.dart';
 import '../services/tax_service.dart';
+import '../utils/gro_mode_badge.dart';
 import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
 import '../widgets/checkout/checkout_validator.dart';
@@ -142,7 +143,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (_taxesLoaded && outletId != null) {
       _calculateTaxes();
     } else {
-      print("⚠️ Cannot calculate taxes: taxesLoaded=$_taxesLoaded, outletId=$outletId");
+      print(
+          "⚠️ Cannot calculate taxes: taxesLoaded=$_taxesLoaded, outletId=$outletId");
     }
   }
 
@@ -202,7 +204,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     // Gunakan item.totalprice (sudah include addons & toppings) * quantity
     final subtotal = cartProvider.items.fold(0, (sum, item) {
       final itemTotal = item.totalprice * item.quantity;
-      print("  Item: ${item.name} | totalprice: ${item.totalprice} x ${item.quantity} = $itemTotal");
+      print(
+          "  Item: ${item.name} | totalprice: ${item.totalprice} x ${item.quantity} = $itemTotal");
       return sum + itemTotal;
     });
 
@@ -321,7 +324,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       selectedTime.minute,
     );
 
-    return selectedDateTime.isAfter(minimumTime) || selectedDateTime.isAtSameMomentAs(minimumTime);
+    return selectedDateTime.isAfter(minimumTime) ||
+        selectedDateTime.isAtSameMomentAs(minimumTime);
   }
 
   String _formatTime(TimeOfDay time) {
@@ -332,9 +336,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   String _formatCurrency(int amount) {
     return amount.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (Match m) => '${m[1]}.'
-    );
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
   }
 
   bool _shouldShowReservationType(String? areaCode) {
@@ -371,7 +373,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   bool _shouldShowOrderTypeSelector(CartProvider cartProvider) {
-    return !cartProvider.isReservation && !cartProvider.isDineIn && !cartProvider.isOpenBill;
+    return !cartProvider.isReservation &&
+        !cartProvider.isDineIn &&
+        !cartProvider.isOpenBill;
   }
 
   String _getOrderTypeTitle(CartProvider cartProvider) {
@@ -379,7 +383,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return "Konfirmasi Pesanan Reservasi";
     } else if (cartProvider.isDineIn) {
       return "Konfirmasi Pesanan Dine In";
-    } else if (cartProvider.isOpenBill){
+    } else if (cartProvider.isOpenBill) {
       return "Konfirmasi Open Bill";
     } else {
       switch (selectedOrderType) {
@@ -424,7 +428,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         print("\n💰 CHECKOUT CALCULATION:");
         print("  Items count: ${cartItems.length}");
         for (var item in cartItems) {
-          print("  - ${item.name}: totalprice=${item.totalprice} x qty=${item.quantity} = ${item.totalprice * item.quantity}");
+          print(
+              "  - ${item.name}: totalprice=${item.totalprice} x qty=${item.quantity} = ${item.totalprice * item.quantity}");
         }
         print("  Subtotal: $subtotal");
         print("  Discount: $discount");
@@ -435,8 +440,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         // Auto-set reservation type to non-blocking if blocking is not available
         if (cartProvider.isReservation &&
             cartProvider.reservationData != null &&
-            _shouldShowReservationType(cartProvider.reservationData!.areaCode) &&
-            !_canSelectBlocking(cartProvider.reservationData!.areaCode, grandTotal) &&
+            _shouldShowReservationType(
+                cartProvider.reservationData!.areaCode) &&
+            !_canSelectBlocking(
+                cartProvider.reservationData!.areaCode, grandTotal) &&
             selectedReservationType == ReservationType.blocking) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() {
@@ -450,9 +457,53 @@ class _CheckoutPageState extends State<CheckoutPage> {
           canPop: false,
           child: Scaffold(
             backgroundColor: Colors.white,
-            appBar: const ClassicAppBar(
-                title: 'Pembayaran',
-                usePopInsteadOfGo: true
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () {
+                  if (widget.isGroMode) {
+                    context.go('/cart', extra: {
+                      'isGroMode': true,
+                      'isReservation': cartProvider.isReservation,
+                      'reservationData': cartProvider.reservationData,
+                      'isOpenBill': cartProvider.isOpenBill,
+                      'openBillData': cartProvider.openBillData,
+                    });
+                  } else {
+                    if (Navigator.canPop(context)) {
+                      Navigator.of(context).pop();
+                    } else {
+                      context.go('/cart', extra: {
+                        'isReservation': cartProvider.isReservation,
+                        'reservationData': cartProvider.reservationData,
+                        'isDineIn': cartProvider.isDineIn,
+                        'tableNumber': cartProvider.tableNumber,
+                        'isOpenBill': cartProvider.isOpenBill,
+                        'openBillData': cartProvider.openBillData,
+                      });
+                    }
+                  }
+                },
+              ),
+              // ✅ TITLE DENGAN BADGE GRO
+              title: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Pembayaran',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (widget.isGroMode) const GroModeAppBarBadge(), // ✅ Badge di AppBar
+                ],
+              ),
             ),
             resizeToAvoidBottomInset: true,
             body: Column(
@@ -465,11 +516,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (cartProvider.isReservation &&
+                              cartProvider.reservationData != null)
+                            ReservationInfoWidget(
+                                data: cartProvider.reservationData!),
 
-                          if (cartProvider.isReservation && cartProvider.reservationData != null)
-                            ReservationInfoWidget(data: cartProvider.reservationData!),
-
-                          if (cartProvider.isReservation && cartProvider.reservationData != null)
+                          if (cartProvider.isReservation &&
+                              cartProvider.reservationData != null)
                             ReservationTypeSelectorWidget(
                               data: cartProvider.reservationData!,
                               finalTotal: finalTotal,
@@ -486,11 +539,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               },
                             ),
 
-                          if (cartProvider.isOpenBill && cartProvider.openBillData != null)
-                            OpenBillInfoWidget(openBillData: cartProvider.openBillData!),
+                          if (cartProvider.isOpenBill &&
+                              cartProvider.openBillData != null)
+                            OpenBillInfoWidget(
+                                openBillData: cartProvider.openBillData!),
 
-                          if (cartProvider.isDineIn)
-                            const DineInInfoWidget(),
+                          if (cartProvider.isDineIn) const DineInInfoWidget(),
 
                           // Daftar Item Keranjang
                           if (cartItems.isEmpty)
@@ -548,20 +602,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ),
                             ),
                             const SizedBox(height: 12),
-
                             OrderTypeSelectorWithValidation(
                               selectedType: selectedOrderType,
-                              onChanged: (type) => setState(() => selectedOrderType = type),
+                              onChanged: (type) =>
+                                  setState(() => selectedOrderType = type),
                               tableNumber: tableNumber,
-                              onTableNumberChanged: (val) => setState(() => tableNumber = val),
+                              onTableNumberChanged: (val) =>
+                                  setState(() => tableNumber = val),
                               deliveryAddress: deliveryAddress,
-                              onDeliveryAddressChanged: (val) => setState(() => deliveryAddress = val),
+                              onDeliveryAddressChanged: (val) =>
+                                  setState(() => deliveryAddress = val),
                               pickupTime: pickupTime,
-                              onPickupTimeChanged: (time) => setState(() => pickupTime = time),
+                              onPickupTimeChanged: (time) =>
+                                  setState(() => pickupTime = time),
                               validationErrors: validationErrors,
                               hasAttemptedSubmit: hasAttemptedSubmit,
                             ),
-
                           ] else ...[
                             Container(
                               margin: const EdgeInsets.only(top: 8),
@@ -579,13 +635,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
-
                                   Text(
                                     cartProvider.isReservation
                                         ? 'Pesanan untuk reservasi Anda'
                                         : cartProvider.isOpenBill
-                                        ? 'Pesanan untuk meja ${cartProvider.openBillData!.tableNumbers}'
-                                        : 'Pesanan untuk meja ${cartProvider.tableNumber}',
+                                            ? 'Pesanan untuk meja ${cartProvider.openBillData!.tableNumbers}'
+                                            : 'Pesanan untuk meja ${cartProvider.tableNumber}',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey.shade700,
@@ -610,14 +665,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 totalAmount: grandTotal,
                                 downPaymentAmount: downPaymentAmount,
                               ),
-
                             if (_isReservationWithoutMenu(cartProvider))
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue.shade200),
+                                  border:
+                                      Border.all(color: Colors.blue.shade200),
                                 ),
                                 child: Row(
                                   children: [
@@ -629,7 +684,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Pembayaran Reservasi',
@@ -661,17 +717,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   ],
                                 ),
                               ),
-
                             const SizedBox(height: 24),
                           ],
 
                           PaymentMethodWithValidation(
                             displayedPaymentMethod: displayedPaymentMethod,
-                            errorMessage: hasAttemptedSubmit ? validationErrors['paymentMethod'] : null,
+                            errorMessage: hasAttemptedSubmit
+                                ? validationErrors['paymentMethod']
+                                : null,
                             onMethodSelected: (result) {
                               setState(() {
-                                selectedPaymentMethod = result['payment_method'];
-                                selectedPaymentMethodName = result['payment_method_name'];
+                                selectedPaymentMethod =
+                                    result['payment_method'];
+                                selectedPaymentMethodName =
+                                    result['payment_method_name'];
                                 selectedBankName = result['name'];
                                 selectedBankCode = result['bank_code'];
                                 validationErrors.remove('paymentMethod');
@@ -698,7 +757,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                 ),
-
                 CheckoutSummary(
                   totalPrice: subtotal,
                   discount: discount,
@@ -706,7 +764,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   discountType: selectedVoucher?.discountType,
                   isReservation: cartProvider.isReservation,
                   isOpenBill: cartProvider.isOpenBill,
-                  selectedPaymentType: cartProvider.isReservation ? selectedPaymentType : null,
+                  selectedPaymentType:
+                      cartProvider.isReservation ? selectedPaymentType : null,
                   taxCalculation: _taxCalculation,
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan");
@@ -715,7 +774,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       hasAttemptedSubmit = true;
                     });
 
-                    final validationResult = await CheckoutValidator.validateForm(
+                    final validationResult =
+                        await CheckoutValidator.validateForm(
                       cartProvider: cartProvider,
                       selectedOrderType: selectedOrderType,
                       deliveryAddress: deliveryAddress,
@@ -738,7 +798,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     if (!validationResult['isValid']) {
                       setState(() {
-                        validationErrors = Map<String, String>.from(validationResult['errors']);
+                        validationErrors = Map<String, String>.from(
+                            validationResult['errors']);
                       });
 
                       if (validationErrors.containsKey('general')) {
@@ -773,7 +834,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       } else {
                         userId = null;
                         userName = 'Dine-In Guest';
-                        print("⚠️ GRO Mode - No reservation data, using default");
+                        print(
+                            "⚠️ GRO Mode - No reservation data, using default");
                       }
                     } else {
                       userId = prefs.getString('userId');
@@ -785,7 +847,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     }
 
                     int amountToPay = grandTotal;
-                    if (cartProvider.isReservation && selectedPaymentType == PaymentType.downPayment) {
+                    if (cartProvider.isReservation &&
+                        selectedPaymentType == PaymentType.downPayment) {
                       if (_isReservationWithoutMenu(cartProvider)) {
                         amountToPay = grandTotal;
                       } else {
@@ -826,17 +889,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       // ✅ PERBAIKAN: Gunakan totalprice dari CartItem yang sudah termasuk addons & toppings
                       final List<Map<String, dynamic>> items = cartItems
                           .map((item) => {
-                        'productId': item.id,
-                        'productName': item.name,
-                        'price': item.price, // base price saja
-                        'quantity': item.quantity,
-                        'addons': item.addons,
-                        'toppings': item.toppings,
-                        'notes': item.notes,
-                        'outletId': item.outletId,
-                        'outletName': item.outletName,
-                        'totalprice': item.totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
-                      })
+                                'productId': item.id,
+                                'productName': item.name,
+                                'price': item.price, // base price saja
+                                'quantity': item.quantity,
+                                'addons': item.addons,
+                                'toppings': item.toppings,
+                                'notes': item.notes,
+                                'outletId': item.outletId,
+                                'outletName': item.outletName,
+                                'totalprice': item
+                                    .totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
+                              })
                           .toList();
 
                       final Map<String, String?> paymentDetails = {
@@ -871,7 +935,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         print("  Guest Phone: $guestPhone");
                       }
 
-                      print("✅ Sebelum createOrder - Memulai pembuatan pesanan...");
+                      print(
+                          "✅ Sebelum createOrder - Memulai pembuatan pesanan...");
                       print("  User ID: $userId");
                       print("  User Name: $userName");
                       print("  Order Type: ${finalOrderType.toString()}");
@@ -884,21 +949,31 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         userName: guestName ?? 'Guest',
                         orderType: finalOrderType,
                         outletId: outletId ?? '',
-                        tableNumber: cartProvider.isDineIn ? cartProvider.tableNumber :
-                        (finalOrderType == OrderType.dineIn ? tableNumber : null),
-                        deliveryAddress: finalOrderType == OrderType.delivery ? deliveryAddress : null,
-                        pickupTime: finalOrderType == OrderType.pickup ? pickupTime : null,
+                        tableNumber: cartProvider.isDineIn
+                            ? cartProvider.tableNumber
+                            : (finalOrderType == OrderType.dineIn
+                                ? tableNumber
+                                : null),
+                        deliveryAddress: finalOrderType == OrderType.delivery
+                            ? deliveryAddress
+                            : null,
+                        pickupTime: finalOrderType == OrderType.pickup
+                            ? pickupTime
+                            : null,
                         paymentDetails: paymentDetails,
                         subtotal: subtotal,
                         discount: discount,
                         taxDetails: _taxCalculation?.taxDetails,
                         totalTax: taxAmount,
                         voucherCode: selectedVoucherCode,
-                        reservationData: cartProvider.isReservation ? cartProvider.reservationData : null,
+                        reservationData: cartProvider.isReservation
+                            ? cartProvider.reservationData
+                            : null,
                         openBillData: cartProvider.openBillData,
                         reservationType: cartProvider.isReservation &&
-                            cartProvider.reservationData != null &&
-                            _shouldShowReservationType(cartProvider.reservationData!.areaCode)
+                                cartProvider.reservationData != null &&
+                                _shouldShowReservationType(
+                                    cartProvider.reservationData!.areaCode)
                             ? selectedReservationType
                             : null,
                         isGroMode: widget.isGroMode,
@@ -916,9 +991,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'userId': userId,
                         'userName': userName,
                         'orderType': finalOrderType,
-                        'tableNumber': cartProvider.isDineIn ? cartProvider.tableNumber :
-                        cartProvider.isOpenBill ? cartProvider.openBillData?.tableNumbers :
-                        tableNumber,
+                        'tableNumber': cartProvider.isDineIn
+                            ? cartProvider.tableNumber
+                            : cartProvider.isOpenBill
+                                ? cartProvider.openBillData?.tableNumbers
+                                : tableNumber,
                         'deliveryAddress': deliveryAddress,
                         'pickupTime': pickupTime,
                         'paymentDetails': paymentDetails,
@@ -928,7 +1005,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'taxAmount': taxAmount,
                         'taxDetails': _taxCalculation?.taxDetails ?? [],
                         'grandTotal': grandTotal,
-                        'paymentType': cartProvider.isReservation ? selectedPaymentType : null,
+                        'paymentType': cartProvider.isReservation
+                            ? selectedPaymentType
+                            : null,
                         'amountToPay': amountToPay,
                         'voucherCode': selectedVoucherCode,
                         'id': orderResult['order']?['_id'] ?? '',
@@ -942,25 +1021,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         return;
                       }
 
-                      if (cartProvider.isOpenBill && cartProvider.openBillData != null) {
+                      if (cartProvider.isOpenBill &&
+                          cartProvider.openBillData != null) {
                         extraData['isOpenBill'] = true;
                         extraData['openBillData'] = cartProvider.openBillData;
-                        extraData['existingReservation'] = orderResult['existingReservation'];
+                        extraData['existingReservation'] =
+                            orderResult['existingReservation'];
                       }
 
-                      if (cartProvider.isReservation && cartProvider.reservationData != null) {
-                        extraData['reservationData'] = cartProvider.reservationData;
+                      if (cartProvider.isReservation &&
+                          cartProvider.reservationData != null) {
+                        extraData['reservationData'] =
+                            cartProvider.reservationData;
                         extraData['isReservation'] = true;
                         extraData['paymentType'] = selectedPaymentType;
                         extraData['downPaymentAmount'] = downPaymentAmount;
 
-                        if (_shouldShowReservationType(cartProvider.reservationData!.areaCode)) {
-                          extraData['reservationType'] = selectedReservationType;
-                          extraData['isBlocking'] = selectedReservationType == ReservationType.blocking;
+                        if (_shouldShowReservationType(
+                            cartProvider.reservationData!.areaCode)) {
+                          extraData['reservationType'] =
+                              selectedReservationType;
+                          extraData['isBlocking'] = selectedReservationType ==
+                              ReservationType.blocking;
                         }
 
                         if (selectedPaymentType == PaymentType.downPayment) {
-                          extraData['remainingPayment'] = finalTotal - downPaymentAmount;
+                          extraData['remainingPayment'] =
+                              finalTotal - downPaymentAmount;
                           extraData['isDownPayment'] = true;
                         } else {
                           extraData['remainingPayment'] = 0;
@@ -973,12 +1060,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                       context.push('/paymentConfirmation', extra: extraData);
                       cartProvider.clearCart();
-
                     } catch (e) {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Gagal membuat pesanan: ${e.toString()}'),
+                          content:
+                              Text('Gagal membuat pesanan: ${e.toString()}'),
                           backgroundColor: Colors.red,
                         ),
                       );

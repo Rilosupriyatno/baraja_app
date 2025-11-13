@@ -1,9 +1,10 @@
 // ============================================================================
 // FILE: gro_table_availability_screen.dart
-// FULL CODE dengan Multi-Select Table Feature
+// FULL CODE dengan Multi-Select Table Feature + Fixed Back Navigation
 // ============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
 import 'gro_dinein_screen.dart';
@@ -49,6 +50,20 @@ class _GroTableAvailabilityScreenState
   void initState() {
     super.initState();
     _loadTableAvailability();
+  }
+
+  // ✅ FIXED: Handle back button to always return to GRO Dashboard
+  Future<bool> _handleBackButton() async {
+    if (_isMultiSelectMode) {
+      _exitMultiSelectMode();
+      return false; // Don't pop, just exit multi-select mode
+    }
+
+    // Always navigate to GRO Dashboard (tab index 0)
+    if (mounted) {
+      context.go('/main', extra: {'initialTab': 0});
+    }
+    return false; // Prevent default back behavior
   }
 
   Future<void> _loadTableAvailability({bool forceRefresh = false}) async {
@@ -212,80 +227,86 @@ class _GroTableAvailabilityScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          await _handleBackButton();
+        }
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        title: Text(
-          _isMultiSelectMode
-              ? '${_selectedTables.length} Meja Dipilih'
-              : 'Ketersediaan Meja',
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _handleBackButton,
           ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        leading: _isMultiSelectMode
-            ? IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: _exitMultiSelectMode,
-        )
-            : null,
-        actions: [
-          if (!_isMultiSelectMode) ...[
-            IconButton(
-              onPressed: _enterMultiSelectMode,
-              icon: const Icon(Icons.add_box_outlined),
-              tooltip: 'Pilih Banyak Meja',
-              splashRadius: 24,
+          title: Text(
+            _isMultiSelectMode
+                ? '${_selectedTables.length} Meja Dipilih'
+                : 'Ketersediaan Meja',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              color: Colors.black,
             ),
-            IconButton(
-              onPressed: _loadTableAvailability,
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh',
-              splashRadius: 24,
-            ),
-          ] else ...[
-            if (_selectedTables.isNotEmpty)
+          ),
+          centerTitle: true,
+          elevation: 0,
+          actions: [
+            if (!_isMultiSelectMode) ...[
               IconButton(
-                onPressed: _proceedWithMultiTableReservation,
-                icon: const Icon(Icons.check, color: Color(0xFF2E8B57)),
-                tooltip: 'Lanjutkan Reservasi',
+                onPressed: _enterMultiSelectMode,
+                icon: const Icon(Icons.add_box_outlined),
+                tooltip: 'Pilih Banyak Meja',
                 splashRadius: 24,
               ),
+              IconButton(
+                onPressed: _loadTableAvailability,
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh',
+                splashRadius: 24,
+              ),
+            ] else ...[
+              if (_selectedTables.isNotEmpty)
+                IconButton(
+                  onPressed: _proceedWithMultiTableReservation,
+                  icon: const Icon(Icons.check, color: Color(0xFF2E8B57)),
+                  tooltip: 'Lanjutkan Reservasi',
+                  splashRadius: 24,
+                ),
+            ],
+            const SizedBox(width: 8),
           ],
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_isMultiSelectMode) _buildMultiSelectBanner(),
-          _buildFilters(),
-          _buildSummaryCard(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                ? _buildErrorState()
-                : _buildTableGrid(),
-          ),
-        ],
-      ),
-      floatingActionButton: _isMultiSelectMode && _selectedTables.isNotEmpty
-          ? FloatingActionButton.extended(
-        onPressed: _proceedWithMultiTableReservation,
-        backgroundColor: const Color(0xFF2E8B57),
-        icon: const Icon(Icons.check, color: Colors.white),
-        label: Text(
-          'Reservasi ${_selectedTables.length} Meja',
-          style: const TextStyle(color: Colors.white),
         ),
-      )
-          : null,
+        body: Column(
+          children: [
+            if (_isMultiSelectMode) _buildMultiSelectBanner(),
+            _buildFilters(),
+            _buildSummaryCard(),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? _buildErrorState()
+                  : _buildTableGrid(),
+            ),
+          ],
+        ),
+        floatingActionButton: _isMultiSelectMode && _selectedTables.isNotEmpty
+            ? FloatingActionButton.extended(
+          onPressed: _proceedWithMultiTableReservation,
+          backgroundColor: const Color(0xFF2E8B57),
+          icon: const Icon(Icons.check, color: Colors.white),
+          label: Text(
+            'Reservasi ${_selectedTables.length} Meja',
+            style: const TextStyle(color: Colors.white),
+          ),
+        )
+            : null,
+      ),
     );
   }
 

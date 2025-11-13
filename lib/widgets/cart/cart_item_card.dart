@@ -6,12 +6,14 @@ class CartItemCard extends StatelessWidget {
   final CartItem item;
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
+  final VoidCallback? onEdit; // ✅ TAMBAH: Callback untuk edit
 
   const CartItemCard({
     super.key,
     required this.item,
     required this.onIncrease,
     required this.onDecrease,
+    this.onEdit, // ✅ TAMBAH: Parameter optional
   });
 
   // Method untuk menghitung total harga item termasuk addons dan toppings
@@ -64,7 +66,7 @@ class CartItemCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  color: Colors.white, // ✅ background putih selalu
+                  color: Colors.white,
                   width: 80,
                   height: 80,
                   child: Image.network(
@@ -117,6 +119,20 @@ class CartItemCard extends StatelessWidget {
                 ),
               ),
 
+              // ✅ TAMBAH: Edit button
+              if (onEdit != null)
+                IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: Colors.blue.shade700,
+                    size: 20,
+                  ),
+                  onPressed: onEdit,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Edit pesanan',
+                ),
+
               // Quantity controls
               Container(
                 decoration: BoxDecoration(
@@ -166,7 +182,6 @@ class CartItemCard extends StatelessWidget {
               if (item.addons.isNotEmpty) ...[
                 const Row(
                   children: [
-                    // Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
                     SizedBox(width: 4),
                     Text(
                       'Tambahan:',
@@ -228,7 +243,6 @@ class CartItemCard extends StatelessWidget {
                   (item.toppings is List && (item.toppings as List).isNotEmpty)) ...[
                 const Row(
                   children: [
-                    // Icon(Icons.cake, size: 16, color: Colors.deepOrange),
                     SizedBox(width: 4),
                     Text(
                       'Topping:',

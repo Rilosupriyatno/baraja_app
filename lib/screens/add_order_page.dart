@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
@@ -59,6 +60,7 @@ class AddOrderPageState extends State<AddOrderPage> {
 
   // Calculate total price
   double calculateTotal() {
+    // PERBAIKAN: Gunakan discountPrice jika ada
     double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
     double toppingsTotal = selectedToppings.fold(0, (sum, topping) => sum + topping.price);
 
@@ -111,6 +113,27 @@ class AddOrderPageState extends State<AddOrderPage> {
 
   void addToCart() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // 🔒 SAFETY CHECK: Verifikasi user sudah login
+    try {
+      final _ = cartProvider.items; // Test akses
+    } catch (e) {
+      // User belum login
+      debugPrint('❌ AddOrderPage: User not logged in - $e');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      Navigator.pop(context);
+      context.go('/login');
+      return;
+    }
+
     final double totalPrice = calculateTotal();
 
     List<Map<String, dynamic>> toppingsList = selectedToppings
@@ -140,11 +163,13 @@ class AddOrderPageState extends State<AddOrderPage> {
       outletName = widget.product.availableAt.first.name;
     }
 
+    double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
+
     CartItem newItem = CartItem(
       id: widget.product.id,
       name: widget.product.name,
       imageUrl: widget.product.imageUrl,
-      price: widget.product.originalPrice!.toInt(),
+      price: basePrice.toInt(),
       totalprice: totalPrice.toInt(),
       addons: addonList,
       toppings: toppingsList,
@@ -152,17 +177,22 @@ class AddOrderPageState extends State<AddOrderPage> {
       notes: notesController.text.trim().isNotEmpty
           ? notesController.text.trim()
           : null,
-
-      // ✅ Outlet info
       outletId: outletId,
       outletName: outletName,
     );
 
     cartProvider.addToCart(newItem);
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${widget.product.name} ditambahkan ke keranjang'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
     Navigator.pop(context);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -196,13 +226,12 @@ class AddOrderPageState extends State<AddOrderPage> {
                           width: 120,
                           height: 120,
                           decoration: const BoxDecoration(
-                            color: Colors.white, // ✅ selalu putih
+                            color: Colors.white,
                             borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(12),
                               topRight: Radius.circular(12),
                             ),
                           ),
-
                           clipBehavior: Clip.antiAlias,
                           child: product.imageUrl.isNotEmpty
                               ? Image.network(
@@ -232,17 +261,52 @@ class AddOrderPageState extends State<AddOrderPage> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          formatCurrency((product.discountPrice ??
-                              product.originalPrice ??
-                              0)
-                              .toInt()),
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
+
+                        // PERBAIKAN: Tampilkan harga diskon dan harga asli jika ada diskon
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              formatCurrency((product.discountPrice ?? product.originalPrice ?? 0).toInt()),
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (product.discountPrice != null && product.originalPrice != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Text(
+                                  formatCurrency(product.originalPrice!.toInt()),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
+
+                        // Discount badge jika ada
+                        if (product.discountPercentage != null)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Diskon ${product.discountPercentage}%',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
 
                         // Rating (if available)
                         const SizedBox(height: 8),
@@ -324,16 +388,6 @@ class AddOrderPageState extends State<AddOrderPage> {
                         ),
 
                         const SizedBox(height: 24),
-
-                        // Customize section
-                        // const Text(
-                        //   'Customize',
-                        //   style: TextStyle(
-                        //     fontSize: 18,
-                        //     fontWeight: FontWeight.bold,
-                        //   ),
-                        // ),
-                        // const SizedBox(height: 16),
 
                         // Addons section
                         if (product.addons != null && product.addons!.isNotEmpty) ...[

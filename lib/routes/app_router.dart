@@ -144,43 +144,43 @@ class AppRouter {
         ),
 
         // Product detail route
-        GoRoute(
-          path: '/product/:id',
-          parentNavigatorKey: _rootNavigatorKey,
-          builder: (context, state) {
-            final productId = state.pathParameters['id']!;
-            final productService = ProductService();
-
-            return FutureBuilder<Product?>(
-              future: productService.getProductById(productId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Scaffold(
-                    appBar: AppBar(title: const Text("Error")),
-                    body: Center(child: Text('Terjadi kesalahan: ${snapshot.error}')),
-                  );
-                }
-
-                final product = snapshot.data;
-
-                if (product == null) {
-                  return Scaffold(
-                    appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
-                    body: const Center(child: Text("Produk tidak ditemukan.")),
-                  );
-                }
-
-                return ProductDetailScreen(product: product);
-              },
-            );
-          },
-        ),
+        // GoRoute(
+        //   path: '/product/:id',
+        //   parentNavigatorKey: _rootNavigatorKey,
+        //   builder: (context, state) {
+        //     final productId = state.pathParameters['id']!;
+        //     final productService = ProductService();
+        //
+        //     return FutureBuilder<Product?>(
+        //       future: productService.getProductById(productId),
+        //       builder: (context, snapshot) {
+        //         if (snapshot.connectionState == ConnectionState.waiting) {
+        //           return const Scaffold(
+        //             body: Center(child: CircularProgressIndicator()),
+        //           );
+        //         }
+        //
+        //         if (snapshot.hasError) {
+        //           return Scaffold(
+        //             appBar: AppBar(title: const Text("Error")),
+        //             body: Center(child: Text('Terjadi kesalahan: ${snapshot.error}')),
+        //           );
+        //         }
+        //
+        //         final product = snapshot.data;
+        //
+        //         if (product == null) {
+        //           return Scaffold(
+        //             appBar: AppBar(title: const Text("Produk Tidak Ditemukan")),
+        //             body: const Center(child: Text("Produk tidak ditemukan.")),
+        //           );
+        //         }
+        //
+        //         return ProductDetailScreen(product: product);
+        //       },
+        //     );
+        //   },
+        // ),
 
         // Profile routes
         GoRoute(

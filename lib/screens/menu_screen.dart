@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -8,6 +9,7 @@ import '../models/reservation_data.dart';
 import '../providers/cart_provider.dart';
 import '../services/product_service.dart';
 import '../utils/base_screen_wrapper.dart';
+import '../utils/gro_mode_badge.dart';
 import '../widgets/detail_product/checkout_button.dart';
 import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
@@ -517,29 +519,57 @@ class _MenuScreenState extends State<MenuScreen> {
       customBackRoute: _getBackRoute(),
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: ClassicAppBar(
-          title: _getAppBarTitle(),
-          customBackRoute: _getBackRoute(),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => context.go(_getBackRoute()),
+          ),
+          // ✅ TITLE DENGAN BADGE GRO
+          title: Row(
+            children: [
+              Text(
+                widget.isReservation
+                    ? 'Menu Reservasi'
+                    : widget.isDineIn
+                    ? 'Menu Dine In'
+                    : 'Menu',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (widget.isGroMode) ...[
+                const SizedBox(width: 12),
+                const GroModeAppBarBadge(), // ✅ Badge di AppBar
+              ],
+            ],
+          ),
         ),
         body: SafeArea(
           child: _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : Column(
             children: [
+              // ✅ BANNER GRO MODE (Optional - bisa dihilangkan jika tidak perlu)
+              if (widget.isGroMode)
               _buildReservationInfo(),
               _buildOpenBillInfo(),
               _buildDineInInfo(),
 
-              // ✅ Search Widget
+              // Search Widget
               SearchMenuWidget(
                 onSearchChanged: _onSearchChanged,
                 onClearSearch: _onClearSearch,
               ),
 
-              // ✅ Search Results Info
+              // Search Results Info
               _buildSearchResultsInfo(),
 
-              // ✅ Hide menu selector & category slider saat search aktif
+              // Menu selector & category slider (hidden saat search aktif)
               if (_searchQuery.isEmpty) ...[
                 MenuSelector(
                   selectedMenu: selectedMenu,
@@ -617,4 +647,117 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   final List<Category> categoryList = _categoriesMap[selectedMenu] ?? [];
+  //   final List<Product> filteredProducts = _isLoading
+  //       ? _getDummyProducts()
+  //       : _getFilteredProducts();
+  //
+  //   return BaseScreenWrapper(
+  //     canPop: false,
+  //     customBackRoute: _getBackRoute(),
+  //     child: Scaffold(
+  //       backgroundColor: Colors.white,
+  //       appBar: ClassicAppBar(
+  //         title: _getAppBarTitle(),
+  //         customBackRoute: _getBackRoute(),
+  //       ),
+  //       body: SafeArea(
+  //         child: _errorMessage.isNotEmpty
+  //             ? Center(child: Text(_errorMessage))
+  //             : Column(
+  //           children: [
+  //             _buildReservationInfo(),
+  //             _buildOpenBillInfo(),
+  //             _buildDineInInfo(),
+  //
+  //             // ✅ Search Widget
+  //             SearchMenuWidget(
+  //               onSearchChanged: _onSearchChanged,
+  //               onClearSearch: _onClearSearch,
+  //             ),
+  //
+  //             // ✅ Search Results Info
+  //             _buildSearchResultsInfo(),
+  //
+  //             // ✅ Hide menu selector & category slider saat search aktif
+  //             if (_searchQuery.isEmpty) ...[
+  //               MenuSelector(
+  //                 selectedMenu: selectedMenu,
+  //                 onMenuSelected: (menu) {
+  //                   setState(() {
+  //                     selectedMenu = menu;
+  //                     if (_categoriesMap[menu]!.isNotEmpty) {
+  //                       selectedCategory = _categoriesMap[menu]![0].name;
+  //                     }
+  //                   });
+  //                 },
+  //               ),
+  //               SubMenuSlider(
+  //                 subMenus: categoryList,
+  //                 selectedSubMenu: selectedCategory,
+  //                 onSubMenuSelected: (category) {
+  //                   setState(() {
+  //                     selectedCategory = category;
+  //                   });
+  //                 },
+  //               ),
+  //             ],
+  //
+  //             Expanded(
+  //               child: Skeletonizer(
+  //                 enabled: _isLoading,
+  //                 enableSwitchAnimation: true,
+  //                 child: filteredProducts.isEmpty && !_isLoading
+  //                     ? Center(
+  //                   child: Column(
+  //                     mainAxisAlignment: MainAxisAlignment.center,
+  //                     children: [
+  //                       Icon(
+  //                         Icons.search_off,
+  //                         size: 64,
+  //                         color: Colors.grey.shade400,
+  //                       ),
+  //                       const SizedBox(height: 16),
+  //                       Text(
+  //                         'Tidak ada menu yang ditemukan',
+  //                         style: TextStyle(
+  //                           fontSize: 16,
+  //                           color: Colors.grey.shade600,
+  //                           fontWeight: FontWeight.w500,
+  //                         ),
+  //                       ),
+  //                       const SizedBox(height: 8),
+  //                       Text(
+  //                         _searchQuery.isNotEmpty
+  //                             ? 'Coba kata kunci lain'
+  //                             : 'Belum ada menu tersedia',
+  //                         style: TextStyle(
+  //                           fontSize: 14,
+  //                           color: Colors.grey.shade500,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 )
+  //                     : ProductGrid(products: filteredProducts),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //       floatingActionButton: CheckoutButton(
+  //         isReservation: widget.isReservation,
+  //         reservationData: widget.reservationData,
+  //         isDineIn: widget.isDineIn,
+  //         tableNumber: widget.tableNumber,
+  //         isOpenBill: widget.isOpenBill,
+  //         openBillData: widget.openBillData,
+  //         isGroMode: widget.isGroMode,
+  //       ),
+  //     ),
+  //   );
+  // }
 }

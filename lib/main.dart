@@ -70,8 +70,42 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔒 CRITICAL: Setup callbacks setelah build pertama
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupCartProviderCallbacks();
+    });
+  }
+
+  void _setupCartProviderCallbacks() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    // 🔒 Set callbacks di AuthService
+    authService.setCartProviderCallbacks(
+      onUserLoggedIn: (userId, role) {
+        debugPrint('🔐 MyApp: Setting user in CartProvider: $userId as $role');
+        cartProvider.setCurrentUser(userId, role);
+      },
+      onUserLoggedOut: () {
+        debugPrint('🔓 MyApp: Clearing user from CartProvider');
+        cartProvider.clearCurrentUser();
+      },
+    );
+
+    debugPrint('✅ CartProvider callbacks setup complete');
+  }
 
   @override
   Widget build(BuildContext context) {

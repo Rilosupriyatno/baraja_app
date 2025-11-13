@@ -21,6 +21,19 @@ class AuthService with ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   String? get jwtToken => _jwtToken;
 
+  // 🔒 NEW: Callback untuk notify CartProvider
+  Function(String userId, String role)? _onUserLoggedIn;
+  Function()? _onUserLoggedOut;
+
+  // 🔒 NEW: Method untuk set callback dari main.dart
+  void setCartProviderCallbacks({
+    required Function(String userId, String role) onUserLoggedIn,
+    required Function() onUserLoggedOut,
+  }) {
+    _onUserLoggedIn = onUserLoggedIn;
+    _onUserLoggedOut = onUserLoggedOut;
+  }
+
   // ==============================
   // ROLE MANAGEMENT METHODS
   // ==============================
@@ -36,6 +49,11 @@ class AuthService with ChangeNotifier {
 
     // Handle simple string role (backward compatibility)
     return _user!['role'];
+  }
+
+  /// Get user ID
+  String? getUserId() {
+    return _user?['_id'];
   }
 
   /// Get user role permissions
@@ -132,8 +150,6 @@ class AuthService with ChangeNotifier {
   }
 
   /// Get user outlet information
-// Di auth_service.dart - perbaiki method getUserOutlets()
-  /// Get user outlet information
   List<Map<String, dynamic>> getUserOutlets() {
     print('🔍 DEBUG getUserOutlets() called');
 
@@ -142,7 +158,6 @@ class AuthService with ChangeNotifier {
       return [];
     }
 
-    // ✅ PERBAIKAN: Check jika user memiliki outlet
     if (_user!['outlet'] == null) {
       print('ℹ️ User does not have outlet data (might be customer)');
       return [];
@@ -153,7 +168,6 @@ class AuthService with ChangeNotifier {
     print('🔍 Outlets type: ${outlets.runtimeType}');
     print('🔍 Outlets length: ${outlets.length}');
 
-    // ✅ PERBAIKAN: Return empty array jika tidak ada outlet
     if (outlets is List && outlets.isEmpty) {
       print('ℹ️ User has empty outlets array (customer or no assigned outlets)');
       return [];
@@ -163,7 +177,6 @@ class AuthService with ChangeNotifier {
       final result = List<Map<String, dynamic>>.from(outlets);
       print('✅ Processed outlets: ${result.length} outlets');
 
-      // Debug each outlet
       for (var i = 0; i < result.length; i++) {
         print('   Outlet $i: ${result[i]}');
       }
@@ -188,6 +201,29 @@ class AuthService with ChangeNotifier {
   }
 
   // ==============================
+  // 🔒 HELPER: Notify CartProvider after login
+  // ==============================
+  void _notifyCartProviderLogin() {
+    final userId = getUserId();
+    final role = getUserRole();
+
+    if (userId != null && role != null && _onUserLoggedIn != null) {
+      debugPrint('🔐 Notifying CartProvider: User $userId logged in as $role');
+      _onUserLoggedIn!(userId, role);
+    }
+  }
+
+  // ==============================
+  // 🔒 HELPER: Notify CartProvider after logout
+  // ==============================
+  void _notifyCartProviderLogout() {
+    if (_onUserLoggedOut != null) {
+      debugPrint('🔓 Notifying CartProvider: User logged out');
+      _onUserLoggedOut!();
+    }
+  }
+
+  // ==============================
   // REGISTER DENGAN EMAIL DAN PASSWORD
   // ==============================
   Future<void> registerWithEmailAndPassword(String name, String email, String password) async {
@@ -207,6 +243,7 @@ class AuthService with ChangeNotifier {
       _jwtToken = responseData['token'];
 
       await _saveUserDataToPrefs();
+      _notifyCartProviderLogin(); // 🔒 Notify CartProvider
       notifyListeners();
     } else {
       final errorData = jsonDecode(response.body);
@@ -249,6 +286,7 @@ class AuthService with ChangeNotifier {
         _jwtToken = responseData['token'];
 
         await _saveUserDataToPrefs();
+        _notifyCartProviderLogin(); // 🔒 Notify CartProvider
         notifyListeners();
         _saveFcmToken();
       } else {
@@ -288,6 +326,7 @@ class AuthService with ChangeNotifier {
         await prefs.setString('cashiers', jsonEncode(responseData['cashiers']));
       }
 
+      _notifyCartProviderLogin(); // 🔒 Notify CartProvider
       notifyListeners();
       _saveFcmToken();
     } else {
@@ -452,6 +491,7 @@ class AuthService with ChangeNotifier {
           final data = jsonDecode(response.body);
           _user = data['user'];
           _jwtToken = storedToken;
+          _notifyCartProviderLogin(); // 🔒 Notify CartProvider
           notifyListeners();
           return true;
         } else {
@@ -502,6 +542,10 @@ class AuthService with ChangeNotifier {
   Future<void> logout() async {
     try {
       _removeFcmToken();
+
+      // 🔒 Notify CartProvider BEFORE clearing user data
+      _notifyCartProviderLogout();
+
       _user = null;
       _jwtToken = null;
 
@@ -524,6 +568,7 @@ class AuthService with ChangeNotifier {
     } catch (e) {
       print('Error during logout: $e');
       // Still clear local data even if there's an error
+      _notifyCartProviderLogout();
       _user = null;
       _jwtToken = null;
       notifyListeners();

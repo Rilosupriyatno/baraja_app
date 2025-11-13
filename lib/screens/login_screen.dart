@@ -17,7 +17,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _identifierController = TextEditingController(); // Changed from emailController
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
@@ -38,10 +38,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _checkLoginStatus() async {
     final authService = Provider.of<AuthService>(context, listen: false);
+
+    // 🔒 PENTING: checkLoginStatus() akan trigger _notifyCartProviderLogin()
+    // jika user sudah login sebelumnya (via callback di AuthService)
     final isLoggedIn = await authService.checkLoginStatus();
 
     if (isLoggedIn && mounted) {
+      debugPrint('✅ Session restored, redirecting to main');
       context.go('/main');
+    } else {
+      debugPrint('ℹ️ No active session');
     }
   }
 
@@ -54,15 +60,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+
+      // 🔒 loginWithEmailAndPassword() akan trigger _notifyCartProviderLogin()
+      // via callback yang sudah di-setup di main.dart
       await authService.loginWithEmailAndPassword(
         _identifierController.text.trim(),
         _passwordController.text,
       );
+
       if (mounted) {
+        debugPrint('✅ Login success, redirecting to main');
         context.go('/main');
       }
     } catch (e) {
-      // Show error message to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -71,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-      print('Login error: $e');
+      debugPrint('❌ Login error: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -88,8 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+
+      // 🔒 signInWithGoogle() akan trigger _notifyCartProviderLogin()
       await authService.signInWithGoogle();
+
       if (mounted) {
+        debugPrint('✅ Google login success, redirecting to main');
         context.go('/main');
       }
     } catch (e) {
@@ -101,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-      print('Google login error: $e');
+      debugPrint('❌ Google login error: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -204,7 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (value == null || value.isEmpty) {
                         return 'Masukkan email atau username Anda';
                       }
-                      // Don't validate format here since it could be email or username
                       return null;
                     },
                   ),
