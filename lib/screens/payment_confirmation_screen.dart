@@ -10,7 +10,6 @@ import '../models/reservation_data.dart';
 import '../providers/order_provider.dart';
 import '../services/confirm_service.dart';
 import '../services/voucher_service.dart';
-import '../utils/gro_mode_badge.dart';
 import '../widgets/checkout/reservation_payment_type_widget.dart';
 import '../widgets/payment_confirm/payment_error_view.dart';
 import '../widgets/payment_confirm/payment_loading_view.dart';
@@ -39,10 +38,12 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final int? downPaymentAmount;
   final int remainingPayment;
   final bool isDownPayment;
+  // Add tax-related parameters
   final int? taxAmount;
   final List<Map<String, dynamic>>? taxDetails;
   final int grandTotal;
   final bool isGroMode;
+
 
   const PaymentConfirmationScreen({
     super.key,
@@ -67,10 +68,11 @@ class PaymentConfirmationScreen extends StatefulWidget {
     this.downPaymentAmount,
     required this.remainingPayment,
     required this.isDownPayment,
+    // Add tax parameters
     this.taxAmount,
     this.taxDetails,
     required this.grandTotal,
-    this.isGroMode = false,
+    this.isGroMode = false, // tambahkan default false
   });
 
   @override
@@ -165,7 +167,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
           print('Payment processed successfully for order: ${widget.orderId}');
 
-          // Mark voucher as used for cash payments
+          // 🆕 Mark voucher as used for cash payments
           if (_isCashPayment) {
             await _markVoucherAsUsedIfApplicable();
           }
@@ -245,8 +247,10 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       }
 
       print('Payment status updated to: ${data['transaction_status']}');
-      // Mark voucher as used when payment is successful
+      // 🆕 Mark voucher as used when payment is successful
       _markVoucherAsUsedIfApplicable();
+
+      // 🆕 Mark voucher as used when payment is successful
 
       if (data['transaction_status'] == 'settlement' ||
           data['transaction_status'] == 'capture' ||
@@ -264,6 +268,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           } catch (e) {
             print('❌ Error updating order status: $e');
           }
+
+          // 🆕 Mark voucher as used if voucher was applied
+
         } else {
           print('⚠️ Widget unmounted, cannot mark voucher as used');
         }
@@ -271,8 +278,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     }
   }
 
-  // New method to mark voucher as used
+// 🆕 New method to mark voucher as used
   Future<void> _markVoucherAsUsedIfApplicable() async {
+
     if (widget.voucherCode != null &&
         widget.voucherCode!.isNotEmpty) {
       try {
@@ -282,8 +290,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         debugPrint('Attempting to mark voucher as used: ${widget.voucherCode} for user: $userId');
 
         if (userId != null) {
+          // Kirim voucherId, bukan order ID
           await VoucherService().markVoucherAsUsed(widget.voucherCode!, userId);
-          print('✅ Voucher ${widget.voucherCode} marked as used');
+          print('✅ Voucher ${widget.voucherCode} (ID: ${widget.voucherCode}) marked as used');
         }
       } catch (e) {
         print('❌ Error marking voucher as used: $e');
@@ -316,94 +325,49 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreenWrapper(
-      customBackRoute: widget.isGroMode ? '/main' : '/main',
+     return BaseScreenWrapper(
+      customBackRoute: widget.isGroMode ? '/gro-dashboard' : '/history',
       canPop: false,
-      onBackPressed: widget.isGroMode
-          ? () {
-        // ✅ GRO Mode: Kembali ke GRO Dashboard (tab index 0)
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-          : null,
       child: Scaffold(
         backgroundColor: Colors.white,
-        // ✅ UPDATED APPBAR DENGAN BADGE
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              if (widget.isGroMode) {
-                // ✅ GRO Mode: Clear all navigation stack dan kembali ke dashboard
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              } else {
-                // ✅ User Mode: Kembali ke history tab
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
-            },
-          ),
-          // ✅ TITLE DENGAN BADGE GRO
-          title: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Konfirmasi Pembayaran',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (widget.isGroMode) const GroModeAppBarBadge(), // ✅ BADGE
-            ],
-          ),
+        appBar: ClassicAppBar(
+          title: 'Konfirmasi Pembayaran',
+          customBackRoute: widget.isGroMode ? '/gro-dashboard' : '/history',
         ),
+
         body: SafeArea(
-          child: Column(
-            children: [
-              // ✅ OPTIONAL: BANNER GRO MODE DI BAGIAN ATAS BODY
-              if (widget.isGroMode && !_isLoading && _errorMessage == null)
-              // ✅ KONTEN UTAMA
-              Expanded(
-                child: _isLoading
-                    ? const PaymentLoadingView()
-                    : _errorMessage != null
-                    ? PaymentErrorView(
-                  errorMessage: _errorMessage,
-                  onRetry: _retryPayment,
-                )
-                    : UnifiedPaymentView(
-                  order: newOrder,
-                  paymentResponse: _paymentResponseData,
-                  paymentDetails: widget.paymentDetails,
-                  orderType: widget.orderType,
-                  tableNumber: widget.tableNumber ?? '',
-                  deliveryAddress: widget.deliveryAddress,
-                  pickupTime: widget.pickupTime,
-                  subtotal: widget.subtotal,
-                  discount: widget.discount,
-                  total: widget.total,
-                  grandTotal: widget.grandTotal,
-                  voucherCode: widget.voucherCode,
-                  items: widget.items,
-                  isCashPayment: _isCashPayment,
-                  // Add reservation-specific parameters
-                  isReservation: widget.isReservation ?? false,
-                  paymentType: widget.paymentType,
-                  amountToPay: widget.amountToPay,
-                  remainingPayment: widget.remainingPayment,
-                  isDownPayment: widget.isDownPayment,
-                  reservationData: widget.reservationData,
-                  // Add tax parameters
-                  taxAmount: widget.taxAmount ?? 0,
-                  taxDetails: widget.taxDetails ?? [],
-                  isGroMode: widget.isGroMode,
-                ),
-              ),
-            ],
+          child: _isLoading
+              ? const PaymentLoadingView()
+              : _errorMessage != null
+              ? PaymentErrorView(
+            errorMessage: _errorMessage,
+            onRetry: _retryPayment,
+          )
+              : UnifiedPaymentView(
+            order: newOrder,
+            paymentResponse: _paymentResponseData,
+            paymentDetails: widget.paymentDetails,
+            orderType: widget.orderType,
+            tableNumber: widget.tableNumber ?? '',
+            deliveryAddress: widget.deliveryAddress,
+            pickupTime: widget.pickupTime,
+            subtotal: widget.subtotal,
+            discount: widget.discount,
+            total: widget.total,
+            grandTotal: widget.grandTotal,
+            voucherCode: widget.voucherCode,
+            items: widget.items,
+            isCashPayment: _isCashPayment,
+            // Add reservation-specific parameters
+            isReservation: widget.isReservation ?? false,
+            paymentType: widget.paymentType,
+            amountToPay: widget.amountToPay,
+            remainingPayment: widget.remainingPayment,
+            isDownPayment: widget.isDownPayment,
+            reservationData: widget.reservationData,
+            // Add tax parameters
+            taxAmount: widget.taxAmount ?? 0,
+            taxDetails: widget.taxDetails ?? [],
           ),
         ),
       ),
