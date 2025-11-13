@@ -15,7 +15,6 @@ import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/menu/menu_selector.dart';
 import '../widgets/menu/search_menu_widget.dart'; // ✅ Import widget search
-import '../widgets/utils/classic_app_bar.dart';
 
 class MenuScreen extends StatefulWidget {
   final bool isReservation;
@@ -487,17 +486,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  String _getAppBarTitle() {
-    if (widget.isGroMode) {
-      return 'Menu (GRO Mode)';
-    } else if (widget.isReservation) {
-      return 'Menu Reservasi';
-    } else if (widget.isDineIn) {
-      return 'Menu Dine In';
-    } else {
-      return 'Menu';
-    }
-  }
 
   String _getBackRoute() {
     if (widget.isGroMode) {

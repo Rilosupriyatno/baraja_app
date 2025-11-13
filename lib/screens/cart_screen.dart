@@ -1,5 +1,4 @@
 import 'package:baraja_app/theme/app_theme.dart';
-import 'package:baraja_app/utils/base_screen_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,7 +10,6 @@ import '../utils/gro_mode_badge.dart';
 import '../widgets/cart/cart_item_card.dart';
 import '../widgets/cart/cart_item_edit_dialog.dart';
 import '../utils/currency_formatter.dart';
-import '../widgets/utils/classic_app_bar.dart';
 
 class CartScreen extends StatefulWidget {
   final bool isReservation;

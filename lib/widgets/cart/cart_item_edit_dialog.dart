@@ -25,7 +25,9 @@ class _CartItemEditDialogState extends State<CartItemEditDialog> {
   Product? _product;
   bool _isLoading = true;
   int _quantity = 1;
+  // ignore: prefer_final_fields
   List<Topping> _selectedToppings = [];
+  // ignore: prefer_final_fields
   Map<String, AddonOption?> _selectedAddonOptions = {};
 
   final Color primaryColor = const Color(0xFF076A3B);
@@ -82,7 +84,7 @@ class _CartItemEditDialogState extends State<CartItemEditDialog> {
     }
 
     // Initialize addons
-    if (_product!.addons != null && widget.item.addons is List) {
+    if (_product!.addons != null) {
       for (var selectedAddon in widget.item.addons as List) {
         if (selectedAddon is Map) {
           final addonName = selectedAddon['name'] as String;

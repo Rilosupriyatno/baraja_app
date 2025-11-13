@@ -25,17 +25,15 @@ class _GroReservationManagementScreenState
   String? _errorMessage;
 
   // ✅ Ubah ini jadi getter dengan log
-  String __selectedFilter = 'all'; // Private variable
+// ✅ SIMPLIFIED: Getter dan setter tanpa log berlebihan
+  String __selectedFilter = 'all';
 
-  String get _selectedFilter {
-    print('📖 GET _selectedFilter: $__selectedFilter');
-    return __selectedFilter;
-  }
+  String get _selectedFilter => __selectedFilter;
 
   set _selectedFilter(String value) {
-    print('✏️ SET _selectedFilter: $__selectedFilter → $value');
-    print('📍 Called from: ${StackTrace.current}');
-    __selectedFilter = value;
+    if (__selectedFilter != value) {
+      __selectedFilter = value;
+    }
   }
 
   int _currentPage = 1;
@@ -69,15 +67,15 @@ class _GroReservationManagementScreenState
   String? _mapFilterToApiStatus(String filter) {
     switch (filter) {
       case 'pending':
-        return null;
+        return null; // Untuk pending, kita filter di frontend
       case 'ongoing':
         return 'active';
       case 'completed':
         return 'completed';
       case 'cancelled':
         return 'cancelled';
-      case 'all': // ✅ Tambahkan case untuk 'all'
-        return null;
+      case 'all':
+        return null; // Untuk all, tidak ada filter status di API
       default:
         return null;
     }
@@ -88,13 +86,12 @@ class _GroReservationManagementScreenState
       _isLoading = true;
       _errorMessage = null;
     });
+
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      // ✅ UPDATE: Untuk filter 'all', kirim null ke API
-      final apiStatus = _selectedFilter == 'pending' || _selectedFilter == 'all'
-          ? null
-          : _mapFilterToApiStatus(_selectedFilter);
+      // ✅ FIXED: Gunakan mapping yang konsisten untuk semua filter
+      final apiStatus = _mapFilterToApiStatus(_selectedFilter);
 
       final result = await _groService.getReservations(
         page: _currentPage,
@@ -109,7 +106,7 @@ class _GroReservationManagementScreenState
       if (result['success']) {
         List<dynamic> reservations = List.from(result['data']);
 
-        // ✅ UPDATE: Filter frontend untuk "pending" dan "all"
+        // ✅ FIXED: Filter frontend hanya untuk "pending"
         if (_selectedFilter == 'pending') {
           reservations = reservations.where((item) {
             final type = item['type'] ?? 'reservation';
@@ -124,7 +121,7 @@ class _GroReservationManagementScreenState
             }
           }).toList();
         }
-        // Untuk filter 'all', tampilkan semua data tanpa filter tambahan
+        // Untuk filter 'all', 'ongoing', 'completed', 'cancelled' - gunakan hasil dari API tanpa filter tambahan
 
         // ✅ URUTKAN DATA TERBARU DI ATAS
         reservations.sort((a, b) {
@@ -156,6 +153,7 @@ class _GroReservationManagementScreenState
       });
     }
   }
+
 
   // === DINE-IN ORDER ACTIONS ===
   Future<void> _checkInDineInOrder(String orderId) async {
@@ -531,18 +529,8 @@ class _GroReservationManagementScreenState
   Widget _buildFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedFilter == value;
 
-    // ✅ DEBUG: Print nilai aktual saat widget di-build
-    print('🔍 _buildFilterChip called:');
-    print('   value: $value');
-    print('   _selectedFilter: $_selectedFilter');
-    print('   isSelected: $isSelected');
-    print('   Are they equal? ${_selectedFilter == value}');
-    print('   _selectedFilter type: ${_selectedFilter.runtimeType}');
-    print('   value type: ${value.runtimeType}');
-
     return InkWell(
       onTap: () {
-        print('🔥 Tapped: $value');
         setState(() {
           _selectedFilter = value;
           _currentPage = 1;
@@ -717,7 +705,10 @@ class _GroReservationManagementScreenState
     final date = reservation['reservation_date'] ?? reservation['createdAt'];
     final time = reservation['reservation_time'] ?? '';
     final guestCount = reservation['guest_count'] ?? 1;
-    final area = reservation['area_id'];
+
+    // ✅ PERBAIKAN: Handle area data dari berbagai sumber
+    final area = _getAreaInfo(reservation);
+
     final tables = reservation['table_id'] as List<dynamic>? ?? [];
     final checkInTime = reservation['check_in_time'];
 
@@ -734,6 +725,9 @@ class _GroReservationManagementScreenState
         formattedDate = date.toString();
       }
     }
+
+    // ✅ Tampilkan informasi area yang sudah diperbaiki
+    final areaName = area['area_name'] ?? 'N/A';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -897,7 +891,7 @@ class _GroReservationManagementScreenState
                     const SizedBox(height: 10),
                     _buildInfoRow(
                       Icons.location_on,
-                      area != null ? area['area_name'] ?? 'N/A' : 'N/A',
+                      areaName,
                       const Color(0xFFEF4444),
                     ),
                     if (tables.isNotEmpty) ...[
@@ -959,7 +953,27 @@ class _GroReservationManagementScreenState
     return 'Tamu';
   }
 
-// ✅ Helper function untuk mendapatkan nama GRO
+  Map<String, dynamic> _getAreaInfo(Map<String, dynamic> reservation) {
+    // Prioritas 1: area_id dari reservation (untuk reservasi asli)
+    if (reservation['area_id'] != null && reservation['area_id'] is Map) {
+      return reservation['area_id'];
+    }
+
+    // Prioritas 2: area dari dine-in order yang sudah dikonversi
+    if (reservation['area'] != null && reservation['area'] is Map) {
+      return reservation['area'];
+    }
+
+    // Prioritas 3: areaInfo dari dine-in order
+    if (reservation['areaInfo'] != null && reservation['areaInfo'] is Map) {
+      return reservation['areaInfo'];
+    }
+
+    // Fallback: return map kosong
+    return {};
+  }
+
+
   String _getGroName(Map<String, dynamic> reservation) {
     // Prioritas 1: created_by employee_name
     if (reservation['created_by'] != null && reservation['created_by'] is Map) {
@@ -985,9 +999,13 @@ class _GroReservationManagementScreenState
       }
     }
 
-    return 'System';
-  }
+    // Prioritas 4: Untuk dine-in orders yang dikonversi
+    if (reservation['type'] == 'dine-in-order') {
+      return 'Cashier System';
+    }
 
+    return 'GRO System';
+  }
   String _formatDateTime(String? dateTimeStr) {
     if (dateTimeStr == null) return 'N/A';
     try {

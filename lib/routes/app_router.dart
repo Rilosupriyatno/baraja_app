@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
-import '../models/product.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/auth_redirect_page.dart';
 import '../screens/checkout_page.dart';
@@ -14,14 +13,12 @@ import '../screens/login_screen.dart';
 import '../screens/menu_screen.dart';
 import '../screens/payment_confirmation_screen.dart';
 import '../screens/payment_method_screen.dart';
-import '../screens/product_detail_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/reservation_screen.dart';
 import '../screens/scanner.dart';
 import '../screens/ticket_payment_confirmation_screen.dart';
 import '../screens/tracking_detail_order_screen.dart';
 import '../screens/voucher_screen.dart';
-import '../services/product_service.dart';
 import '../widgets/utils/navigation_bar.dart';
 import '../widgets/utils/ticket_payment_instruction_screen.dart';
 

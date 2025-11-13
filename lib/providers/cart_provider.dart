@@ -81,7 +81,7 @@ class CartProvider with ChangeNotifier {
 
   void setGroMode(bool isGroMode) {
     _userIsGroMode[_userKey] = isGroMode;
-    debugPrint('📝 Cart Mode Changed for user $_userKey: ${isGroMode ? "GRO" : "Customer"}');
+    debugPrint('🔄 Cart Mode Changed for user $_userKey: ${isGroMode ? "GRO" : "Customer"}');
     debugPrint('   Cart Items: ${items.length}');
     notifyListeners();
   }
@@ -115,47 +115,47 @@ class CartProvider with ChangeNotifier {
   }
 
   void setReservationData(bool isReservation, ReservationData? data) {
-    if (isGroMode && !isReservation) {
-      debugPrint('⚠️ GRO Mode: Hanya bisa set reservation context');
-      return;
-    }
-
     _userIsReservation[_userKey] = isReservation;
     _userReservationData[_userKey] = data;
+
+    // Clear other contexts
     _userIsDineIn[_userKey] = false;
     _userTableNumber.remove(_userKey);
     _userIsOpenBill[_userKey] = false;
     _userOpenBillData.remove(_userKey);
+
+    debugPrint('✅ Reservation data set for user $_userKey');
     notifyListeners();
   }
 
   void setOpenBillData(bool isOpenBill, OpenBillData? data) {
-    if (!isGroMode && isOpenBill) {
-      debugPrint('⚠️ Open Bill hanya tersedia untuk GRO Mode');
-      return;
-    }
-
     _userIsOpenBill[_userKey] = isOpenBill;
     _userOpenBillData[_userKey] = data;
+
+    // Clear other contexts
     _userIsReservation[_userKey] = false;
     _userReservationData.remove(_userKey);
     _userIsDineIn[_userKey] = false;
     _userTableNumber.remove(_userKey);
+
+    debugPrint('✅ Open Bill data set for user $_userKey');
     notifyListeners();
   }
 
+  // ✅ FIXED: Hapus validasi yang memblokir GRO mode untuk dine-in
   void setDineInData(bool isDineIn, String? tableNumber) {
-    if (isGroMode && isDineIn) {
-      debugPrint('⚠️ GRO Mode: Tidak bisa set dine-in context');
-      return;
-    }
-
     _userIsDineIn[_userKey] = isDineIn;
     _userTableNumber[_userKey] = tableNumber;
+
+    // Clear other contexts
     _userIsReservation[_userKey] = false;
     _userReservationData.remove(_userKey);
     _userIsOpenBill[_userKey] = false;
     _userOpenBillData.remove(_userKey);
+
+    debugPrint('✅ Dine-In data set for user $_userKey');
+    debugPrint('   Table Number: $tableNumber');
+    debugPrint('   Is GRO Mode: ${isGroMode}');
     notifyListeners();
   }
 
