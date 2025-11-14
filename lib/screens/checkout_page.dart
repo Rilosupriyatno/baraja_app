@@ -176,7 +176,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // ✅ PERBAIKAN UTAMA: Gunakan item.totalprice seperti di cart_screen
+// ✅ FIXED: Remove double counting
   void _calculateTaxes() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
@@ -199,14 +199,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    // ✅ PERBAIKAN: Hitung subtotal dengan cara yang sama seperti cart_screen
-    // Gunakan item.totalprice (sudah include addons & toppings) * quantity
-    final subtotal = cartProvider.items.fold(0, (sum, item) {
-      final itemTotal = item.totalprice * item.quantity;
-      print(
-          "  Item: ${item.name} | totalprice: ${item.totalprice} x ${item.quantity} = $itemTotal");
-      return sum + itemTotal;
-    });
+    // ✅ FIXED: Gunakan cartProvider.totalPrice yang sudah benar
+    // Jangan hitung ulang karena akan double counting
+    final subtotal = cartProvider.totalPrice;
+
+    print("  Items in cart:");
+    for (var item in cartProvider.items) {
+      final itemTotal = cartProvider.getItemTotalPrice(item);
+      print("    - ${item.name}: qty=${item.quantity}, total=$itemTotal");
+    }
 
     final discount = calculateDiscount(subtotal);
     final finalTotal = subtotal - discount;
@@ -218,7 +219,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    print("  subtotal (sum of item.totalprice * qty): $subtotal");
+    print("  subtotal (from cartProvider.totalPrice): $subtotal");
     print("  discount: $discount");
     print("  finalTotal: $finalTotal");
 
