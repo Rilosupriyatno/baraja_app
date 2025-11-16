@@ -6,10 +6,13 @@ import '../screens/gro_unified_order_detail_sheet.dart';
 class GroReservationManagementScreen extends StatefulWidget {
   final String? filter;
   final String? initialDate;
+  final Map<String, dynamic>? dashboardStats;
+
   const GroReservationManagementScreen({
     super.key,
     this.filter,
     this.initialDate,
+    this.dashboardStats,
   });
 
   @override
@@ -24,8 +27,6 @@ class _GroReservationManagementScreenState
   bool _isLoading = true;
   String? _errorMessage;
 
-  // ✅ Ubah ini jadi getter dengan log
-// ✅ SIMPLIFIED: Getter dan setter tanpa log berlebihan
   String __selectedFilter = 'all';
 
   String get _selectedFilter => __selectedFilter;
@@ -49,25 +50,15 @@ class _GroReservationManagementScreenState
         ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
         : DateTime.now();
 
-    // ✅ Log SEBELUM set
-    print('🚀 initState START:');
-    print('   widget.filter = ${widget.filter}');
-    print('   _selectedFilter BEFORE = $_selectedFilter');
-
-    // ✅ UBAH: Default menjadi 'all' jika widget.filter null
     _selectedFilter = widget.filter ?? 'all';
-
-    print('   _selectedFilter AFTER = $_selectedFilter');
-    print('🚀 initState END');
 
     _loadReservations();
   }
 
-  // ✅ UPDATE: Tambahkan mapping untuk filter 'all'
   String? _mapFilterToApiStatus(String filter) {
     switch (filter) {
       case 'pending':
-        return null; // Untuk pending, kita filter di frontend
+        return null;
       case 'ongoing':
         return 'active';
       case 'completed':
@@ -75,7 +66,7 @@ class _GroReservationManagementScreenState
       case 'cancelled':
         return 'cancelled';
       case 'all':
-        return null; // Untuk all, tidak ada filter status di API
+        return null;
       default:
         return null;
     }
@@ -89,8 +80,6 @@ class _GroReservationManagementScreenState
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-
-      // ✅ FIXED: Gunakan mapping yang konsisten untuk semua filter
       final apiStatus = _mapFilterToApiStatus(_selectedFilter);
 
       final result = await _groService.getReservations(
@@ -106,7 +95,6 @@ class _GroReservationManagementScreenState
       if (result['success']) {
         List<dynamic> reservations = List.from(result['data']);
 
-        // ✅ FIXED: Filter frontend hanya untuk "pending"
         if (_selectedFilter == 'pending') {
           reservations = reservations.where((item) {
             final type = item['type'] ?? 'reservation';
@@ -121,9 +109,7 @@ class _GroReservationManagementScreenState
             }
           }).toList();
         }
-        // Untuk filter 'all', 'ongoing', 'completed', 'cancelled' - gunakan hasil dari API tanpa filter tambahan
 
-        // ✅ URUTKAN DATA TERBARU DI ATAS
         reservations.sort((a, b) {
           String? aTime = a['updatedAt'] ?? a['createdAt'];
           String? bTime = b['updatedAt'] ?? b['createdAt'];
@@ -154,8 +140,25 @@ class _GroReservationManagementScreenState
     }
   }
 
+  int _getCountForFilter(String filter) {
+    if (widget.dashboardStats == null) return 0;
 
-  // === DINE-IN ORDER ACTIONS ===
+    switch (filter) {
+      case 'all':
+        return widget.dashboardStats!['allReservations'] ?? 0;
+      case 'pending':
+        return widget.dashboardStats!['pendingReservations'] ?? 0;
+      case 'ongoing':
+        return widget.dashboardStats!['activeReservations'] ?? 0;
+      case 'completed':
+        return widget.dashboardStats!['completedReservations'] ?? 0;
+      case 'cancelled':
+        return widget.dashboardStats!['cancelledReservations'] ?? 0;
+      default:
+        return 0;
+    }
+  }
+
   Future<void> _checkInDineInOrder(String orderId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -288,8 +291,6 @@ class _GroReservationManagementScreenState
     }
   }
 
-  // === DISPLAY STATUS ===
-  // === DISPLAY STATUS ===
   String _getDisplayStatus(Map<String, dynamic> item) {
     final type = item['type'] ?? 'reservation';
     final status = item['status'] ?? 'pending';
@@ -310,7 +311,6 @@ class _GroReservationManagementScreenState
           return status;
       }
     } else {
-      // Untuk reservation biasa
       switch (status) {
         case 'pending':
           return 'Menunggu';
@@ -347,13 +347,17 @@ class _GroReservationManagementScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Deteksi apakah tablet
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         title: const Text(
-          'Kelola Meja',
+          'Kelola Order',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 20,
@@ -392,7 +396,7 @@ class _GroReservationManagementScreenState
             )
                 : _errorMessage != null
                 ? _buildErrorState()
-                : _buildReservationsList(),
+                : _buildReservationsList(isTablet),
           ),
         ],
       ),
@@ -511,22 +515,22 @@ class _GroReservationManagementScreenState
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('all', 'Riwayat', Icons.history), // ✅ FILTER ALL DI DEPAN
+            _buildFilterChip('all', 'Riwayat', Icons.history, _getCountForFilter('all')),
             const SizedBox(width: 8),
-            _buildFilterChip('pending', 'Menunggu', Icons.schedule),
+            _buildFilterChip('pending', 'Menunggu', Icons.schedule, _getCountForFilter('pending')),
             const SizedBox(width: 8),
-            _buildFilterChip('ongoing', 'Berlangsung', Icons.dining),
+            _buildFilterChip('ongoing', 'Berlangsung', Icons.dining, _getCountForFilter('ongoing')),
             const SizedBox(width: 8),
-            _buildFilterChip('completed', 'Selesai', Icons.check_circle),
+            _buildFilterChip('completed', 'Selesai', Icons.check_circle, _getCountForFilter('completed')),
             const SizedBox(width: 8),
-            _buildFilterChip('cancelled', 'Dibatalkan', Icons.cancel),
+            _buildFilterChip('cancelled', 'Dibatalkan', Icons.cancel, _getCountForFilter('cancelled')),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterChip(String value, String label, IconData icon) {
+  Widget _buildFilterChip(String value, String label, IconData icon, int count) {
     final isSelected = _selectedFilter == value;
 
     return InkWell(
@@ -572,6 +576,22 @@ class _GroReservationManagementScreenState
                 color: isSelected ? Colors.white : Colors.grey.shade700,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withOpacity(0.3) : const Color(0xFF2E8B57).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                count.toString(),
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF2E8B57),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
               ),
             ),
           ],
@@ -630,7 +650,7 @@ class _GroReservationManagementScreenState
     );
   }
 
-  Widget _buildReservationsList() {
+  Widget _buildReservationsList(bool isTablet) {
     if (_reservations.isEmpty) {
       return Center(
         child: Column(
@@ -669,20 +689,16 @@ class _GroReservationManagementScreenState
         ),
       );
     }
+
     return RefreshIndicator(
       onRefresh: _loadReservations,
       color: const Color(0xFF2E8B57),
       child: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              itemCount: _reservations.length,
-              itemBuilder: (context, index) {
-                final reservation = _reservations[index];
-                return _buildReservationCard(reservation);
-              },
-            ),
+            child: isTablet
+                ? _buildTabletGridView()
+                : _buildMobileListView(),
           ),
           if (_totalPages > 1) _buildPagination(),
         ],
@@ -690,29 +706,59 @@ class _GroReservationManagementScreenState
     );
   }
 
-  Widget _buildReservationCard(Map<String, dynamic> reservation) {
+  Widget _buildTabletGridView() {
+    // Deteksi ukuran layar untuk menentukan jumlah kolom
+    final size = MediaQuery.of(context).size;
+    final crossAxisCount = size.width >= 1200 ? 4 : 3; // 4 kolom untuk layar besar, 3 untuk layar sedang
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.70, // Lebih tinggi untuk menampung konten
+      ),
+      itemCount: _reservations.length,
+      itemBuilder: (context, index) {
+        final reservation = _reservations[index];
+        return _buildCompactReservationCard(reservation);
+      },
+    );
+  }
+  // ✅ MOBILE: List View (tetap pakai layout lama)
+  Widget _buildMobileListView() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: _reservations.length,
+      itemBuilder: (context, index) {
+        final reservation = _reservations[index];
+        return _buildReservationCard(reservation);
+      },
+    );
+  }
+
+// Replace the _buildCompactReservationCard method with this fixed version:
+
+  // Replace the _buildCompactReservationCard method with this fixed version:
+
+  Widget _buildCompactReservationCard(Map<String, dynamic> reservation) {
     final displayStatus = _getDisplayStatus(reservation);
     final statusColor = _getDisplayStatusColor(displayStatus);
     final reservationCode = reservation['reservation_code'] ??
         reservation['order_id'] ?? '';
 
-    // ✅ Ambil nama pemesan dari berbagai sumber
     final guestName = _getGuestName(reservation);
-
-    // ✅ Ambil nama GRO
     final groName = _getGroName(reservation);
 
     final date = reservation['reservation_date'] ?? reservation['createdAt'];
     final time = reservation['reservation_time'] ?? '';
     final guestCount = reservation['guest_count'] ?? 1;
 
-    // ✅ PERBAIKAN: Handle area data dari berbagai sumber
     final area = _getAreaInfo(reservation);
 
     final tables = reservation['table_id'] as List<dynamic>? ?? [];
-    final checkInTime = reservation['check_in_time'];
 
-    // Tipe reservasi (dine-in atau reservasi)
     final type = reservation['type'] ?? 'reservation';
     final isDineIn = type == 'dine-in-order';
 
@@ -726,7 +772,456 @@ class _GroReservationManagementScreenState
       }
     }
 
-    // ✅ Tampilkan informasi area yang sudah diperbaiki
+    final areaName = area['area_name'] ?? 'N/A';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDineIn ? Colors.blue.shade100 : Colors.green.shade100,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _showReservationDetail(reservation),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(10), // Reduced from 12
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Row
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Reduced padding
+                    decoration: BoxDecoration(
+                      color: isDineIn ? Colors.blue.shade50 : Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isDineIn ? Colors.blue.shade200 : Colors.green.shade200,
+                      ),
+                    ),
+                    child: Text(
+                      isDineIn ? 'DINE-IN' : 'RESERVASI',
+                      style: TextStyle(
+                        fontSize: 8, // Reduced from 9
+                        fontWeight: FontWeight.bold,
+                        color: isDineIn ? Colors.blue.shade700 : Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10), // Reduced radius
+                      border: Border.all(
+                        color: statusColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      displayStatus,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9, // Reduced from 10
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8), // Reduced from 10
+
+              // Code & Name
+              Text(
+                reservationCode,
+                style: const TextStyle(
+                  fontSize: 13, // Reduced from 14
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2), // Reduced from 3
+              Text(
+                guestName,
+                style: const TextStyle(
+                  fontSize: 11, // Reduced from 12
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6), // Reduced from 8
+
+              // GRO Info
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: 11, // Reduced from 12
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 3), // Reduced from 4
+                    Expanded(
+                      child: Text(
+                        'GRO: $groName',
+                        style: TextStyle(
+                          fontSize: 9, // Reduced from 10
+                          color: Colors.grey.shade700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8), // Reduced from 10
+
+              // Info Grid (lebih kompak)
+              Container(
+                padding: const EdgeInsets.all(6), // Reduced from 8
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(6), // Reduced from 8
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCompactInfo(Icons.calendar_today, formattedDate, const Color(0xFF6366F1)),
+                        ),
+                        const SizedBox(width: 4), // Reduced from 6
+                        Expanded(
+                          child: _buildCompactInfo(Icons.access_time, time, const Color(0xFF8B5CF6)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4), // Reduced from 6
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCompactInfo(Icons.people, '$guestCount org', const Color(0xFF10B981)),
+                        ),
+                        const SizedBox(width: 4), // Reduced from 6
+                        Expanded(
+                          child: _buildCompactInfo(Icons.location_on, areaName, const Color(0xFFEF4444)),
+                        ),
+                      ],
+                    ),
+                    if (tables.isNotEmpty) ...[
+                      const SizedBox(height: 4), // Reduced from 6
+                      _buildCompactInfo(
+                        Icons.table_restaurant,
+                        tables.map((t) => t['table_number']).join(', '),
+                        const Color(0xFFF59E0B),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6), // Reduced from 8
+
+              // Action Buttons (kompak)
+              _buildCompactActionButtons(reservation),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildCompactInfo(IconData icon, String text, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(icon, size: 12, color: color),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactActionButtons(Map<String, dynamic> reservation) {
+    final type = reservation['type'];
+    final id = reservation['_id'];
+    final status = reservation['status'];
+
+    if (type == 'dine-in-order') {
+      if (status == 'Reserved' || status == 'Waiting') {
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => _checkInDineInOrder(id),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8B5CF6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Check-in', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _cancelDineInOrder(id),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFEF4444),
+                  side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Batal', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+          ],
+        );
+      }
+
+      if (status == 'Pending') {
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange.shade700, size: 14),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Menunggu kasir',
+                  style: TextStyle(
+                    color: Colors.orange.shade700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (status == 'OnProcess') {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _completeDineIn(id),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Selesai', style: TextStyle(fontSize: 11)),
+          ),
+        );
+      }
+
+      return const SizedBox.shrink();
+    }
+
+    final checkInTime = reservation['check_in_time'];
+    final checkOutTime = reservation['check_out_time'];
+
+    if (status == 'pending') {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _confirmReservation(id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Konfirmasi', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _cancelReservation(id),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Batalkan', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (status == 'confirmed' && checkInTime == null) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _checkInReservation(id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Check-in', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _cancelReservation(id),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Batal', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (status == 'confirmed' && checkInTime != null && checkOutTime == null) {
+      return Row(
+        children: [
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _checkOutReservation(id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Check-out', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _cancelReservation(id),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Batal', style: TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  // ORIGINAL CARD untuk Mobile (tetap sama)
+  Widget _buildReservationCard(Map<String, dynamic> reservation) {
+    final displayStatus = _getDisplayStatus(reservation);
+    final statusColor = _getDisplayStatusColor(displayStatus);
+    final reservationCode = reservation['reservation_code'] ??
+        reservation['order_id'] ?? '';
+
+    final guestName = _getGuestName(reservation);
+    final groName = _getGroName(reservation);
+
+    final date = reservation['reservation_date'] ?? reservation['createdAt'];
+    final time = reservation['reservation_time'] ?? '';
+    final guestCount = reservation['guest_count'] ?? 1;
+
+    final area = _getAreaInfo(reservation);
+
+    final tables = reservation['table_id'] as List<dynamic>? ?? [];
+    final checkInTime = reservation['check_in_time'];
+
+    final type = reservation['type'] ?? 'reservation';
+    final isDineIn = type == 'dine-in-order';
+
+    String formattedDate = 'N/A';
+    if (date != null) {
+      try {
+        final dateTime = DateTime.parse(date.toString());
+        formattedDate = DateFormat('dd MMM yyyy', 'id_ID').format(dateTime);
+      } catch (e) {
+        formattedDate = date.toString();
+      }
+    }
+
     final areaName = area['area_name'] ?? 'N/A';
 
     return Container(
@@ -754,7 +1249,6 @@ class _GroReservationManagementScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header dengan badge tipe
               Row(
                 children: [
                   Container(
@@ -801,7 +1295,6 @@ class _GroReservationManagementScreenState
               ),
               const SizedBox(height: 12),
 
-              // Informasi utama
               Row(
                 children: [
                   Container(
@@ -845,7 +1338,6 @@ class _GroReservationManagementScreenState
               ),
               const SizedBox(height: 16),
 
-              // Informasi GRO
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
@@ -922,14 +1414,11 @@ class _GroReservationManagementScreenState
     );
   }
 
-// ✅ Helper function untuk mendapatkan nama pemesan
   String _getGuestName(Map<String, dynamic> reservation) {
-    // Prioritas 1: guest_name dari reservation
     if (reservation['guest_name'] != null && reservation['guest_name'].toString().isNotEmpty) {
       return reservation['guest_name'].toString();
     }
 
-    // Prioritas 2: user dari order_id
     if (reservation['order_id'] != null && reservation['order_id'] is Map) {
       final orderUser = reservation['order_id']['user'];
       if (orderUser != null && orderUser.toString().isNotEmpty) {
@@ -937,12 +1426,10 @@ class _GroReservationManagementScreenState
       }
     }
 
-    // Prioritas 3: user langsung dari reservation (untuk dine-in)
     if (reservation['user'] != null && reservation['user'].toString().isNotEmpty) {
       return reservation['user'].toString();
     }
 
-    // Prioritas 4: created_by employee_name
     if (reservation['created_by'] != null && reservation['created_by'] is Map) {
       final createdByName = reservation['created_by']['employee_name'];
       if (createdByName != null && createdByName.toString().isNotEmpty) {
@@ -954,28 +1441,22 @@ class _GroReservationManagementScreenState
   }
 
   Map<String, dynamic> _getAreaInfo(Map<String, dynamic> reservation) {
-    // Prioritas 1: area_id dari reservation (untuk reservasi asli)
     if (reservation['area_id'] != null && reservation['area_id'] is Map) {
       return reservation['area_id'];
     }
 
-    // Prioritas 2: area dari dine-in order yang sudah dikonversi
     if (reservation['area'] != null && reservation['area'] is Map) {
       return reservation['area'];
     }
 
-    // Prioritas 3: areaInfo dari dine-in order
     if (reservation['areaInfo'] != null && reservation['areaInfo'] is Map) {
       return reservation['areaInfo'];
     }
 
-    // Fallback: return map kosong
     return {};
   }
 
-
   String _getGroName(Map<String, dynamic> reservation) {
-    // Prioritas 1: created_by employee_name
     if (reservation['created_by'] != null && reservation['created_by'] is Map) {
       final createdByName = reservation['created_by']['employee_name'];
       if (createdByName != null && createdByName.toString().isNotEmpty) {
@@ -983,7 +1464,6 @@ class _GroReservationManagementScreenState
       }
     }
 
-    // Prioritas 2: groId username
     if (reservation['groId'] != null && reservation['groId'] is Map) {
       final groUsername = reservation['groId']['username'];
       if (groUsername != null && groUsername.toString().isNotEmpty) {
@@ -991,7 +1471,6 @@ class _GroReservationManagementScreenState
       }
     }
 
-    // Prioritas 3: cashierId username (untuk dine-in)
     if (reservation['cashierId'] != null && reservation['cashierId'] is Map) {
       final cashierUsername = reservation['cashierId']['username'];
       if (cashierUsername != null && cashierUsername.toString().isNotEmpty) {
@@ -999,13 +1478,13 @@ class _GroReservationManagementScreenState
       }
     }
 
-    // Prioritas 4: Untuk dine-in orders yang dikonversi
     if (reservation['type'] == 'dine-in-order') {
       return 'Cashier System';
     }
 
     return 'GRO System';
   }
+
   String _formatDateTime(String? dateTimeStr) {
     if (dateTimeStr == null) return 'N/A';
     try {
@@ -1047,9 +1526,7 @@ class _GroReservationManagementScreenState
     final id = reservation['_id'];
     final status = reservation['status'];
 
-    // === DINE-IN ORDER ACTIONS ===
     if (type == 'dine-in-order') {
-      // ✅ PERBAIKAN: Untuk Dine-In, Reserved = siap check-in (tidak perlu konfirmasi lagi)
       if (status == 'Reserved' || status == 'Waiting') {
         return Wrap(
           spacing: 8,
@@ -1092,8 +1569,6 @@ class _GroReservationManagementScreenState
         );
       }
 
-      // ✅ Pending untuk Dine-In = menunggu konfirmasi KASIR (bukan GRO)
-      // Jadi GRO tidak bisa konfirmasi, hanya bisa lihat
       if (status == 'Pending') {
         return Container(
           padding: const EdgeInsets.all(12),
@@ -1121,7 +1596,6 @@ class _GroReservationManagementScreenState
         );
       }
 
-      // ✅ OnProcess menampilkan tombol Selesai
       if (status == 'OnProcess') {
         return SizedBox(
           width: double.infinity,
@@ -1142,11 +1616,9 @@ class _GroReservationManagementScreenState
         );
       }
 
-      // ✅ Status lainnya (Completed, Canceled) tidak menampilkan tombol
       return const SizedBox.shrink();
     }
 
-    // === RESERVATION ACTIONS ===
     final checkInTime = reservation['check_in_time'];
     final checkOutTime = reservation['check_out_time'];
 
@@ -1332,7 +1804,6 @@ class _GroReservationManagementScreenState
     );
   }
 
-  // --- Dine-In Actions ---
   Future<void> _completeDineIn(String orderId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1389,7 +1860,6 @@ class _GroReservationManagementScreenState
     }
   }
 
-  // --- Reservation Actions ---
   Future<void> _confirmReservation(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1649,7 +2119,7 @@ class _GroReservationManagementScreenState
             isReservation: reservation['type'] != 'dine-in-order',
           ),
     ).then((_) {
-      _loadReservations(); // refresh setelah kembali
+      _loadReservations();
     });
   }
 }

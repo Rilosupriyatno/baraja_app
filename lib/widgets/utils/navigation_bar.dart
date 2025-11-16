@@ -319,123 +319,71 @@ class _MarketingNavigationBarState extends State<MarketingNavigationBar> {
 }
 
 // ================= GRO NAVIGATION =================
-class GroNavigationBar extends StatefulWidget {
+// ✅ GRO langsung tampilkan dashboard tanpa bottom navigation bar
+class GroNavigationBar extends StatelessWidget {
   final int? initialTab;
 
   const GroNavigationBar({super.key, this.initialTab});
 
   @override
-  State<GroNavigationBar> createState() => _GroNavigationBarState();
-}
-
-class _GroNavigationBarState extends State<GroNavigationBar> {
-  late PersistentTabController _controller;
-  DateTime? _lastBackPressed;
-
-  @override
-  void initState() {
-    super.initState();
-    // ✅ Pastikan index selalu valid (0..1)
-    final safeIndex = (widget.initialTab ?? 0).clamp(0, 1);
-    _controller = PersistentTabController(initialIndex: safeIndex);
-  }
-
-  bool _handleBackPress() {
-    // ✅ Pastikan index valid sebelum digunakan
-    if (_controller.index >= 2) {
-      _controller.jumpToTab(0);
-      return false;
-    }
-
-    if (_controller.index != 0) {
-      _controller.jumpToTab(0);
-      return false;
-    }
-
-    final now = DateTime.now();
-    const backPressDuration = Duration(seconds: 2);
-
-    if (_lastBackPressed == null ||
-        now.difference(_lastBackPressed!) > backPressDuration) {
-      _lastBackPressed = now;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.exit_to_app, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Tekan sekali lagi untuk keluar',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          backgroundColor: Colors.grey[800],
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 6,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return false;
-    }
-
-    SystemNavigator.pop();
-    return true;
-  }
-
-  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
-        if (!didPop) _handleBackPress();
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          // Dialog konfirmasi untuk keluar aplikasi
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.exit_to_app,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Keluar Aplikasi?'),
+                ],
+              ),
+              content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Keluar'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldExit == true) {
+            SystemNavigator.pop();
+          }
+        }
       },
-      child: PersistentTabView(
-        controller: _controller,
-        backgroundColor: Colors.white,
-        handleAndroidBackButtonPress: false,
-        resizeToAvoidBottomInset: true,
-        stateManagement: true,
-        avoidBottomPadding: true,
-        navBarOverlap: const NavBarOverlap.full(),
-        tabs: [
-          PersistentTabConfig(
-            screen: const GroDashboardScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.dashboard),
-              title: "Dashboard",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
-          PersistentTabConfig(
-            screen: const ProfileScreen(),
-            item: ItemConfig(
-              icon: const Icon(Icons.person),
-              title: "Profile",
-              activeForegroundColor: AppTheme.barajaPrimary.primaryColor,
-            ),
-          ),
-        ],
-        navBarBuilder: (navBarConfig) => Style1BottomNavBar(
-          navBarConfig: navBarConfig,
-          navBarDecoration: const NavBarDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                offset: Offset(0, -2),
-              )
-            ],
-            color: Colors.white,
-          ),
-        ),
-      ),
+      child: const GroDashboardScreen(),
     );
   }
 }

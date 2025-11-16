@@ -1,6 +1,7 @@
 // ============================================================================
 // FILE: gro_table_availability_screen.dart
-// Modern Multi-Select dengan Long Press (Tanpa Tombol Tambahan)
+// OPTIMIZED VERSION - Faster Loading & Better Performance
+// COMPLETE VERSION
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -35,14 +36,21 @@ class _GroTableAvailabilityScreenState
   String? _selectedTime;
   String? _selectedAreaId;
 
-  // ✅ MODERN MULTI-SELECT STATE
   bool _isMultiSelectMode = false;
   final List<Map<String, dynamic>> _selectedTables = [];
   int _totalSelectedSeats = 0;
 
-  // Animation controller untuk smooth transition
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+
+  // ✅ Cache untuk menghindari rebuild berulang
+  Map<String, List<dynamic>>? _cachedTablesByArea;
+
+  // ✅ Debounce untuk filter
+  DateTime? _lastFilterTime;
+  static const _filterDebounceMs = 300;
+
+  final ScrollController _scrollController = ScrollController();
 
   final List<String> _timeSlots = [
     '09:00', '10:00', '11:00', '12:00', '13:00', '14:00',
@@ -54,9 +62,8 @@ class _GroTableAvailabilityScreenState
   @override
   void initState() {
     super.initState();
-    _loadTableAvailability();
+    _loadTableAvailabilityOptimized();
 
-    // Initialize animation
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
@@ -70,6 +77,7 @@ class _GroTableAvailabilityScreenState
   @override
   void dispose() {
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -85,41 +93,34 @@ class _GroTableAvailabilityScreenState
     return false;
   }
 
-  Future<void> _loadTableAvailability({bool forceRefresh = false}) async {
+  // ✅ OPTIMIZED: Load data lebih cepat dengan parallel execution
+  Future<void> _loadTableAvailabilityOptimized({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      await _syncTableStatus();
-
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      final Map<String, String> queryParams = {
-        'date': dateStr,
-        'outletId': outletId,
-        '_t': DateTime.now().millisecondsSinceEpoch.toString(),
-      };
+      // ✅ PARALLEL EXECUTION: Sync dan fetch data bersamaan
+      final results = await Future.wait([
+        _syncTableStatus().catchError((_) => null),
+        _groService.getTableAvailability(
+          date: dateStr,
+          time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
+          areaId: _selectedAreaId,
+          outletId: outletId,
+        ),
+      ]);
 
-      if (_selectedTime != null && _selectedTime!.isNotEmpty) {
-        queryParams['time'] = _selectedTime!;
-      }
-      if (_selectedAreaId != null) {
-        queryParams['area_id'] = _selectedAreaId!;
-      }
-
-      final result = await _groService.getTableAvailability(
-        date: dateStr,
-        time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
-        areaId: _selectedAreaId,
-        outletId: outletId,
-      );
+      final result = results[1] as Map<String, dynamic>;
 
       if (result['success'] == true || result['data'] != null) {
         setState(() {
           _tables = result['data']['tables'] ?? [];
           _summary = result['data']['summary'] ?? {};
+          _cachedTablesByArea = null;
           _isLoading = false;
         });
       } else {
@@ -136,25 +137,37 @@ class _GroTableAvailabilityScreenState
     }
   }
 
+  Future<void> _loadTableAvailability({bool forceRefresh = false}) async {
+    return _loadTableAvailabilityOptimized(forceRefresh: forceRefresh);
+  }
+
   Future<void> _syncTableStatus() async {
     try {
       final result = await _groService.syncTableStatus(outletId);
       if (result['success'] == true) {
-        print('✅ Table status synced successfully');
+        debugPrint('✅ Table status synced successfully');
       }
     } catch (e) {
-      print('❌ Error syncing table status: $e');
+      debugPrint('⚠️ Error syncing table status: $e');
     }
   }
 
-  // ✅ MODERN MULTI-SELECT METHODS
+  void _onFilterChanged() {
+    final now = DateTime.now();
+    _lastFilterTime = now;
+
+    Future.delayed(const Duration(milliseconds: _filterDebounceMs), () {
+      if (_lastFilterTime == now && mounted) {
+        _loadTableAvailability();
+      }
+    });
+  }
+
   void _enterMultiSelectMode() {
     setState(() {
       _isMultiSelectMode = true;
     });
     _animationController.forward();
-
-    // Haptic feedback
     HapticFeedback.mediumImpact();
   }
 
@@ -178,7 +191,6 @@ class _GroTableAvailabilityScreenState
         _selectedTables.removeWhere((t) => t['table_number'] == tableNumber);
         HapticFeedback.lightImpact();
 
-        // Exit multi-select jika tidak ada yang dipilih
         if (_selectedTables.isEmpty) {
           _exitMultiSelectMode();
         }
@@ -188,8 +200,7 @@ class _GroTableAvailabilityScreenState
       }
 
       _totalSelectedSeats = _selectedTables.fold(
-          0,
-              (sum, table) => sum + (table['seats'] as int? ?? 0)
+          0, (sum, table) => sum + (table['seats'] as int? ?? 0)
       );
     });
   }
@@ -205,15 +216,12 @@ class _GroTableAvailabilityScreenState
       return;
     }
 
-    // Validasi: cek apakah semua meja dari area yang sama
     final areas = _selectedTables.map((t) => t['area']['_id']).toSet();
     if (areas.length > 1) {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               Container(
@@ -222,20 +230,13 @@ class _GroTableAvailabilityScreenState
                   color: Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange,
-                  size: 24,
-                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
               ),
               const SizedBox(width: 12),
               const Text('Peringatan'),
             ],
           ),
-          content: const Text(
-              'Anda memilih meja dari area yang berbeda. '
-                  'Apakah Anda yakin ingin melanjutkan?'
-          ),
+          content: const Text('Anda memilih meja dari area yang berbeda. Apakah Anda yakin ingin melanjutkan?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -245,9 +246,7 @@ class _GroTableAvailabilityScreenState
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2E8B57),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('Lanjutkan'),
             ),
@@ -258,7 +257,6 @@ class _GroTableAvailabilityScreenState
       if (proceed != true) return;
     }
 
-    // Show modern order type selection dialog
     _showMultiTableOrderTypeDialog();
   }
 
@@ -266,14 +264,11 @@ class _GroTableAvailabilityScreenState
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
@@ -281,88 +276,44 @@ class _GroTableAvailabilityScreenState
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF2E8B57),
-                          const Color(0xFF2E8B57).withOpacity(0.8),
-                        ],
+                        colors: [const Color(0xFF2E8B57), const Color(0xFF2E8B57).withOpacity(0.8)],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.table_restaurant,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    child: const Icon(Icons.table_restaurant, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Pilih Jenis Pesanan',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${_selectedTables.length} meja dipilih',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
+                        const Text('Pilih Jenis Pesanan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text('${_selectedTables.length} meja dipilih', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                       ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-
-              // Info card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF2E8B57).withOpacity(0.1),
-                      const Color(0xFF2E8B57).withOpacity(0.05),
-                    ],
+                    colors: [const Color(0xFF2E8B57).withOpacity(0.1), const Color(0xFF2E8B57).withOpacity(0.05)],
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF2E8B57).withOpacity(0.3),
-                  ),
+                  border: Border.all(color: const Color(0xFF2E8B57).withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.people,
-                      color: Color(0xFF2E8B57),
-                      size: 24,
-                    ),
+                    const Icon(Icons.people, color: Color(0xFF2E8B57), size: 24),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Total Kapasitas',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          Text(
-                            '$_totalSelectedSeats orang',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E8B57),
-                            ),
-                          ),
+                          const Text('Total Kapasitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey)),
+                          Text('$_totalSelectedSeats orang', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2E8B57))),
                         ],
                       ),
                     ),
@@ -370,186 +321,33 @@ class _GroTableAvailabilityScreenState
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Dine-In Option
-              InkWell(
+              _buildDialogOption(
+                icon: Icons.restaurant_menu,
+                title: 'Dine-In',
+                subtitle: 'Pesan langsung untuk ${_selectedTables.length} meja',
+                color: const Color(0xFF3B82F6),
                 onTap: () {
                   Navigator.pop(context);
                   _navigateToMultiTableDineIn();
                 },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF3B82F6).withOpacity(0.1),
-                        const Color(0xFF3B82F6).withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF3B82F6).withOpacity(0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF3B82F6),
-                              Color(0xFF2563EB),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF3B82F6).withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Dine-In',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF3B82F6),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Pesan langsung untuk ${_selectedTables.length} meja',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 20,
-                        color: Color(0xFF3B82F6),
-                      ),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 12),
-
-              // Reservation Option
-              InkWell(
+              _buildDialogOption(
+                icon: Icons.event_available,
+                title: 'Reservasi',
+                subtitle: 'Buat reservasi untuk ${_selectedTables.length} meja',
+                color: const Color(0xFF2E8B57),
                 onTap: () {
                   Navigator.pop(context);
                   _navigateToMultiTableReservation();
                 },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF2E8B57).withOpacity(0.1),
-                        const Color(0xFF2E8B57).withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF2E8B57).withOpacity(0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF2E8B57),
-                              Color(0xFF25704B),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2E8B57).withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.event_available,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Reservasi',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2E8B57),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Buat reservasi untuk ${_selectedTables.length} meja',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 20,
-                        color: Color(0xFF2E8B57),
-                      ),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 16),
-
-              // Cancel button
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    'Batal',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: const Text('Batal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
@@ -559,13 +357,53 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  void _navigateToMultiTableDineIn() async {
-    // Extract table numbers from selected tables
-    final tableNumbers = _selectedTables
-        .map((table) => table['table_number'] as String)
-        .toList();
+  Widget _buildDialogOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [color.withOpacity(0.1), color.withOpacity(0.05)]),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3), width: 2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [color, color.withOpacity(0.8)]),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 20, color: color),
+          ],
+        ),
+      ),
+    );
+  }
 
-    // Get area code from first table
+  void _navigateToMultiTableDineIn() async {
+    final tableNumbers = _selectedTables.map((table) => table['table_number'] as String).toList();
     final firstTable = _selectedTables.first;
     final areaCode = firstTable['area']?['area_code'] ?? 'N/A';
 
@@ -607,74 +445,62 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
-        if (!didPop) {
-          await _handleBackButton();
-        }
+        if (!didPop) await _handleBackButton();
       },
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: _isMultiSelectMode
-              ? const Color(0xFF2E8B57)
-              : Colors.white,
+          backgroundColor: _isMultiSelectMode ? const Color(0xFF2E8B57) : Colors.white,
           foregroundColor: _isMultiSelectMode ? Colors.white : Colors.black,
           leading: IconButton(
             icon: Icon(_isMultiSelectMode ? Icons.close : Icons.arrow_back),
             onPressed: _handleBackButton,
           ),
           title: Text(
-            _isMultiSelectMode
-                ? '${_selectedTables.length} Meja Dipilih'
-                : 'Ketersediaan Meja',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-              color: _isMultiSelectMode ? Colors.white : Colors.black,
-            ),
+            _isMultiSelectMode ? '${_selectedTables.length} Meja Dipilih' : 'Ketersediaan Meja',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20, color: _isMultiSelectMode ? Colors.white : Colors.black),
           ),
           centerTitle: true,
           elevation: _isMultiSelectMode ? 4 : 0,
           actions: [
-            if (_isMultiSelectMode && _selectedTables.isNotEmpty) ...[
+            if (_isMultiSelectMode && _selectedTables.isNotEmpty)
               IconButton(
                 onPressed: _proceedWithMultiTableReservation,
                 icon: const Icon(Icons.check_circle, color: Colors.white),
                 tooltip: 'Lanjutkan Reservasi',
-                splashRadius: 24,
-              ),
-            ] else if (!_isMultiSelectMode) ...[
+              )
+            else if (!_isMultiSelectMode)
               IconButton(
                 onPressed: _loadTableAvailability,
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh',
-                splashRadius: 24,
               ),
-            ],
             const SizedBox(width: 8),
           ],
         ),
         body: Column(
           children: [
-            // Modern animated banner
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               height: _isMultiSelectMode ? 72 : 0,
               child: _isMultiSelectMode ? _buildModernMultiSelectBanner() : const SizedBox(),
             ),
             _buildFilters(),
-            _buildSummaryCard(),
+            _buildSummaryCard(isTablet),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _errorMessage != null
                   ? _buildErrorState()
-                  : _buildTableGrid(),
+                  : _buildTableGrid(isTablet),
             ),
           ],
         ),
@@ -685,13 +511,7 @@ class _GroTableAvailabilityScreenState
             onPressed: _proceedWithMultiTableReservation,
             backgroundColor: const Color(0xFF2E8B57),
             icon: const Icon(Icons.event_available, color: Colors.white),
-            label: Text(
-              'Order ${_selectedTables.length} Meja',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            label: Text('Order ${_selectedTables.length} Meja', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         )
             : null,
@@ -703,31 +523,15 @@ class _GroTableAvailabilityScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF2E8B57).withOpacity(0.1),
-            const Color(0xFF2E8B57).withOpacity(0.05),
-          ],
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFF2E8B57).withOpacity(0.3),
-          ),
-        ),
+        gradient: LinearGradient(colors: [const Color(0xFF2E8B57).withOpacity(0.1), const Color(0xFF2E8B57).withOpacity(0.05)]),
+        border: Border(bottom: BorderSide(color: const Color(0xFF2E8B57).withOpacity(0.3))),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2E8B57),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.touch_app,
-              color: Colors.white,
-              size: 24,
-            ),
+            decoration: BoxDecoration(color: const Color(0xFF2E8B57), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.touch_app, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -735,23 +539,11 @@ class _GroTableAvailabilityScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Mode Pilih Banyak Meja',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF2E8B57),
-                  ),
-                ),
+                const Text('Mode Pilih Banyak Meja', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2E8B57))),
                 const SizedBox(height: 2),
                 Text(
-                  _selectedTables.isEmpty
-                      ? 'Tap meja untuk menambah/mengurangi'
-                      : 'Total kapasitas: $_totalSelectedSeats orang',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                  ),
+                  _selectedTables.isEmpty ? 'Tap meja untuk menambah/mengurangi' : 'Total kapasitas: $_totalSelectedSeats orang',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                 ),
               ],
             ),
@@ -759,27 +551,13 @@ class _GroTableAvailabilityScreenState
           if (_selectedTables.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E8B57),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFF2E8B57), borderRadius: BorderRadius.circular(20)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.people,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                  const Icon(Icons.people, color: Colors.white, size: 18),
                   const SizedBox(width: 6),
-                  Text(
-                    '$_totalSelectedSeats',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Text('$_totalSelectedSeats', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
                 ],
               ),
             ),
@@ -793,25 +571,12 @@ class _GroTableAvailabilityScreenState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Filter',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
+          const Text('Filter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -820,26 +585,13 @@ class _GroTableAvailabilityScreenState
                 child: InkWell(
                   onTap: _selectDate,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today, size: 20),
                         const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            DateFormat('dd MMM yyyy', 'id_ID')
-                                .format(_selectedDate),
-                            style: const TextStyle(fontSize: 14),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                        Flexible(child: Text(DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate), style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                   ),
@@ -851,32 +603,21 @@ class _GroTableAvailabilityScreenState
                 child: DropdownButtonFormField<String>(
                   value: _selectedTime,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.access_time, size: 20),
                   ),
                   isExpanded: true,
                   hint: const Text('Waktu'),
                   items: [
-                    const DropdownMenuItem<String>(
-                      value: '',
-                      child: Text('Semua Waktu'),
-                    ),
-                    ..._timeSlots.map((time) => DropdownMenuItem(
-                      value: time,
-                      child: Text(time),
-                    )),
+                    const DropdownMenuItem<String>(value: '', child: Text('Semua Waktu')),
+                    ..._timeSlots.map((time) => DropdownMenuItem(value: time, child: Text(time))),
                   ],
                   onChanged: (value) {
                     setState(() {
                       _selectedTime = (value == null || value.isEmpty) ? null : value;
                     });
-                    _loadTableAvailability();
+                    _onFilterChanged();
                   },
                 ),
               ),
@@ -897,11 +638,11 @@ class _GroTableAvailabilityScreenState
 
     if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
-      _loadTableAvailability();
+      _onFilterChanged();
     }
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(bool isTablet) {
     if (_summary.isEmpty) return const SizedBox();
 
     final total = _summary['total'] ?? 0;
@@ -909,85 +650,32 @@ class _GroTableAvailabilityScreenState
     final occupied = _summary['occupied'] ?? 0;
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(isTablet ? 12 : 16),
+      padding: EdgeInsets.all(isTablet ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildSummaryItem(
-              'Total',
-              total.toString(),
-              const Color(0xFF3B82F6),
-              Icons.table_restaurant,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey[300],
-          ),
-          Expanded(
-            child: _buildSummaryItem(
-              'Tersedia',
-              available.toString(),
-              const Color(0xFF10B981),
-              Icons.check_circle,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey[300],
-          ),
-          Expanded(
-            child: _buildSummaryItem(
-              'Terisi',
-              occupied.toString(),
-              const Color(0xFFEF4444),
-              Icons.cancel,
-            ),
-          ),
+          Expanded(child: _buildSummaryItem('Total', total.toString(), const Color(0xFF3B82F6), Icons.table_restaurant, isTablet)),
+          Container(width: 1, height: isTablet ? 30 : 40, color: Colors.grey[300]),
+          Expanded(child: _buildSummaryItem('Tersedia', available.toString(), const Color(0xFF10B981), Icons.check_circle, isTablet)),
+          Container(width: 1, height: isTablet ? 30 : 40, color: Colors.grey[300]),
+          Expanded(child: _buildSummaryItem('Terisi', occupied.toString(), const Color(0xFFEF4444), Icons.cancel, isTablet)),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(
-      String label,
-      String value,
-      Color color,
-      IconData icon,
-      ) {
+  Widget _buildSummaryItem(String label, String value, Color color, IconData icon, bool isTablet) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
+        Icon(icon, color: color, size: isTablet ? 20 : 24),
+        SizedBox(height: isTablet ? 2 : 4),
+        Text(value, style: TextStyle(fontSize: isTablet ? 16 : 20, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(fontSize: isTablet ? 10 : 12, color: Colors.grey)),
       ],
     );
   }
@@ -1001,20 +689,13 @@ class _GroTableAvailabilityScreenState
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
-              _errorMessage ?? 'Terjadi kesalahan',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
+            Text(_errorMessage ?? 'Terjadi kesalahan', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadTableAvailability,
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E8B57),
-                foregroundColor: Colors.white,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E8B57), foregroundColor: Colors.white),
             ),
           ],
         ),
@@ -1022,7 +703,23 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  Widget _buildTableGrid() {
+  Map<String, List<dynamic>> _getTablesByArea() {
+    if (_cachedTablesByArea != null) return _cachedTablesByArea!;
+
+    final Map<String, List<dynamic>> tablesByArea = {};
+    for (var table in _tables) {
+      final area = table['area'];
+      if (area != null) {
+        final areaName = area['area_name'] ?? 'Unknown Area';
+        tablesByArea.putIfAbsent(areaName, () => []).add(table);
+      }
+    }
+
+    _cachedTablesByArea = tablesByArea;
+    return tablesByArea;
+  }
+
+  Widget _buildTableGrid(bool isTablet) {
     if (_tables.isEmpty) {
       return Center(
         child: Column(
@@ -1030,83 +727,60 @@ class _GroTableAvailabilityScreenState
           children: [
             Icon(Icons.table_restaurant, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            const Text(
-              'Tidak ada data meja',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
+            const Text('Tidak ada data meja', style: TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
       );
     }
 
-    final Map<String, List<dynamic>> tablesByArea = {};
-    for (var table in _tables) {
-      final area = table['area'];
-      if (area != null) {
-        final areaName = area['area_name'] ?? 'Unknown Area';
-        if (!tablesByArea.containsKey(areaName)) {
-          tablesByArea[areaName] = [];
-        }
-        tablesByArea[areaName]!.add(table);
-      }
-    }
+    final tablesByArea = _getTablesByArea();
 
     return RefreshIndicator(
       onRefresh: _loadTableAvailability,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        controller: _scrollController,
+        padding: EdgeInsets.fromLTRB(isTablet ? 12 : 16, isTablet ? 12 : 16, isTablet ? 12 : 16, 100),
         itemCount: tablesByArea.length,
         itemBuilder: (context, index) {
           final areaName = tablesByArea.keys.elementAt(index);
           final tables = tablesByArea[areaName]!;
-          return _buildAreaSection(areaName, tables);
+          return _buildAreaSection(areaName, tables, isTablet);
         },
       ),
     );
   }
 
-  Widget _buildAreaSection(String areaName, List<dynamic> tables) {
+  Widget _buildAreaSection(String areaName, List<dynamic> tables, bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            areaName,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E8B57),
-            ),
-          ),
+          padding: EdgeInsets.symmetric(vertical: isTablet ? 6 : 8),
+          child: Text(areaName, style: TextStyle(fontSize: isTablet ? 16 : 18, fontWeight: FontWeight.bold, color: const Color(0xFF2E8B57))),
         ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.85,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isTablet ? 7 : 3,
+            crossAxisSpacing: isTablet ? 10 : 12,
+            mainAxisSpacing: isTablet ? 10 : 12,
+            childAspectRatio: isTablet ? 0.95 : 0.85,
           ),
           itemCount: tables.length,
-          itemBuilder: (context, index) {
-            return _buildTableCard(tables[index]);
-          },
+          itemBuilder: (context, index) => _buildTableCard(tables[index], isTablet),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: isTablet ? 16 : 24),
       ],
     );
   }
 
-  Widget _buildTableCard(Map<String, dynamic> table) {
+  Widget _buildTableCard(Map<String, dynamic> table, bool isTablet) {
     final tableNumber = table['table_number'] ?? 'N/A';
     final seats = table['seats'] ?? 0;
     final isAvailable = table['is_available'] ?? false;
     final isActive = table['is_active'] ?? false;
-
-    final isSelected = _isMultiSelectMode &&
-        _selectedTables.any((t) => t['table_number'] == tableNumber);
+    final isSelected = _isMultiSelectMode && _selectedTables.any((t) => t['table_number'] == tableNumber);
 
     Color backgroundColor;
     Color textColor;
@@ -1131,34 +805,24 @@ class _GroTableAvailabilityScreenState
     }
 
     return GestureDetector(
-      // ✅ LONG PRESS untuk masuk multi-select mode
       onLongPress: isActive && isAvailable ? () {
         if (!_isMultiSelectMode) {
           _enterMultiSelectMode();
           _toggleTableSelection(table);
         }
       } : null,
-
-      // ✅ TAP biasa
       onTap: isActive ? () => _onTableTap(table) : null,
-
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(isTablet ? 10 : 12),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFF2E8B57)
-                : textColor.withOpacity(0.3),
-            width: isSelected ? 3 : 2,
+            color: isSelected ? const Color(0xFF2E8B57) : textColor.withOpacity(0.3),
+            width: isSelected ? 2.5 : 2,
           ),
           boxShadow: isSelected ? [
-            BoxShadow(
-              color: const Color(0xFF2E8B57).withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
+            BoxShadow(color: const Color(0xFF2E8B57).withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3)),
           ] : null,
         ),
         child: Column(
@@ -1166,49 +830,23 @@ class _GroTableAvailabilityScreenState
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              child: Icon(
-                icon,
-                color: textColor,
-                size: 32,
-                key: ValueKey(isSelected),
-              ),
+              child: Icon(icon, color: textColor, size: isTablet ? 24 : 32, key: ValueKey(isSelected)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              tableNumber,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 4),
+            SizedBox(height: isTablet ? 4 : 8),
+            Text(tableNumber, style: TextStyle(fontSize: isTablet ? 14 : 18, fontWeight: FontWeight.bold, color: textColor)),
+            SizedBox(height: isTablet ? 2 : 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.person, size: 14, color: textColor),
-                const SizedBox(width: 4),
-                Text(
-                  '$seats',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor,
-                  ),
-                ),
+                Icon(Icons.person, size: isTablet ? 12 : 14, color: textColor),
+                SizedBox(width: isTablet ? 2 : 4),
+                Text('$seats', style: TextStyle(fontSize: isTablet ? 10 : 12, color: textColor)),
               ],
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: isTablet ? 2 : 4),
             Text(
-              isSelected
-                  ? 'Dipilih'
-                  : isActive
-                  ? (isAvailable ? 'Tersedia' : 'Terisi')
-                  : 'Nonaktif',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
+              isSelected ? 'Dipilih' : isActive ? (isAvailable ? 'Tersedia' : 'Terisi') : 'Nonaktif',
+              style: TextStyle(fontSize: isTablet ? 9 : 11, fontWeight: FontWeight.w500, color: textColor),
             ),
           ],
         ),
@@ -1222,31 +860,22 @@ class _GroTableAvailabilityScreenState
 
     if (!isActive) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Meja ini sedang nonaktif'),
-          backgroundColor: Colors.grey,
-        ),
+        const SnackBar(content: Text('Meja ini sedang nonaktif'), backgroundColor: Colors.grey),
       );
       return;
     }
 
-    // ✅ Jika dalam multi-select mode, toggle selection
     if (_isMultiSelectMode) {
       if (isAvailable) {
         _toggleTableSelection(table);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Hanya meja tersedia yang dapat dipilih'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
+          const SnackBar(content: Text('Hanya meja tersedia yang dapat dipilih'), backgroundColor: Colors.orange, duration: Duration(seconds: 2)),
         );
       }
       return;
     }
 
-    // ✅ Jika tidak dalam multi-select, lanjut normal flow
     if (isAvailable) {
       _showOrderTypeDialog(table);
     } else {
@@ -1258,15 +887,7 @@ class _GroTableAvailabilityScreenState
     }
   }
 
-  // ... (Sisanya sama seperti kode sebelumnya - semua method helper tetap sama)
-  // Saya skip untuk menghemat space, tapi semua method dari _checkAndShowTableOptions
-  // sampai _completeOrder tetap sama persis seperti kode original Anda
-
-
   void _showOrderTypeDialog(Map<String, dynamic> table) {
-    // ... sama seperti original, tapi HAPUS opsi "Pilih Banyak Meja"
-    // karena sudah diganti dengan long press
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1275,181 +896,48 @@ class _GroTableAvailabilityScreenState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Pilih jenis pesanan untuk meja ini:',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
-            ),
+            Text('Pilih jenis pesanan untuk meja ini:', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
             const SizedBox(height: 16),
-
-            // ✅ Hint untuk multi-select
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF8B5CF6).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.3),
-                ),
+                border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
               ),
               child: const Row(
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Color(0xFF8B5CF6),
-                    size: 20,
-                  ),
+                  Icon(Icons.info_outline, color: Color(0xFF8B5CF6), size: 20),
                   SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Tip: Tekan & tahan meja untuk memilih banyak meja sekaligus',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF8B5CF6),
-                      ),
-                    ),
-                  ),
+                  Expanded(child: Text('Tip: Tekan & tahan meja untuk memilih banyak meja sekaligus', style: TextStyle(fontSize: 12, color: Color(0xFF8B5CF6)))),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // Dine-In Option
-            InkWell(
+            _buildDialogOption(
+              icon: Icons.restaurant,
+              title: 'Dine-In',
+              subtitle: 'Pesan langsung untuk meja ini',
+              color: const Color(0xFF3B82F6),
               onTap: () {
                 Navigator.pop(context);
                 _navigateToDineIn(table);
               },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF3B82F6).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.restaurant,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Dine-In',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF3B82F6),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Pesan langsung untuk meja ini',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Color(0xFF3B82F6),
-                    ),
-                  ],
-                ),
-              ),
             ),
             const SizedBox(height: 12),
-
-            // Reservation Option
-            InkWell(
+            _buildDialogOption(
+              icon: Icons.event_available,
+              title: 'Reservasi',
+              subtitle: 'Buat reservasi untuk meja ini',
+              color: const Color(0xFF2E8B57),
               onTap: () {
                 Navigator.pop(context);
                 _navigateToReservation(table);
               },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2E8B57).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF2E8B57).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2E8B57),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.event_available,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Reservasi',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E8B57),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Buat reservasi untuk meja ini',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Color(0xFF2E8B57),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal'))],
       ),
     );
   }
@@ -1464,9 +952,7 @@ class _GroTableAvailabilityScreenState
         ),
       ),
     ).then((result) {
-      if (result == true) {
-        _loadTableAvailability();
-      }
+      if (result == true) _loadTableAvailability();
     });
   }
 
@@ -1483,9 +969,7 @@ class _GroTableAvailabilityScreenState
       ),
     );
 
-    if (result == true) {
-      _loadTableAvailability();
-    }
+    if (result == true) _loadTableAvailability();
   }
 
   void _showTableOrderDetail(Map<String, dynamic> table) async {
@@ -1495,16 +979,11 @@ class _GroTableAvailabilityScreenState
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
-      final result = await _groService.getTableOrderDetail(
-        tableNumber: tableNumber,
-        date: dateStr,
-      );
+      final result = await _groService.getTableOrderDetail(tableNumber: tableNumber, date: dateStr);
 
       if (mounted) Navigator.pop(context);
 
@@ -1517,12 +996,7 @@ class _GroTableAvailabilityScreenState
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -1538,27 +1012,13 @@ class _GroTableAvailabilityScreenState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.info_outline,
-              size: 48,
-              color: Colors.orange,
-            ),
+            const Icon(Icons.info_outline, size: 48, color: Colors.orange),
             const SizedBox(height: 16),
-            const Text(
-              'Tidak Ada Order Aktif',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+            const Text('Tidak Ada Order Aktif', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
             Text(
-              'Sistem tidak menemukan order aktif untuk meja $tableNumber. '
-                  'Status meja saat ini terdeteksi sebagai terisi, tetapi tidak ada data order.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              'Sistem tidak menemukan order aktif untuk meja $tableNumber. Status meja saat ini terdeteksi sebagai terisi, tetapi tidak ada data order.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             Container(
@@ -1570,28 +1030,19 @@ class _GroTableAvailabilityScreenState
               ),
               child: const Text(
                 'Anda dapat membebaskan meja ini untuk mengatur statusnya menjadi tersedia.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.orange,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.orange),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _freeUpTable(table);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E8B57),
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E8B57), foregroundColor: Colors.white),
             child: const Text('Bebaskan Meja'),
           ),
         ],
@@ -1599,479 +1050,155 @@ class _GroTableAvailabilityScreenState
     );
   }
 
-  void _showOrderDetailBottomSheet(
-      Map<String, dynamic> orderData,
-      Map<String, dynamic> table,
-      ) {
-    final hasActiveOrder = orderData['order_id'] != null;
+  void _showOrderDetailBottomSheet(Map<String, dynamic> orderData, Map<String, dynamic> table) {
     final tableNumber = table['table_number'] ?? 'N/A';
+    final orderId = orderData['_id'];
+    final guestName = orderData['guest_name'] ?? 'Tamu';
+    final guestCount = orderData['guest_count'] ?? 0;
+    final orderItems = orderData['items'] ?? [];
+    final totalAmount = orderData['total_amount'] ?? 0;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey[200]!),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Meja $tableNumber',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          orderData['order_id'] ?? 'N/A',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (!hasActiveOrder)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Tidak ada order aktif',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(color: Color(0xFF2E8B57), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
                   children: [
-                    if (hasActiveOrder) ...[
-                      _buildInfoCard(
-                        'Informasi Pelanggan',
-                        [
-                          _buildInfoRow(
-                            Icons.person,
-                            'Nama',
-                            orderData['customerName'] ?? 'N/A',
-                          ),
-                          if (orderData['customerPhone'] != null)
-                            _buildInfoRow(
-                              Icons.phone,
-                              'Telepon',
-                              orderData['customerPhone'],
-                            ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.restaurant, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Meja $tableNumber', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                          Text('$guestName • $guestCount orang', style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9))),
                         ],
                       ),
-                      const SizedBox(height: 16),
-
-                      _buildInfoCard(
-                        'Pesanan',
-                        (orderData['items'] as List? ?? []).map((item) {
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(
-                              backgroundColor: const Color(0xFF2E8B57).withOpacity(0.1),
-                              child: Text(
-                                '${item['quantity']}x',
-                                style: const TextStyle(
-                                  color: Color(0xFF2E8B57),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              item['menuItem']?['name'] ?? 'N/A',
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            subtitle: item['notes'] != null && item['notes'].toString().isNotEmpty
-                                ? Text(
-                              'Catatan: ${item['notes']}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            )
-                                : null,
-                            trailing: Text(
-                              'Rp ${(item['subtotal'] ?? 0).toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildInfoCard(
-                        'Total Pembayaran',
-                        [
-                          _buildTotalRow(
-                            'Subtotal',
-                            orderData['totalBeforeDiscount'] ?? 0,
-                          ),
-                          if ((orderData['totalTax'] ?? 0) > 0)
-                            _buildTotalRow('Pajak', orderData['totalTax']),
-                          if ((orderData['totalServiceFee'] ?? 0) > 0)
-                            _buildTotalRow('Service', orderData['totalServiceFee']),
-                          const Divider(),
-                          _buildTotalRow(
-                            'Grand Total',
-                            orderData['grandTotal'] ?? 0,
-                            isBold: true,
-                          ),
-                        ],
-                      ),
-                    ] else ...[
-                      _buildInfoCard(
-                        'Status Meja',
-                        [
-                          _buildInfoRow(
-                            Icons.info,
-                            'Status',
-                            'Tersedia (Tidak ada order aktif)',
-                          ),
-                          _buildInfoRow(
-                            Icons.table_restaurant,
-                            'Meja',
-                            tableNumber,
-                          ),
-                          _buildInfoRow(
-                            Icons.people,
-                            'Kapasitas',
-                            '${table['seats'] ?? 0} orang',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange[200]!),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(Icons.warning, size: 40, color: Colors.orange[600]),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Tidak Ada Order Aktif',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Sistem tidak menemukan order aktif untuk meja ini. '
-                                  'Anda dapat membebaskan meja untuk mengatur statusnya menjadi tersedia.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
+                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white)),
                   ],
                 ),
               ),
             ),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Pesanan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    if (orderItems.isEmpty)
+                      const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Belum ada pesanan')))
+                    else
+                      ...orderItems.map((item) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item['name'] ?? 'Item', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  if (item['notes'] != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(item['notes'], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Text('${item['quantity']}x', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            const SizedBox(width: 12),
+                            Text('Rp ${(item['price'] ?? 0).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          ],
+                        ),
+                      )),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E8B57).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF2E8B57).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('Rp ${totalAmount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2E8B57))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  if (hasActiveOrder) ...[
+            ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -4))]),
+              child: SafeArea(
+                child: Row(
+                  children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
                           _transferOrderToNewTable(table, orderData);
                         },
+                        icon: const Icon(Icons.swap_horiz),
+                        label: const Text('Pindah Meja'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF3B82F6),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           side: const BorderSide(color: Color(0xFF3B82F6)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.swap_horiz, size: 18),
-                            SizedBox(width: 8),
-                            Text('Pindah Meja'),
-                          ],
+                          foregroundColor: const Color(0xFF3B82F6),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          _showCompleteOrderDialog(table, orderData: orderData);
+                          _completeOrder(orderId);
                         },
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Selesai'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2E8B57),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text(
-                          'Selesaikan Pesanan',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _freeUpTable(table);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E8B57),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.cleaning_services, size: 18),
-                            SizedBox(width: 8),
-                            Text('Bebaskan Meja'),
-                          ],
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildInfoCard(String title, List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E8B57),
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTotalRow(String label, dynamic value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isBold ? 16 : 14,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            'Rp ${(value ?? 0).toStringAsFixed(0)}',
-            style: TextStyle(
-              fontSize: isBold ? 16 : 14,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCompleteOrderDialog(
-      Map<String, dynamic> table, {
-        Map<String, dynamic>? orderData,
-      }) async {
-    final tableNumber = table['table_number'] ?? 'N/A';
-
-    Map<String, dynamic>? data = orderData;
-    if (data == null) {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final result = await _groService.getTableOrderDetail(
-        tableNumber: tableNumber,
-        date: dateStr,
-      );
-
-      if (!result['success'] || result['data'] == null) {
-        _showNoOrderDialog(table);
-        return;
-      }
-      data = result['data'];
-    }
-
-    if (data == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Selesaikan Pesanan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Apakah Anda yakin ingin menyelesaikan pesanan untuk:'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Meja: $tableNumber',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text('Order ID: ${data!['order_id'] ?? 'N/A'}'),
-                  Text('Customer: ${data['customerName'] ?? 'N/A'}'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Total: Rp ${(data['grandTotal'] ?? 0).toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E8B57),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Meja akan menjadi tersedia setelah pesanan diselesaikan.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E8B57),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Ya, Selesaikan'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      _completeOrder(data['_id']);
-    }
   }
 
   void _freeUpTable(Map<String, dynamic> table) async {
@@ -2081,24 +1208,15 @@ class _GroTableAvailabilityScreenState
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Bebaskan Meja'),
-        content: Text(
-          'Apakah Anda yakin ingin membebaskan meja $tableNumber? '
-              'Tindakan ini akan mengatur status meja menjadi tersedia meskipun sistem '
-              'mendeteksi tidak ada order aktif untuk meja ini.',
-        ),
+        content: Text('Apakah Anda yakin ingin membebaskan meja $tableNumber?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
               await _performFreeUpTable(table);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E8B57),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E8B57)),
             child: const Text('Ya, Bebaskan Meja'),
           ),
         ],
@@ -2109,13 +1227,7 @@ class _GroTableAvailabilityScreenState
   Future<void> _performFreeUpTable(Map<String, dynamic> table) async {
     final tableNumber = table['table_number'] ?? 'N/A';
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
       final result = await _groService.forceResetTableStatus(tableNumber, outletId);
@@ -2125,35 +1237,22 @@ class _GroTableAvailabilityScreenState
       if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Meja berhasil dibebaskan'),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(result['message'] ?? 'Meja berhasil dibebaskan'), backgroundColor: Colors.green),
           );
         }
-
         await Future.delayed(const Duration(seconds: 1));
         await _loadTableAvailability();
-
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal membebaskan meja'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(result['error'] ?? 'Gagal membebaskan meja'), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -2162,13 +1261,7 @@ class _GroTableAvailabilityScreenState
     final currentTableNumber = table['table_number'] ?? 'N/A';
     final orderId = orderData['_id'];
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
       final result = await _groService.getAllAvailableTables(outletId: outletId);
@@ -2182,41 +1275,24 @@ class _GroTableAvailabilityScreenState
         if (availableTables.isEmpty) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Tidak ada meja tersedia saat ini'),
-                backgroundColor: Colors.orange,
-              ),
+              const SnackBar(content: Text('Tidak ada meja tersedia saat ini'), backgroundColor: Colors.orange),
             );
           }
           return;
         }
 
-        _showTableSelectionDialog(
-          currentTableNumber,
-          orderId,
-          availableTables,
-          tablesByArea,
-          orderData,
-        );
+        _showTableSelectionDialog(currentTableNumber, orderId, availableTables, tablesByArea, orderData);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal memuat meja tersedia'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(result['error'] ?? 'Gagal memuat meja tersedia'), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -2226,8 +1302,7 @@ class _GroTableAvailabilityScreenState
       String orderId,
       List<dynamic> availableTables,
       Map<String, dynamic> tablesByArea,
-      Map<String, dynamic> orderData,
-      ) {
+      Map<String, dynamic> orderData) {
     String? selectedTable;
     String reason = '';
 
@@ -2243,19 +1318,9 @@ class _GroTableAvailabilityScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Memindahkan dari Meja: $currentTableNumber',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  Text('Memindahkan dari Meja: $currentTableNumber', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 16),
-
-                  const Text(
-                    'Alasan Pemindahan:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  const Text('Alasan Pemindahan:', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   TextField(
                     decoration: const InputDecoration(
@@ -2264,20 +1329,11 @@ class _GroTableAvailabilityScreenState
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     maxLines: 2,
-                    onChanged: (value) {
-                      setState(() {
-                        reason = value;
-                      });
-                    },
+                    onChanged: (value) => setState(() => reason = value),
                   ),
                   const SizedBox(height: 16),
-
-                  const Text(
-                    'Pilih Meja Tujuan:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  const Text('Pilih Meja Tujuan:', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-
                   ...tablesByArea.entries.map((areaEntry) {
                     final areaName = areaEntry.key;
                     final tables = areaEntry.value as List<dynamic>;
@@ -2285,15 +1341,8 @@ class _GroTableAvailabilityScreenState
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          areaName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2E8B57),
-                          ),
-                        ),
+                        Text(areaName, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E8B57))),
                         const SizedBox(height: 8),
-
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -2305,11 +1354,7 @@ class _GroTableAvailabilityScreenState
                             return ChoiceChip(
                               label: Text('$tableNumber ($seats)'),
                               selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  selectedTable = selected ? tableNumber : null;
-                                });
-                              },
+                              onSelected: (selected) => setState(() => selectedTable = selected ? tableNumber : null),
                               backgroundColor: Colors.grey[200],
                               selectedColor: const Color(0xFF2E8B57).withOpacity(0.2),
                               labelStyle: TextStyle(
@@ -2327,27 +1372,15 @@ class _GroTableAvailabilityScreenState
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal'),
-              ),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
               ElevatedButton(
                 onPressed: selectedTable != null
                     ? () async {
                   Navigator.pop(context);
-                  await _performTableTransfer(
-                    currentTableNumber,
-                    selectedTable!,
-                    orderId,
-                    reason,
-                    orderData,
-                  );
+                  await _performTableTransfer(currentTableNumber, selectedTable!, orderId, reason, orderData);
                 }
                     : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E8B57),
-                  foregroundColor: Colors.white,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E8B57), foregroundColor: Colors.white),
                 child: const Text('Pindahkan'),
               ),
             ],
@@ -2358,19 +1391,8 @@ class _GroTableAvailabilityScreenState
   }
 
   Future<void> _performTableTransfer(
-      String currentTable,
-      String newTable,
-      String orderId,
-      String reason,
-      Map<String, dynamic> orderData,
-      ) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+      String currentTable, String newTable, String orderId, String reason, Map<String, dynamic> orderData) async {
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
       final result = await _groService.transferOrderToTable(
@@ -2385,44 +1407,27 @@ class _GroTableAvailabilityScreenState
       if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Order berhasil dipindahkan ke meja $newTable'),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(result['message'] ?? 'Order berhasil dipindahkan ke meja $newTable'), backgroundColor: Colors.green),
           );
         }
         _loadTableAvailability();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal memindahkan order'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(result['error'] ?? 'Gagal memindahkan order'), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
 
   Future<void> _completeOrder(String orderId) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
       final result = await _groService.completeTableOrder(orderId);
@@ -2432,34 +1437,21 @@ class _GroTableAvailabilityScreenState
       if (result['success']) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result['message'] ?? 'Pesanan berhasil diselesaikan',
-              ),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(result['message'] ?? 'Pesanan berhasil diselesaikan'), backgroundColor: Colors.green),
           );
         }
         _loadTableAvailability();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Gagal menyelesaikan pesanan'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(result['error'] ?? 'Gagal menyelesaikan pesanan'), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }

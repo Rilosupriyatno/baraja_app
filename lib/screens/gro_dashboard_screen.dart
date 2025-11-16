@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/gro_service.dart';
+import '../providers/cart_provider.dart';
 import '../widgets/utils/role_based_widget.dart';
-import '../providers/cart_provider.dart'; // ⭐ IMPORT CART PROVIDER
+import 'gro_management_reservation_screen.dart';
+import 'gro_table_avaibility_screen.dart';
 
 class GroDashboardScreen extends StatefulWidget {
   const GroDashboardScreen({super.key});
@@ -21,13 +23,13 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   bool _isLoading = true;
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
+  String _selectedMenu = 'orders'; // orders atau tables
 
   @override
   void initState() {
     super.initState();
     _loadDashboardStats();
 
-    // ⭐ INIT: Set GRO mode di cart provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       cartProvider.setGroMode(true);
@@ -43,8 +45,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-
-      // Pass date parameter to API
       final result = await _groService.getDashboardStats(date: dateStr);
 
       if (result['success']) {
@@ -95,21 +95,562 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     }
   }
 
-  // ⭐ METHOD BARU: Navigasi ke keranjang GRO
   void _navigateToGroCart() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
-    // Debug log untuk memastikan mode GRO aktif
     debugPrint('🛒 GRO Cart Navigation - isGroMode: ${cartProvider.isGroMode}');
 
-    // Navigasi ke menu GRO dengan mode GRO aktif
     context.push('/menu', extra: {
       'isGroMode': true,
     });
   }
 
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.logout,
+                color: Colors.red,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Keluar'),
+          ],
+        ),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun GRO?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await Provider.of<AuthService>(context, listen: false).logout();
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Deteksi ukuran layar
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
+    if (isTablet) {
+      return _buildTabletLayout();
+    } else {
+      return _buildMobileLayout();
+    }
+  }
+
+  // ==================== TABLET LAYOUT ====================
+  Widget _buildTabletLayout() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Row(
+        children: [
+          // SIDEBAR (Dashboard Stats)
+          Container(
+            width: 320,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(2, 0),
+                ),
+              ],
+            ),
+            child: _buildSidebarContent(),
+          ),
+
+          // MAIN CONTENT (Reservation List / Table Availability)
+          Expanded(
+            child: _buildMainContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarContent() {
+    return Consumer<AuthService>(
+      builder: (context, authService, _) {
+        return Column(
+          children: [
+            // Header dengan Gradient
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2E8B57), Color(0xFF25704B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.restaurant_menu,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'GRO Dashboard',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Kelola Restoran',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Cart Icon
+                      Consumer<CartProvider>(
+                        builder: (context, cartProvider, child) {
+                          final totalItems = cartProvider.totalItems;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                onPressed: _navigateToGroCart,
+                                icon: const Icon(Icons.shopping_cart),
+                                color: Colors.white,
+                                tooltip: 'Lihat Keranjang GRO',
+                              ),
+                              if (totalItems > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Text(
+                                      totalItems.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Outlet Info Compact
+                  _buildOutletInfoCompact(authService),
+                ],
+              ),
+            ),
+
+            // Date Selector
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: InkWell(
+                onTap: _selectDate,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        color: Color(0xFF2E8B57),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Tanggal',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('dd MMM yyyy', 'id_ID')
+                                  .format(_selectedDate),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Stats Menu Items
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF2E8B57),
+                ),
+              )
+                  : _errorMessage != null
+                  ? _buildErrorStateSidebar()
+                  : ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _buildStatMenuItem(
+                    'Kelola Order',
+                    _dashboardStats['allReservations'] ?? 0,
+                    Icons.restaurant,
+                    const Color(0xFF6366F1),
+                    'orders',
+                    subtitle: 'Semua Pesanan',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildStatMenuItem(
+                    'Ketersediaan Meja',
+                    _dashboardStats['availableTables'] ?? 0,
+                    Icons.table_restaurant,
+                    const Color(0xFF8B5CF6),
+                    'tables',
+                    subtitle: 'Meja Tersedia',
+                  ),
+                ],
+              ),
+            ),
+
+            // Refresh Button
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _loadDashboardStats,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Refresh Data'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2E8B57),
+                        side: const BorderSide(color: Color(0xFF2E8B57)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Logout Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('Keluar'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOutletInfoCompact(AuthService authService) {
+    final outlets = authService.getUserOutlets();
+    if (outlets.isEmpty) return const SizedBox();
+
+    final outlet = outlets.first;
+    final outletName = outlet['name'] ?? 'Nama Outlet';
+    final outletCity = outlet['city'] ?? 'Kota';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.store, color: Colors.white70, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  outletName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  outletCity,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatMenuItem(
+      String title,
+      int value,
+      IconData icon,
+      Color color,
+      String menuKey, {
+        String? subtitle,
+      }) {
+    final isSelected = _selectedMenu == menuKey;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedMenu = menuKey;
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? color.withOpacity(0.3) : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? color : Colors.black87,
+                        ),
+                      ),
+                      if (subtitle != null)
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (menuKey == 'orders')
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      value.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      value.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorStateSidebar() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'Terjadi kesalahan',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadDashboardStats,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+                foregroundColor: Colors.white,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    if (_selectedMenu == 'tables') {
+      return const GroTableAvailabilityScreen(isGroMode: true);
+    }
+
+    return GroReservationManagementScreen(
+      filter: 'all',
+      initialDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
+      dashboardStats: _dashboardStats, // ✅ Pass stats untuk badge
+    );
+  }
+
+  // ==================== MOBILE LAYOUT ====================
+  Widget _buildMobileLayout() {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -135,7 +676,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         centerTitle: false,
         elevation: 0,
         actions: [
-          // ⭐ TOMBOL LIHAT KERANJANG GRO
           Consumer<CartProvider>(
             builder: (context, cartProvider, child) {
               final totalItems = cartProvider.totalItems;
@@ -190,134 +730,11 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       body: RefreshIndicator(
         onRefresh: _loadDashboardStats,
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(
-          color: Color(0xFF2E8B57),
-        ))
+            ? const Center(
+            child: CircularProgressIndicator(color: Color(0xFF2E8B57)))
             : _errorMessage != null
             ? _buildErrorState()
             : _buildDashboardContent(),
-      ),
-      // ⭐ FLOATING ACTION BUTTON LIHAT KERANJANG
-      // floatingActionButton: Consumer<CartProvider>(
-      //   builder: (context, cartProvider, child) {
-      //     if (cartProvider.items.isEmpty) {
-      //       return FloatingActionButton.extended(
-      //         onPressed: _navigateToGroCart,
-      //         backgroundColor: const Color(0xFF2E8B57),
-      //         icon: const Icon(Icons.shopping_cart, color: Colors.white),
-      //         label: const Text(
-      //           'Lihat Keranjang',
-      //           style: TextStyle(color: Colors.white),
-      //         ),
-      //       );
-      //     }
-      //
-      //     return FloatingActionButton.extended(
-      //       onPressed: _navigateToGroCart,
-      //       backgroundColor: const Color(0xFF2E8B57),
-      //       icon: Stack(
-      //         clipBehavior: Clip.none,
-      //         children: [
-      //           const Icon(Icons.shopping_cart, color: Colors.white),
-      //           if (cartProvider.totalItems > 0)
-      //             Positioned(
-      //               right: -2,
-      //               top: -6,
-      //               child: Container(
-      //                 padding: const EdgeInsets.all(2),
-      //                 decoration: BoxDecoration(
-      //                   color: Colors.red,
-      //                   borderRadius: BorderRadius.circular(10),
-      //                 ),
-      //                 constraints: const BoxConstraints(
-      //                   minWidth: 18,
-      //                   minHeight: 18,
-      //                 ),
-      //                 child: Text(
-      //                   cartProvider.totalItems.toString(),
-      //                   style: const TextStyle(
-      //                     color: Colors.white,
-      //                     fontSize: 10,
-      //                     fontWeight: FontWeight.bold,
-      //                   ),
-      //                   textAlign: TextAlign.center,
-      //                 ),
-      //               ),
-      //             ),
-      //         ],
-      //       ),
-      //       label: Text(
-      //         'Lihat Keranjang (${cartProvider.totalItems})',
-      //         style: const TextStyle(color: Colors.white),
-      //       ),
-      //     );
-      //   },
-      // ),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Colors.red.shade400,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              _errorMessage ?? 'Terjadi kesalahan',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _loadDashboardStats,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba Lagi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E8B57),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-            ),
-            // ⭐ TOMBOL LIHAT KERANJANG DI ERROR STATE JUGA
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _navigateToGroCart,
-              icon: const Icon(Icons.shopping_cart),
-              label: const Text('Lihat Keranjang'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF076A3B),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -328,7 +745,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
-            // ✅ TAMBAHKAN OUTLET CARD DI ATAS WELCOME CARD
             _buildOutletCard(authService),
             const SizedBox(height: 16),
             _buildWelcomeCard(),
@@ -347,7 +763,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2E8B57).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -380,8 +797,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             const SizedBox(height: 16),
             _buildStatsGrid(),
             const SizedBox(height: 24),
-
-            // ⭐ CARD LIHAT KERANJANG GRO
             _buildGroCartCard(),
           ],
         );
@@ -389,150 +804,15 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     );
   }
 
-  Widget _buildGroCartCard() {
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, child) {
-        final totalItems = cartProvider.totalItems;
-        final totalPrice = cartProvider.totalPrice;
-
-        return GestureDetector(
-          onTap: _navigateToGroCart,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Icon Keranjang
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF076A3B).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(
-                        Icons.shopping_cart,
-                        color: Color(0xFF076A3B),
-                        size: 24,
-                      ),
-                      if (totalItems > 0)
-                        Positioned(
-                          right: -4,
-                          top: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              totalItems.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Informasi Keranjang
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Keranjang GRO',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        totalItems > 0
-                            ? '$totalItems item • ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(totalPrice)}'
-                            : 'Keranjang kosong',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: totalItems > 0 ? Colors.green.shade700 : Colors.grey.shade600,
-                          fontWeight: totalItems > 0 ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Tombol aksi
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF076A3B),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Lihat',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildOutletCard(AuthService authService) {
     final outlets = authService.getUserOutlets();
-
-    // ✅ PERBAIKAN: Sembunyikan card jika user tidak memiliki outlet
-    if (outlets.isEmpty) {
-      print('ℹ️ User has no outlets, hiding outlet card');
-      return const SizedBox(); // Sembunyikan card
-    }
+    if (outlets.isEmpty) return const SizedBox();
 
     final outlet = outlets.first;
     final outletName = outlet['name'] ?? 'Nama Outlet';
     final outletAddress = outlet['address'] ?? 'Alamat Outlet';
-    final outletPhone = outlet['contactNumber'] ?? outlet['phone'] ?? 'No Telepon';
+    final outletPhone =
+        outlet['contactNumber'] ?? outlet['phone'] ?? 'No Telepon';
     final outletCity = outlet['city'] ?? 'Kota';
 
     return Container(
@@ -552,7 +832,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       ),
       child: Row(
         children: [
-          // Icon Outlet
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -566,7 +845,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             ),
           ),
           const SizedBox(width: 12),
-          // Informasi Outlet
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,65 +878,17 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
               ],
             ),
           ),
-          // Status Buka/Tutup
           _buildOpenStatus(outlet),
         ],
       ),
     );
   }
 
-// ✅ PERBAIKAN: Juga di appbar outlet info
-  // ignore: unused_element
-  Widget _buildAppBarOutletInfo(AuthService authService) {
-    final outlets = authService.getUserOutlets();
-
-    // ✅ PERBAIKAN: Sembunyikan jika tidak ada outlet
-    if (outlets.isEmpty) {
-      return const SizedBox();
-    }
-
-    final outlet = outlets.first;
-    final outletName = outlet['name'] ?? 'Nama Outlet';
-    final outletAddress = outlet['address'] ?? 'Alamat Outlet';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 2),
-        Text(
-          outletName,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          outletAddress,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Colors.grey,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  // ✅ WIDGET BARU: Status buka/tutup outlet
   Widget _buildOpenStatus(Map<String, dynamic> outlet) {
     final now = DateTime.now();
     final currentTime = DateFormat('HH:mm').format(now);
-
     final openTime = outlet['openTime'] ?? '06:00';
     final closeTime = outlet['closeTime'] ?? '02:00';
-
-    print('ℹ️ Outlet: $outlet');
-    // print('ℹ️ Open Time: $openTime');
-    // print('ℹ️ Close Time: $closeTime');
-    print('ℹ️ Current Time: $currentTime');
-
     final isOpen = _isOutletOpen(openTime, closeTime, currentTime);
 
     return Container(
@@ -692,24 +922,18 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     );
   }
 
-  // ✅ METHOD BARU: Cek status buka/tutup outlet
   bool _isOutletOpen(String openTime, String closeTime, String currentTime) {
     try {
       final open = _timeToMinutes(openTime);
       final close = _timeToMinutes(closeTime);
       final current = _timeToMinutes(currentTime);
 
-      // Jika waktu tutup lebih kecil dari waktu buka (contoh: buka 06:00, tutup 02:00)
-      // berarti outlet buka sampai melewati tengah malam
       if (close < open) {
-        // outlet buka jika current time >= open time ATAU current time <= close time
         return current >= open || current <= close;
       } else {
-        // outlet buka jika current time antara open dan close time
         return current >= open && current <= close;
       }
     } catch (e) {
-      print('Error checking outlet status: $e');
       return false;
     }
   }
@@ -717,14 +941,11 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   int _timeToMinutes(String time) {
     final parts = time.split(':');
     if (parts.length != 2) return 0;
-
     final hour = int.tryParse(parts[0]) ?? 0;
     final minute = int.tryParse(parts[1]) ?? 0;
-
     return hour * 60 + minute;
   }
 
-  // Widget lainnya tetap sama...
   Widget _buildWelcomeCard() {
     return Container(
       width: double.infinity,
@@ -744,11 +965,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         children: [
           const Row(
             children: [
-              Icon(
-                Icons.restaurant_menu,
-                color: Colors.white,
-                size: 24,
-              ),
+              Icon(Icons.restaurant_menu, color: Colors.white, size: 24),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -827,7 +1044,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(_selectedDate),
+                    DateFormat('EEEE, dd MMMM yyyy', 'id_ID')
+                        .format(_selectedDate),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -967,20 +1185,216 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     );
   }
 
+  Widget _buildGroCartCard() {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        final totalItems = cartProvider.totalItems;
+        final totalPrice = cartProvider.totalPrice;
+
+        return GestureDetector(
+          onTap: _navigateToGroCart,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF076A3B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(
+                        Icons.shopping_cart,
+                        color: Color(0xFF076A3B),
+                        size: 24,
+                      ),
+                      if (totalItems > 0)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              totalItems.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Keranjang GRO',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        totalItems > 0
+                            ? '$totalItems item • ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(totalPrice)}'
+                            : 'Keranjang kosong',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: totalItems > 0
+                              ? Colors.green.shade700
+                              : Colors.grey.shade600,
+                          fontWeight: totalItems > 0
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF076A3B),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Lihat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red.shade400,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _errorMessage ?? 'Terjadi kesalahan',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadDashboardStats,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E8B57),
+                foregroundColor: Colors.white,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _navigateToGroCart,
+              icon: const Icon(Icons.shopping_cart),
+              label: const Text('Lihat Keranjang'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF076A3B),
+                foregroundColor: Colors.white,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _navigateToReservations(String filter) {
-    // Pass tanggal yang dipilih ke reservation management
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    context.push('/gro-reservation-management?filter=$filter&date=$dateStr').then((_) {
-      // Refresh dashboard saat kembali
+    context
+        .push('/gro-reservation-management?filter=$filter&date=$dateStr')
+        .then((_) {
       _loadDashboardStats();
     });
   }
 
   void _navigateToTableManagement() {
-    // Pass tanggal yang dipilih ke table availability
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     context.push('/gro-table-availability?date=$dateStr').then((_) {
-      // Refresh dashboard saat kembali
       _loadDashboardStats();
     });
   }
