@@ -4,6 +4,7 @@ import '../models/cart_item.dart';
 import '../screens/account_settings_screen.dart';
 import '../screens/auth_redirect_page.dart';
 import '../screens/checkout_page.dart';
+import '../screens/custom_amount_form_screen.dart';
 import '../screens/favorit_screen.dart';
 import '../screens/gro_management_reservation_screen.dart';
 import '../screens/gro_table_avaibility_screen.dart';
@@ -364,7 +365,19 @@ class AppRouter {
           },
         ),
 
+// Tambahkan di router configuration (app_router.dart atau main.dart)
 
+        GoRoute(
+          path: '/custom-amount',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            final isGroMode = extra?['isGroMode'] ?? false;
+
+            return CustomAmountFormScreen(
+              isGroMode: isGroMode,
+            );
+          },
+        ),
         GoRoute(
           path: '/gro-table-availability',
           name: 'gro-table-availability',

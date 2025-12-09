@@ -1,4 +1,4 @@
-// services/order_service.dart - Updated with agenda and food serving
+// services/order_service.dart - Updated with custom amount support
 import 'dart:convert';
 import 'package:baraja_app/screens/checkout_page.dart';
 import 'package:flutter/material.dart';
@@ -52,6 +52,44 @@ class OrderService {
       print("  groId: $finalGroId");
       print("  userName: $userName");
       print("  guestPhone: $guestPhone");
+      print("  items count: ${items.length}");
+
+      // ✅ Separate regular items and custom amounts
+      final regularItems = <Map<String, dynamic>>[];
+      final customAmountItems = <Map<String, dynamic>>[];
+
+      for (var item in items) {
+        final productId = item['productId']?.toString() ?? '';
+        final isCustomAmount = productId.startsWith('custom_');
+
+        if (isCustomAmount) {
+          print("💰 Custom amount detected: ${item['productName']} - ${item['totalprice']}");
+
+          // ✅ Format for customAmountItems array in Order schema
+          customAmountItems.add({
+            'amount': item['totalprice'] ?? item['price'] ?? 0,
+            'name': item['productName'] ?? 'Penyesuaian Pembayaran',
+            'description': item['notes'] ?? '',
+            'dineType': item['dineType'] ?? 'Dine-In',
+          });
+        } else {
+          // Regular menu items
+          regularItems.add({
+            'productId': productId,
+            'productName': item['productName'],
+            'quantity': item['quantity'] ?? 1,
+            'totalprice': item['totalprice'] ?? 0,
+            'price': item['price'] ?? 0,
+            'addons': item['addons'] ?? [],
+            'toppings': item['toppings'] ?? [],
+            'notes': item['notes'] ?? '',
+          });
+        }
+      }
+
+      print("📦 Separated items:");
+      print("   Regular menu items: ${regularItems.length}");
+      print("   Custom amounts: ${customAmountItems.length}");
 
       String? pickupTimeString;
       if (pickupTime != null) {
@@ -63,7 +101,8 @@ class OrderService {
       final orderData = <String, dynamic>{
         'userId': userId,
         'userName': userName,
-        'items': items,
+        'items': regularItems, // ✅ Only regular menu items
+        'customAmountItems': customAmountItems, // ✅ Separate custom amounts
         'orderType': orderType.toString().split('.').last,
         'paymentDetails': paymentDetails,
         'outlet': outletId ?? '67cbc9560f025d897d69f889',
@@ -94,10 +133,6 @@ class OrderService {
         orderData['tableNumber'] = tableNumber;
       }
 
-      if (orderType.toString().split('.').last == 'takeAway') {
-        // Take away tidak memerlukan informasi tambahan khusus
-      }
-
       if (orderType.toString().split('.').last == 'delivery' &&
           deliveryAddress != null &&
           deliveryAddress.isNotEmpty) {
@@ -118,17 +153,14 @@ class OrderService {
             'tableIds': reservationData.selectedTableIds,
             'reservationDate': reservationData.formattedDate,
 
-            // ✅ Serving type & equipment
             if (reservationData.servingType != null)
               'serving_type': reservationData.servingType,
             if (reservationData.equipment.isNotEmpty)
               'equipment': reservationData.equipment,
 
-            // ✅ BARU: Agenda
             if (reservationData.agenda != null)
               'agenda': reservationData.agenda,
 
-            // ✅ BARU: Food serving options
             if (reservationData.foodServingOption != null)
               'food_serving_option': reservationData.foodServingOption,
             if (reservationData.foodServingTime != null)
@@ -169,7 +201,7 @@ class OrderService {
         final responseData = jsonDecode(response.body);
 
         if (isGroMode) {
-          print("✅ GRO Reservation created successfully!");
+          print("✅ GRO Order created successfully!");
           print("  Created by GRO ID: $finalGroId");
           print("  Guest name: $userName");
           print("  Guest phone: $guestPhone");

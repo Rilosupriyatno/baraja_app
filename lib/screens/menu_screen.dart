@@ -623,7 +623,44 @@ class _MenuScreenState extends State<MenuScreen> {
             ],
           ),
         ),
-        floatingActionButton: CheckoutButton(
+        floatingActionButton: widget.isGroMode
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Custom Amount Button (GRO Only)
+            FloatingActionButton.extended(
+              heroTag: 'custom_amount_btn',
+              onPressed: () {
+                context.push('/custom-amount', extra: {
+                  'isGroMode': true,
+                });
+              },
+              backgroundColor: Colors.purple,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Penyesuaian',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Checkout Button (existing)
+            CheckoutButton(
+              isReservation: widget.isReservation,
+              reservationData: widget.reservationData,
+              isDineIn: widget.isDineIn,
+              tableNumber: widget.tableNumber,
+              isOpenBill: widget.isOpenBill,
+              openBillData: widget.openBillData,
+              isGroMode: widget.isGroMode,
+            ),
+          ],
+        )
+            : CheckoutButton(
           isReservation: widget.isReservation,
           reservationData: widget.reservationData,
           isDineIn: widget.isDineIn,
@@ -632,6 +669,16 @@ class _MenuScreenState extends State<MenuScreen> {
           openBillData: widget.openBillData,
           isGroMode: widget.isGroMode,
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        // floatingActionButton: CheckoutButton(
+        //   isReservation: widget.isReservation,
+        //   reservationData: widget.reservationData,
+        //   isDineIn: widget.isDineIn,
+        //   tableNumber: widget.tableNumber,
+        //   isOpenBill: widget.isOpenBill,
+        //   openBillData: widget.openBillData,
+        //   isGroMode: widget.isGroMode,
+        // ),
       ),
     );
   }
