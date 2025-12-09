@@ -279,17 +279,25 @@ class GroOrderDetailWidget extends StatelessWidget {
     );
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     final items = orderData['items'] as List? ?? [];
+    final customAmountItems = orderData['customAmountItems'] as List? ?? [];
     final paymentDetails = orderData['paymentDetails'] as Map<String, dynamic>?;
 
     // Safe access untuk paymentStatus dengan support down payment
     final paymentStatusValue = orderData['paymentStatus']?.toString();
     final paymentStatus = _getPaymentStatus(paymentStatusValue, paymentDetails);
 
+    // ✅ Check if both items and customAmountItems are empty
+    final hasNoItems = items.isEmpty && customAmountItems.isEmpty;
+
     print('Payment Status Value: $paymentStatusValue');
     print('Payment Details: $paymentDetails');
+    print('Items count: ${items.length}');
+    print('Custom Amount Items count: ${customAmountItems.length}');
 
     return Container(
       width: double.infinity,
@@ -360,8 +368,8 @@ class GroOrderDetailWidget extends StatelessWidget {
               ),
             ),
 
-            // Order Detail Section
-            if (items.isNotEmpty) ...[
+            // ✅ Combined Items Section (Regular Items + Custom Amount Items)
+            if (!hasNoItems) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -396,13 +404,13 @@ class GroOrderDetailWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Loop through all items
+                    // Loop through all regular items
                     ...items.asMap().entries.map((entry) {
                       final index = entry.key;
                       final item = entry.value;
 
                       return Container(
-                        margin: EdgeInsets.only(bottom: index < items.length - 1 ? 16 : 0),
+                        margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8F9FF),
@@ -485,6 +493,84 @@ class GroOrderDetailWidget extends StatelessWidget {
                         ),
                       );
                     }),
+
+                    // ✅ Loop through all custom amount items (tampilan sama dengan regular items)
+                    ...customAmountItems.asMap().entries.map((entry) {
+                      final item = entry.value;
+
+                      final amount = _getNumericValue(item['amount']);
+                      final name = item['name']?.toString() ?? 'Penyesuaian Pembayaran';
+                      final description = item['description']?.toString() ?? '';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F9FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF2E8B57).withOpacity(0.1),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  formatCurrency(amount),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (description.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.format_quote, size: 14, color: Colors.amber),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        description,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -505,6 +591,41 @@ class GroOrderDetailWidget extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
+
+            // ✅ Show message if no items at all
+            if (hasNoItems)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 48,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Belum ada item dalam pesanan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             // Add Order Button (jika showAddOrderButton = true)
             if (showAddOrderButton && onAddOrder != null)
@@ -572,7 +693,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Subtotal
+                  // Subtotal (sudah termasuk customAmount dari backend)
                   PaymentRowWidget(
                     label: 'Subtotal',
                     value: formatCurrency(_getNumericValue(orderData['totalBeforeDiscount'])),
@@ -595,7 +716,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                           : discountAmount.round();
 
                       final labelText = discountType == 'percentage'
-                          ? 'Kupon Diskon ($voucherCode${discountAmount.toStringAsFixed(0)}%)'
+                          ? 'Kupon Diskon ($voucherCode ${discountAmount.toStringAsFixed(0)}%)'
                           : 'Kupon Diskon ($voucherCode)';
 
                       return PaymentRowWidget(
@@ -647,7 +768,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                     isTotal: true,
                   ),
 
-                  if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty)
+                  if (paymentDetails?['isDownPayment'] != true || items.isNotEmpty || customAmountItems.isNotEmpty)
                     const SizedBox(height: 16),
 
                   PaymentRowWidget(

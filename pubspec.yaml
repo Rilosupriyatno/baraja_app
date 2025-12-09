@@ -58,7 +58,7 @@ dependencies:
   adaptive_theme: ^3.7.0
   qr_code_scanner_plus: ^2.0.10+1
   flutter_localization: ^0.3.3
-  intl: ^0.19.0
+  intl: ^0.20.2
   qr_flutter: ^4.1.0
   firebase_messaging: ^15.2.10
   flutter_local_notifications: ^19.4.0
@@ -66,7 +66,7 @@ dependencies:
   collection: ^1.19.1
   cached_network_image: ^3.4.1
   easy_localization: ^3.0.8
-  skeletonizer: ^1.4.3
+  skeletonizer: ^2.0.0
   rename_app: ^1.6.5
   app_settings: ^6.1.1
   responsive_framework: ^1.5.1

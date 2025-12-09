@@ -89,120 +89,13 @@ class GROService {
     }
   }
 
-  // Get dine-in order detail (dengan prefix /gro/)
-  Future<Map<String, dynamic>> getDineInOrderDetail(String orderId) async {
-    try {
-      final headers = await _getHeaders();
-
-      // ✅ Gunakan /api/gro/orders/ (bukan /api/orders/)
-      final url = '$baseUrl/api/gro/orders/$orderId';
-
-      print('🔍 Fetching order detail for ID: $orderId');
-      print('🔍 URL: $url');
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
-
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final dynamic responseData = json.decode(response.body);
-
-        print('📦 Response type: ${responseData.runtimeType}');
-
-        // Pastikan response adalah Map
-        if (responseData is! Map<String, dynamic>) {
-          print('❌ Invalid response format');
-          return {
-            'success': false,
-            'error': 'Invalid response format: expected Map but got ${responseData.runtimeType}',
-          };
-        }
-
-        final Map<String, dynamic> data = responseData;
-
-        // Cek apakah success = false (order tidak ditemukan)
-        if (data['success'] == false) {
-          print('❌ Order not found or error');
-          return {
-            'success': false,
-            'error': data['message'] ?? 'Order tidak ditemukan',
-          };
-        }
-
-        // Cek apakah ada key 'data'
-        if (!data.containsKey('data')) {
-          print('❌ No data field in response');
-          return {
-            'success': false,
-            'error': 'Response does not contain data field',
-          };
-        }
-
-        // Cek jika data adalah array kosong
-        if (data['data'] is List && (data['data'] as List).isEmpty) {
-          print('❌ Data is empty array');
-          return {
-            'success': false,
-            'error': 'Order tidak ditemukan atau sudah tidak aktif',
-          };
-        }
-
-        // Pastikan data['data'] adalah Map
-        if (data['data'] is! Map<String, dynamic>) {
-          print('❌ Data field is not a Map: ${data['data'].runtimeType}');
-          return {
-            'success': false,
-            'error': 'Data field is not a Map: ${data['data'].runtimeType}',
-          };
-        }
-
-        print('✅ Order detail loaded successfully');
-        return {
-          'success': true,
-          'data': data['data'] as Map<String, dynamic>,
-        };
-      } else if (response.statusCode == 404) {
-        print('❌ Order not found (404)');
-        return {
-          'success': false,
-          'error': 'Order tidak ditemukan',
-        };
-      } else {
-        print('❌ Error response: ${response.statusCode}');
-        try {
-          final Map<String, dynamic> errorData = json.decode(response.body);
-          return {
-            'success': false,
-            'error': errorData['message'] ?? 'Gagal memuat detail order',
-          };
-        } catch (e) {
-          return {
-            'success': false,
-            'error': 'Gagal memuat detail order (${response.statusCode})',
-          };
-        }
-      }
-    } catch (e, stackTrace) {
-      print('❌ Exception in getDineInOrderDetail: $e');
-      print('Stack trace: $stackTrace');
-      return {
-        'success': false,
-        'error': 'Terjadi kesalahan: $e',
-      };
-    }
-  }
-
   // ✅ TAMBAHAN METHOD BARU: Get order detail with payment info (seperti tracking)
   Future<Map<String, dynamic>> getOrderDetailWithPayment(String orderId) async {
     try {
       final headers = await _getHeaders();
 
       // Gunakan endpoint yang sama seperti di tracking
-      final url = '$baseUrl/api/order/$orderId';
+      final url = '$baseUrl/api/gro/orders/$orderId';
 
       print('🔍 Fetching order detail for ID: $orderId');
       print('🔍 URL: $url');

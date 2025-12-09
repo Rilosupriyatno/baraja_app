@@ -94,7 +94,7 @@ android {
 
     defaultConfig {
         applicationId = "com.baraja.baraja_app"
-        minSdk = 23
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = 35
 
         // Auto increment versionCode
