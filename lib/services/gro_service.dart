@@ -89,6 +89,88 @@ class GROService {
     }
   }
 
+  // ✅ TAMBAHKAN di gro_service.dart
+
+// Edit reservation dan menu
+  Future<Map<String, dynamic>> editReservation({
+    required String reservationId,
+    String? guestName,
+    String? guestPhone,
+    int? guestCount,
+    String? reservationDate,
+    String? reservationTime,
+    List<String>? tableIds,
+    String? areaId,
+    String? notes,
+    List<Map<String, dynamic>>? items, // Menu items
+    List<Map<String, dynamic>>? customAmountItems, // Custom amounts
+    String? voucherCode,
+    String? servingType,
+    List<String>? equipment,
+    String? agenda,
+    String? foodServingOption,
+    DateTime? foodServingTime,
+    String? reservationType,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final body = <String, dynamic>{};
+
+      if (guestName != null) body['guest_name'] = guestName;
+      if (guestPhone != null) body['guest_phone'] = guestPhone;
+      if (guestCount != null) body['guest_count'] = guestCount;
+      if (reservationDate != null) body['reservation_date'] = reservationDate;
+      if (reservationTime != null) body['reservation_time'] = reservationTime;
+      if (tableIds != null) body['table_ids'] = tableIds;
+      if (areaId != null) body['area_id'] = areaId;
+      if (notes != null) body['notes'] = notes;
+      if (items != null) body['items'] = items;
+      if (customAmountItems != null) body['customAmountItems'] = customAmountItems;
+      if (voucherCode != null) body['voucherCode'] = voucherCode;
+      if (servingType != null) body['serving_type'] = servingType;
+      if (equipment != null) body['equipment'] = equipment;
+      if (agenda != null) body['agenda'] = agenda;
+      if (foodServingOption != null) body['food_serving_option'] = foodServingOption;
+      if (foodServingTime != null) {
+        body['food_serving_time'] = foodServingTime.toIso8601String();
+      }
+      if (reservationType != null) body['reservation_type'] = reservationType;
+
+      print('📤 Sending edit request for reservation: $reservationId');
+      print('📦 Body: ${json.encode(body)}');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/gro/reservations/$reservationId/edit'),
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Reservasi berhasil diperbarui',
+          'data': responseData['data'],
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ?? 'Gagal mengedit reservasi',
+        };
+      }
+    } catch (e) {
+      print('❌ Error editing reservation: $e');
+      return {
+        'success': false,
+        'error': 'Terjadi kesalahan: $e',
+      };
+    }
+  }
   // ✅ TAMBAHAN METHOD BARU: Get order detail with payment info (seperti tracking)
   Future<Map<String, dynamic>> getOrderDetailWithPayment(String orderId) async {
     try {

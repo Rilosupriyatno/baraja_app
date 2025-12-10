@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/gro_service.dart';
 import '../models/reservation_data.dart';
 import '../screens/menu_screen.dart';
@@ -268,7 +269,6 @@ class _GroUnifiedOrderDetailSheetState
       ),
     );
   }
-
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -283,15 +283,50 @@ class _GroUnifiedOrderDetailSheetState
             widget.isReservation ? 'Detail Reservasi' : 'Detail Dine-in Order',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
-            splashRadius: 24,
+          Row(
+            children: [
+              // ✅ TOMBOL EDIT (hanya muncul jika bisa edit)
+              if (widget.isReservation && _canEditReservation())
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Color(0xFF2E8B57)),
+                  onPressed: _handleEditReservation,
+                  splashRadius: 24,
+                  tooltip: 'Edit Reservasi',
+                ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+                splashRadius: 24,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+  // Widget _buildHeader() {
+  //   return Container(
+  //     padding: const EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+  //     ),
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //       children: [
+  //         Text(
+  //           widget.isReservation ? 'Detail Reservasi' : 'Detail Dine-in Order',
+  //           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //         ),
+  //         IconButton(
+  //           icon: const Icon(Icons.close),
+  //           onPressed: () => Navigator.pop(context),
+  //           splashRadius: 24,
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildErrorState() {
     return Center(
@@ -321,6 +356,35 @@ class _GroUnifiedOrderDetailSheetState
         ),
       ),
     );
+  }
+
+  bool _canEditReservation() {
+    if (!widget.isReservation || _data == null) return false;
+
+    final reservationStatus = (_data!['status'] as String?)?.toLowerCase();
+    final hasCheckedIn = _data!['check_in_time'] != null;
+
+    // Hanya bisa edit jika:
+    // 1. Belum check-in
+    // 2. Status pending atau confirmed
+    return !hasCheckedIn &&
+        (reservationStatus == 'pending' || reservationStatus == 'confirmed');
+  }
+
+  void _handleEditReservation() {
+    if (_data == null) return;
+
+    // Navigate to edit screen
+    Navigator.pop(context); // Close detail sheet first
+
+    context.push('/gro/reservations/${widget.id}/edit', extra: {
+      'reservationData': _data,
+    }).then((result) {
+      // Refresh data if edit was successful
+      if (result == true) {
+        _loadData();
+      }
+    });
   }
 
   Widget _buildContent() {

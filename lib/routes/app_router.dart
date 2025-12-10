@@ -6,6 +6,7 @@ import '../screens/auth_redirect_page.dart';
 import '../screens/checkout_page.dart';
 import '../screens/custom_amount_form_screen.dart';
 import '../screens/favorit_screen.dart';
+import '../screens/gro_edit_reservation_Screen.dart';
 import '../screens/gro_management_reservation_screen.dart';
 import '../screens/gro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
@@ -375,6 +376,17 @@ class AppRouter {
 
             return CustomAmountFormScreen(
               isGroMode: isGroMode,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/gro/reservations/:id/edit',
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            final extra = state.extra as Map<String, dynamic>;
+            return GroEditReservationScreen(
+              reservationId: id,
+              reservationData: extra['reservationData'],
             );
           },
         ),

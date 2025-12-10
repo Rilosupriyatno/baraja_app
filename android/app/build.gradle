@@ -62,7 +62,7 @@ def incrementVersionCode() {
 
 android {
     namespace = "com.baraja.baraja_app"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     // ---------------------------------------------------------------------------------------
