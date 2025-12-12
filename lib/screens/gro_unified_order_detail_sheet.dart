@@ -194,6 +194,7 @@ class _GroUnifiedOrderDetailSheetState
         builder: (context) => MenuScreen(
           isOpenBill: true,
           openBillData: openBillData!,
+          isGroMode: true, // ✅ PERBAIKAN: Tambahkan isGroMode
         ),
       ),
     ).then((_) {

@@ -4,6 +4,7 @@ import '../services/gro_service.dart';
 import '../models/cart_item.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/cart/cart_item_edit_dialog.dart';
+import '../theme/app_theme.dart';
 
 class GroEditReservationScreen extends StatefulWidget {
   final String reservationId;
@@ -398,10 +399,18 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
             const SizedBox(height: 12),
             TextFormField(
               initialValue: _guestCount.toString(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Jumlah Tamu',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.people),
+                prefixIcon: Icon(Icons.people, color: AppTheme.barajaPrimary.primaryColor),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+                ),
               ),
               keyboardType: TextInputType.number,
               validator: (value) {
@@ -695,9 +704,18 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
             const SizedBox(height: 12),
             TextFormField(
               initialValue: _notes,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Catatan Tambahan',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.note_outlined, color: AppTheme.barajaPrimary.primaryColor),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+                ),
                 alignLabelWithHint: true,
               ),
               maxLines: 3,
@@ -804,11 +822,19 @@ class _CustomAmountDialogState extends State<_CustomAmountDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nama',
                   hintText: 'e.g., Biaya Dekorasi',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.label),
+                  prefixIcon: Icon(Icons.label, color: AppTheme.barajaPrimary.primaryColor),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -820,11 +846,19 @@ class _CustomAmountDialogState extends State<_CustomAmountDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Jumlah (Rp)',
                   hintText: 'e.g., 500000',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
+                  prefixIcon: Icon(Icons.attach_money, color: AppTheme.barajaPrimary.primaryColor),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+                  ),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
@@ -841,10 +875,18 @@ class _CustomAmountDialogState extends State<_CustomAmountDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Deskripsi (opsional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
+                  prefixIcon: Icon(Icons.description, color: AppTheme.barajaPrimary.primaryColor),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+                  ),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 3,

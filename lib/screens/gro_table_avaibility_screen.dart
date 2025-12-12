@@ -14,10 +14,14 @@ import 'gro_reservation_screen.dart';
 
 class GroTableAvailabilityScreen extends StatefulWidget {
   final bool isGroMode;
+  final Map<String, dynamic>? dashboardStats; // ✅ Single source of truth
+  final DateTime? selectedDate; // ✅ Initial date from dashboard
 
   const GroTableAvailabilityScreen({
     super.key,
     this.isGroMode = true,
+    this.dashboardStats, // ✅ Optional, fallback to API if null
+    this.selectedDate, // ✅ Optional, fallback to DateTime.now()
   });
 
   @override
@@ -62,6 +66,8 @@ class _GroTableAvailabilityScreenState
   @override
   void initState() {
     super.initState();
+    // ✅ Use selectedDate from dashboard if available
+    _selectedDate = widget.selectedDate ?? DateTime.now();
     _loadTableAvailabilityOptimized();
 
     _animationController = AnimationController(
@@ -643,11 +649,13 @@ class _GroTableAvailabilityScreenState
   }
 
   Widget _buildSummaryCard(bool isTablet) {
-    if (_summary.isEmpty) return const SizedBox();
+    // ✅ Use dashboardStats if available (from dashboard navigation)
+    // Otherwise fallback to _summary (from API, for direct navigation)
+    final total = widget.dashboardStats?['totalTables'] ?? _summary['total'] ?? 0;
+    final available = widget.dashboardStats?['availableTables'] ?? _summary['available'] ?? 0;
+    final occupied = total - available;
 
-    final total = _summary['total'] ?? 0;
-    final available = _summary['available'] ?? 0;
-    final occupied = _summary['occupied'] ?? 0;
+    if (total == 0) return const SizedBox();
 
     return Container(
       margin: EdgeInsets.all(isTablet ? 12 : 16),

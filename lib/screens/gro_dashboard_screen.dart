@@ -639,7 +639,11 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
 
   Widget _buildMainContent() {
     if (_selectedMenu == 'tables') {
-      return const GroTableAvailabilityScreen(isGroMode: true);
+      return GroTableAvailabilityScreen(
+        isGroMode: true,
+        dashboardStats: _dashboardStats, // ✅ Pass stats untuk konsistensi
+        selectedDate: _selectedDate, // ✅ Pass selected date
+      );
     }
 
     return GroReservationManagementScreen(
@@ -1385,16 +1389,23 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
 
   void _navigateToReservations(String filter) {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    context
-        .push('/gro-reservation-management?filter=$filter&date=$dateStr')
-        .then((_) {
+    context.push(
+      '/gro-reservation-management?filter=$filter&date=$dateStr',
+      extra: {
+        'dashboardStats': _dashboardStats, // ✅ Pass stats untuk konsistensi badge
+      },
+    ).then((_) {
       _loadDashboardStats();
     });
   }
 
   void _navigateToTableManagement() {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    context.push('/gro-table-availability?date=$dateStr').then((_) {
+    context.push('/gro-table-availability', extra: {
+      'date': dateStr,
+      'dashboardStats': _dashboardStats, // ✅ Pass stats untuk konsistensi
+      'selectedDate': _selectedDate, // ✅ Pass selected date
+    }).then((_) {
       _loadDashboardStats();
     });
   }

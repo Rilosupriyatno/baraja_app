@@ -357,12 +357,19 @@ class AppRouter {
         //   builder: (context, state) => const GroDashboardScreen(),
         // ),
 
-        // Setup route dengan query parameter
+        // Setup route dengan query parameter dan extra data
         GoRoute(
           path: '/gro-reservation-management',
           builder: (context, state) {
             final filter = state.uri.queryParameters['filter'] ?? 'all';
-            return GroReservationManagementScreen(filter: filter);
+            final date = state.uri.queryParameters['date'];
+            final extra = state.extra as Map<String, dynamic>?;
+            
+            return GroReservationManagementScreen(
+              filter: filter,
+              initialDate: date,
+              dashboardStats: extra?['dashboardStats'], // ✅ Pass stats untuk konsistensi
+            );
           },
         ),
 
@@ -393,7 +400,14 @@ class AppRouter {
         GoRoute(
           path: '/gro-table-availability',
           name: 'gro-table-availability',
-          builder: (context, state) => const GroTableAvailabilityScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return GroTableAvailabilityScreen(
+              isGroMode: true,
+              dashboardStats: extra?['dashboardStats'], // ✅ Pass stats untuk konsistensi
+              selectedDate: extra?['selectedDate'], // ✅ Pass selected date
+            );
+          },
         ),
       ],
     );

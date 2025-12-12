@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import '../models/cart_item.dart'; // ✅ Import CartItem
 import '../models/category.dart';
 import '../models/product.dart';
 import '../models/reservation_data.dart';
@@ -15,6 +16,7 @@ import '../widgets/menu/product_grid.dart';
 import '../widgets/menu/sub_menu_slider.dart';
 import '../widgets/menu/menu_selector.dart';
 import '../widgets/menu/search_menu_widget.dart'; // ✅ Import widget search
+import '../widgets/cart/cart_item_edit_dialog.dart';
 
 class MenuScreen extends StatefulWidget {
   final bool isReservation;
@@ -52,6 +54,72 @@ class _MenuScreenState extends State<MenuScreen> {
 
   bool _isLoading = true;
   String _errorMessage = '';
+
+  // ✅ State untuk tablet layout (GRO mode)
+  Product? _selectedProduct; // Product yang dipilih untuk order form
+  int _selectedQuantity = 1; // Quantity untuk product yang dipilih
+  final TextEditingController _notesController = TextEditingController();
+  
+  // Addon & Topping states
+  Map<String, AddonOption?> _selectedAddonOptions = {};
+  List<Topping> _selectedToppings = [];
+
+  // Helper to calculate total
+  double _calculateTotal() {
+    if (_selectedProduct == null) return 0;
+    
+    double basePrice = _selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0;
+    double toppingsTotal = _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
+    
+    double addonOptionsTotal = 0;
+    _selectedAddonOptions.forEach((addonId, option) {
+      if (option != null) {
+        addonOptionsTotal += option.price;
+      }
+    });
+
+    return (basePrice + toppingsTotal + addonOptionsTotal) * _selectedQuantity;
+  }
+
+  // Helper to reset selection and init defaults
+  void _resetSelection(Product product) {
+    setState(() {
+      _selectedProduct = product;
+      _selectedQuantity = 1;
+      _selectedAddonOptions.clear();
+      _selectedToppings.clear();
+      _notesController.clear();
+      
+      // Init default addons
+      if (product.addons != null) {
+        for (var addon in product.addons!) {
+          if (addon.options.isNotEmpty) {
+             var defaultOption = addon.options.where((o) => o.isDefault).firstOrNull;
+             defaultOption ??= addon.options.first;
+             _selectedAddonOptions[addon.id] = defaultOption;
+          }
+        }
+      }
+    });
+  }
+
+  // Helper to show edit dialog
+  void _showEditItemDialog(CartItem item) {
+    showDialog(
+      context: context,
+      builder: (context) => CartItemEditDialog(
+        item: item,
+        onSave: (updatedItem) {
+          final cartProvider = Provider.of<CartProvider>(context, listen: false);
+          int index = cartProvider.items.indexOf(item);
+          if (index != -1) {
+            cartProvider.updateCartItem(index, updatedItem);
+          }
+        },
+      ),
+    );
+  } // Notes controller
+  bool _showCustomAmountForm = false; // Toggle untuk custom amount form
 
   @override
   void initState() {
@@ -161,6 +229,11 @@ class _MenuScreenState extends State<MenuScreen> {
 
   // ✅ Update filter products dengan search functionality
   List<Product> _getFilteredProducts() {
+    // ✅ Check if tablet GRO mode
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+    final isGroTabletMode = widget.isGroMode && isTablet;
+    
     return _allProducts.where((product) {
       // Filter by search query first
       if (_searchQuery.isNotEmpty) {
@@ -172,7 +245,12 @@ class _MenuScreenState extends State<MenuScreen> {
         return matchesName || matchesCategory || matchesDescription;
       }
 
-      // Filter by mainCategory (Makanan/Minuman)
+      // ✅ In tablet GRO mode, show ALL products (no category filter)
+      if (isGroTabletMode) {
+        return true;
+      }
+
+      // Filter by mainCategory (Makanan/Minuman) - for mobile mode
       if (product.mainCategory != selectedMenu) {
         return false;
       }
@@ -497,6 +575,21 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+    final isGroTabletMode = widget.isGroMode && isTablet;
+
+    // ✅ Route ke tablet layout jika GRO mode di tablet
+    if (isGroTabletMode) {
+      return _buildTabletLayout();
+    }
+
+    // ✅ Layout mobile (existing)
+    return _buildMobileLayout();
+  }
+
+  // ✅ MOBILE LAYOUT (existing code)
+  Widget _buildMobileLayout() {
     final List<Category> categoryList = _categoriesMap[selectedMenu] ?? [];
     final List<Product> filteredProducts = _isLoading
         ? _getDummyProducts()
@@ -530,12 +623,26 @@ class _MenuScreenState extends State<MenuScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              if (widget.isGroMode) ...[
+              if (widget.isGroMode) ...[ 
                 const SizedBox(width: 12),
                 const GroModeAppBarBadge(), // ✅ Badge di AppBar
               ],
             ],
           ),
+          // ✅ TAMBAH TOMBOL + DI APPBAR UNTUK GRO MODE
+          actions: widget.isGroMode
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.add, color: Colors.black),
+                    onPressed: () {
+                      context.push('/custom-amount', extra: {
+                        'isGroMode': true,
+                      });
+                    },
+                    tooltip: 'Penyesuaian',
+                  ),
+                ]
+              : null,
         ),
         body: SafeArea(
           child: _errorMessage.isNotEmpty
@@ -623,44 +730,7 @@ class _MenuScreenState extends State<MenuScreen> {
             ],
           ),
         ),
-        floatingActionButton: widget.isGroMode
-            ? Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // Custom Amount Button (GRO Only)
-            FloatingActionButton.extended(
-              heroTag: 'custom_amount_btn',
-              onPressed: () {
-                context.push('/custom-amount', extra: {
-                  'isGroMode': true,
-                });
-              },
-              backgroundColor: Colors.purple,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'Penyesuaian',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Checkout Button (existing)
-            CheckoutButton(
-              isReservation: widget.isReservation,
-              reservationData: widget.reservationData,
-              isDineIn: widget.isDineIn,
-              tableNumber: widget.tableNumber,
-              isOpenBill: widget.isOpenBill,
-              openBillData: widget.openBillData,
-              isGroMode: widget.isGroMode,
-            ),
-          ],
-        )
-            : CheckoutButton(
+        floatingActionButton: CheckoutButton(
           isReservation: widget.isReservation,
           reservationData: widget.reservationData,
           isDineIn: widget.isDineIn,
@@ -795,4 +865,1214 @@ class _MenuScreenState extends State<MenuScreen> {
   //     ),
   //   );
   // }
+
+  // ==================== TABLET LAYOUT (GRO MODE) ====================
+  
+  Widget _buildTabletLayout() {
+    return BaseScreenWrapper(
+      canPop: false,
+      customBackRoute: _getBackRoute(),
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => context.go(_getBackRoute()),
+          ),
+          title: Row(
+            children: [
+              const Text(
+                'Menu',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const GroModeAppBarBadge(),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.black),
+              onPressed: () {
+                // ✅ Show custom amount form in column 2
+                setState(() {
+                  _selectedProduct = null; // Clear product selection
+                  _showCustomAmountForm = true; // Show custom amount form
+                });
+              },
+              tooltip: 'Penyesuaian',
+            ),
+          ],
+        ),
+        body: Row(
+          children: [
+            // ✅ COLUMN 1: Menu List (45% - LARGER)
+            Expanded(
+              flex: 45,
+              child: _buildMenuColumn(),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            
+            // ✅ COLUMN 2: Order Form (30%)
+            Expanded(
+              flex: 30,
+              child: _buildOrderFormColumn(),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            
+            // ✅ COLUMN 3: Cart (25%)
+            Expanded(
+              flex: 25,
+              child: _buildCartColumn(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ COLUMN 1: Menu List
+  Widget _buildMenuColumn() {
+    final List<Product> filteredProducts = _isLoading
+        ? _getDummyProducts()
+        : _getFilteredProducts();
+
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          // Info banner (jika ada)
+          _buildReservationInfo(),
+          _buildOpenBillInfo(),
+          _buildDineInInfo(),
+          
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: SearchMenuWidget(
+              onSearchChanged: _onSearchChanged,
+              onClearSearch: _onClearSearch,
+            ),
+          ),
+          
+          // Search results info
+          _buildSearchResultsInfo(),
+          
+          // Menu grid (NO CATEGORIES in tablet GRO mode) - 3 COLUMNS
+          Expanded(
+            child: Skeletonizer(
+              enabled: _isLoading,
+              enableSwitchAnimation: true,
+              child: filteredProducts.isEmpty && !_isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada menu yang ditemukan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3, // ✅ 3 columns for more items
+                        childAspectRatio: 0.85, // ✅ Wider/shorter cards (was 0.7)
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        return _buildCompactMenuCard(filteredProducts[index]);
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Compact Menu Card untuk tablet
+  Widget _buildCompactMenuCard(Product product) {
+    final isSelected = _selectedProduct?.id == product.id;
+    final hasValidImage = product.imageUrl != null && 
+                          product.imageUrl.isNotEmpty && 
+                          product.imageUrl.startsWith('http');
+    
+    return GestureDetector(
+      onTap: () => _resetSelection(product),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: isSelected ? const Color(0xFF2E8B57) : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2E8B57).withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product image - compact
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                child: hasValidImage
+                    ? Image.network(
+                        product.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/product_default_image.png',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          );
+                        },
+                      )
+                    : Image.asset(
+                        'assets/images/product_default_image.png',
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      ),
+              ),
+            ),
+            
+            // Product info - very compact
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    NumberFormat.currency(
+                      locale: 'id_ID',
+                      symbol: 'Rp',
+                      decimalDigits: 0,
+                    ).format(product.discountPrice ?? product.originalPrice ?? 0),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Color(0xFF2E8B57),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ COLUMN 2: Order Form
+  Widget _buildOrderFormColumn() {
+    // ✅ Show custom amount form if flag is true
+    if (_showCustomAmountForm) {
+      return _buildCustomAmountForm();
+    }
+    
+    // ✅ Show placeholder if no product selected
+    if (_selectedProduct == null) {
+      return Container(
+        color: Colors.white,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.touch_app, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              const Text(
+                'Pilih menu untuk menambah pesanan',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ✅ Product Order Form
+    return Container(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _selectedProduct!.imageUrl.isNotEmpty
+                  ? Image.network(
+                      _selectedProduct!.imageUrl,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/product_default_image.png',
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/images/product_default_image.png',
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Product name
+            Text(
+              _selectedProduct!.name,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            
+            // Product Price
+            Text(
+              NumberFormat.currency(
+                locale: 'id_ID',
+                symbol: 'Rp',
+                decimalDigits: 0,
+              ).format(_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0),
+              style: const TextStyle(
+                fontSize: 18,
+                color: Color(0xFF2E8B57),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Quantity Selector
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Jumlah Pesanan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (_selectedQuantity > 1) {
+                          setState(() => _selectedQuantity--);
+                        }
+                      },
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: const Color(0xFF2E8B57),
+                      iconSize: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '$_selectedQuantity',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: () => setState(() => _selectedQuantity++),
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: const Color(0xFF2E8B57),
+                      iconSize: 28,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            
+            const Divider(height: 32),
+
+            // ✅ ADDONS Section
+            if (_selectedProduct!.addons != null && _selectedProduct!.addons!.isNotEmpty) ...[
+              ..._selectedProduct!.addons!.map((addon) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    addon.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: addon.options.map((option) {
+                      bool isSelected = _selectedAddonOptions[addon.id] == option;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedAddonOptions[addon.id] = option;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF2E8B57) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF2E8B57) : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Text(
+                            '${option.label} ${option.price > 0 ? "+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(option.price)}" : ""}',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              )),
+            ],
+
+            // ✅ TOPPINGS Section
+            if (_selectedProduct!.toppings != null && _selectedProduct!.toppings!.isNotEmpty) ...[
+              const Text(
+                'Extra Toppings',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._selectedProduct!.toppings!.map((topping) => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(topping.name),
+                secondary: Text(
+                  NumberFormat.currency(
+                    locale: 'id_ID',
+                    symbol: 'Rp',
+                    decimalDigits: 0,
+                  ).format(topping.price),
+                  style: const TextStyle(
+                    color: Color(0xFF2E8B57),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                value: _selectedToppings.contains(topping),
+                onChanged: (bool? value) {
+                  setState(() {
+                    if (value == true) {
+                      _selectedToppings.add(topping);
+                    } else {
+                      _selectedToppings.remove(topping);
+                    }
+                  });
+                },
+                activeColor: const Color(0xFF2E8B57),
+                controlAffinity: ListTileControlAffinity.leading,
+              )),
+              const Divider(height: 32),
+            ],
+
+            // Notes
+            const Text(
+              'Catatan',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _notesController,
+              decoration: InputDecoration(
+                hintText: 'Tambahkan catatan...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF2E8B57),
+                    width: 2,
+                  ),
+                ),
+              ),
+              maxLines: 2,
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Total & Add Button
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Harga',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp',
+                          decimalDigits: 0,
+                        ).format(_calculateTotal()),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E8B57),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                        
+                        // Construct lists
+                        List<Map<String, dynamic>> toppingsList = _selectedToppings.map((t) => {
+                          "name": t.name,
+                          "price": t.price,
+                        }).toList();
+
+                        List<Map<String, dynamic>> addonList = [];
+                        _selectedAddonOptions.forEach((addonId, option) {
+                           if (option != null) {
+                              var addon = _selectedProduct!.addons!.firstWhere((a) => a.id == addonId);
+                              addonList.add({
+                                 "name": addon.name,
+                                 "label": option.label,
+                                 "price": option.price,
+                              });
+                           }
+                        });
+                        
+                        // Create CartItem
+                        final cartItem = CartItem(
+                          id: _selectedProduct!.id,
+                          name: _selectedProduct!.name,
+                          imageUrl: _selectedProduct!.imageUrl,
+                          price: (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0).toInt(),
+                          totalprice: _calculateTotal().toInt(), // Include total
+                          quantity: _selectedQuantity,
+                          addons: addonList,
+                          toppings: toppingsList,
+                          notes: _notesController.text,
+                        );
+                        
+                        // Add to cart
+                        cartProvider.addToCart(cartItem);
+                        
+                        // Show snackbar
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${_selectedProduct!.name} ditambahkan ke keranjang'),
+                            duration: const Duration(seconds: 1), // Short duration
+                            backgroundColor: const Color(0xFF2E8B57),
+                          ),
+                        );
+                        
+                        // Clear selection
+                        _resetSelection(_selectedProduct!);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E8B57),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Tambah Order',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ Custom Amount Form (Inline)
+  Widget _buildCustomAmountForm() {
+    // Local controllers for custom amount form
+    final nameController = TextEditingController();
+    final amountController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return Container(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with close button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Penyesuaian',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setState(() {
+                        _showCustomAmountForm = false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Info banner
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Tambahkan biaya tambahan atau penyesuaian',
+                        style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Nama Item
+              const Text(
+                'Nama Item',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  hintText: 'Contoh: Biaya Layanan',
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama item tidak boleh kosong';
+                  }
+                  return null;
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Jumlah
+              const Text(
+                'Jumlah (Rp)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: amountController,
+                decoration: InputDecoration(
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  prefixText: 'Rp ',
+                  prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Jumlah tidak boleh kosong';
+                  }
+                  final amount = int.tryParse(value.replaceAll('.', '').replaceAll(',', ''));
+                  if (amount == null || amount <= 0) {
+                    return 'Jumlah harus lebih dari 0';
+                  }
+                  return null;
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Deskripsi
+              const Text(
+                'Deskripsi (Opsional)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: descriptionController,
+                decoration: InputDecoration(
+                  hintText: 'Tambahkan keterangan',
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                maxLines: 3,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Submit button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (!formKey.currentState!.validate()) {
+                      return;
+                    }
+                    
+                    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                    final amountStr = amountController.text.replaceAll('.', '').replaceAll(',', '');
+                    final amount = int.tryParse(amountStr) ?? 0;
+                    
+                    if (amount == 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Jumlah harus lebih dari 0'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    
+                    // Create custom amount cart item
+                    final customAmountItem = CartItem.customAmount(
+                      name: nameController.text.trim(),
+                      amount: amount,
+                      description: descriptionController.text.trim().isEmpty
+                          ? null
+                          : descriptionController.text.trim(),
+                      dineType: 'Dine-In',
+                    );
+                    
+                    // Add to cart
+                    cartProvider.addToCart(customAmountItem);
+                    
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${nameController.text} ditambahkan ke keranjang'),
+                        backgroundColor: const Color(0xFF2E8B57),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                    
+                    // Close form
+                    setState(() {
+                      _showCustomAmountForm = false;
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E8B57),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Tambahkan ke Keranjang',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ COLUMN 3: Cart (Using existing CartScreen body)
+  Widget _buildCartColumn() {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        final cartItems = cartProvider.items;
+        final isReservation = cartProvider.isReservation;
+        final reservationData = cartProvider.reservationData;
+        final isDineIn = cartProvider.isDineIn;
+        final tableNumber = cartProvider.tableNumber;
+        final isOpenBill = cartProvider.isOpenBill;
+        final openBillData = cartProvider.openBillData;
+        final isGroMode = cartProvider.isGroMode;
+
+        return Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E8B57),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shopping_cart, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Keranjang',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${cartProvider.totalItems}',
+                        style: const TextStyle(
+                          color: Color(0xFF2E8B57),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Cart items list
+              Expanded(
+                child: cartItems.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Keranjang kosong',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tambahkan menu',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: cartItems.length,
+                        itemBuilder: (context, index) {
+                          final item = cartItems[index];
+                          // ✅ Compact cart item for tablet
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Product info row
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Product image - small
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: item.imageUrl.isNotEmpty
+                                            ? Image.network(
+                                                item.imageUrl,
+                                                width: 50,
+                                                height: 50,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  return Image.asset(
+                                                    'assets/images/product_default_image.png',
+                                                    width: 50, height: 50, fit: BoxFit.cover,
+                                                  );
+                                                },
+                                              )
+                                            : Image.asset(
+                                                'assets/images/product_default_image.png',
+                                                width: 50, height: 50, fit: BoxFit.cover,
+                                              ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      
+                                      // Product details
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                 Expanded(
+                                                   child: Text(
+                                                    item.name,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                   ),
+                                                 ),
+                                                 // ✅ Edit button
+                                                 IconButton(
+                                                   icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                                                   padding: EdgeInsets.zero,
+                                                   constraints: const BoxConstraints(),
+                                                   onPressed: () => _showEditItemDialog(item),
+                                                 ),
+                                              ],
+                                            ),
+                                            Text(
+                                              NumberFormat.currency(
+                                                locale: 'id_ID',
+                                                symbol: 'Rp',
+                                                decimalDigits: 0,
+                                              ).format(item.price),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Quantity controls and delete
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Quantity controls
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.remove_circle, size: 18),
+                                              color: Colors.red,
+                                              padding: const EdgeInsets.all(4),
+                                              constraints: const BoxConstraints(),
+                                              onPressed: () => cartProvider.decreaseQuantity(index),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                                              child: Text(
+                                                '${item.quantity}',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.add_circle, size: 18),
+                                              color: const Color(0xFF2E8B57),
+                                              padding: const EdgeInsets.all(4),
+                                              constraints: const BoxConstraints(),
+                                              onPressed: () => cartProvider.increaseQuantity(index),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      
+                                      // Delete button
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, size: 18),
+                                        color: Colors.red,
+                                        padding: const EdgeInsets.all(4),
+                                        constraints: const BoxConstraints(),
+                                        onPressed: () {
+                                          cartProvider.removeFromCart(index);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  // Notes, Addons, Toppings details
+                                  if (item.notes != null && item.notes!.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Note: ${item.notes}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[500],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  // Display Addons/Toppings summary if needed? 
+                                  // User didn't explicitly ask for summary in cart list, but it's good practice.
+                                  // I'll stick to user request: "edit icon", "addon in order form".
+                                  // But I will add simple summary if easy.
+                                  // The CartItemCard handles it.
+                                  // Here space is limited. I'll omit for now to keep it compact.
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              
+              // Footer with total and checkout
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Harga',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          NumberFormat.currency(
+                            locale: 'id_ID',
+                            symbol: 'Rp',
+                            decimalDigits: 0,
+                          ).format(cartProvider.totalPrice),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E8B57),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: cartItems.isEmpty
+                            ? null
+                            : () {
+                                // Navigate to checkout screen
+                                Map<String, dynamic> extraData = {'isGroMode': isGroMode};
+
+                                if (isReservation && reservationData != null) {
+                                  extraData['isReservation'] = true;
+                                  extraData['reservationData'] = reservationData;
+                                } else if (isOpenBill && openBillData != null) {
+                                  extraData['isOpenBill'] = true;
+                                  extraData['openBillData'] = openBillData;
+                                } else if (isDineIn && tableNumber != null) {
+                                  extraData['isDineIn'] = true;
+                                  extraData['tableNumber'] = tableNumber;
+                                }
+
+                                if (extraData.length > 1) {
+                                  context.go('/checkout', extra: extraData);
+                                } else {
+                                  context.go('/checkout', extra: {'isGroMode': isGroMode});
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E8B57),
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Lanjut Bayar',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

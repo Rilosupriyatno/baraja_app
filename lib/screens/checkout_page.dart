@@ -453,7 +453,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
 
         return BaseScreenWrapper(
-          customBackRoute: widget.isGroMode ? '/gro-table-availability' : '/cart',
+          customBackRoute: widget.isGroMode ? '/menu' : '/cart',
           canPop: false,
           child: Scaffold(
             backgroundColor: Colors.white,
@@ -465,7 +465,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () {
                   if (widget.isGroMode) {
-                    context.go('/cart', extra: {
+                    // ✅ GRO tablet mode: back to menu with tablet layout
+                    context.go('/menu', extra: {
                       'isGroMode': true,
                       'isReservation': cartProvider.isReservation,
                       'reservationData': cartProvider.reservationData,
