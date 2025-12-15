@@ -6,11 +6,15 @@ import '../widgets/utils/classic_app_bar.dart';
 class PaymentMethodScreen extends StatefulWidget {
   final String? source; // 'checkout' atau 'event'
   final Map<String, dynamic>? eventData; // Data event untuk ticket purchase
+  final bool isReservation; // ✅ NEW: For customer reservation
+  final bool isGroMode; // ✅ NEW: For GRO mode
 
   const PaymentMethodScreen({
     super.key,
     this.source,
     this.eventData,
+    this.isReservation = false, // ✅ NEW
+    this.isGroMode = false, // ✅ NEW
   });
 
   @override
@@ -32,8 +36,26 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     try {
       final service = PaymentMethodeService();
       final methods = await service.fetchPaymentMethods();
+      
+      // ✅ NEW: Filter out cash for ticket purchase and customer reservation
+      List<Map<String, dynamic>> filteredMethods = methods;
+      
+      // Remove cash for ticket purchase
+      if (widget.source == 'event') {
+        filteredMethods = filteredMethods.where((method) {
+          return method['payment_method']?.toString().toLowerCase() != 'cash';
+        }).toList();
+      }
+      
+      // Remove cash for customer reservation (not GRO)
+      if (widget.isReservation && !widget.isGroMode) {
+        filteredMethods = filteredMethods.where((method) {
+          return method['payment_method']?.toString().toLowerCase() != 'cash';
+        }).toList();
+      }
+      
       setState(() {
-        paymentMethods = methods;
+        paymentMethods = filteredMethods;
       });
     } catch (e) {
       print('Error fetching payment methods: $e');

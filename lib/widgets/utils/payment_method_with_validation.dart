@@ -6,12 +6,16 @@ class PaymentMethodWithValidation extends StatelessWidget {
   final String displayedPaymentMethod;
   final Function(Map<String, dynamic>) onMethodSelected;
   final String? errorMessage;
+  final bool isReservation; // ✅ NEW
+  final bool isGroMode; // ✅ NEW
 
   const PaymentMethodWithValidation({
     super.key,
     required this.displayedPaymentMethod,
     required this.onMethodSelected,
     this.errorMessage,
+    this.isReservation = false, // ✅ NEW
+    this.isGroMode = false, // ✅ NEW
   });
 
   @override
@@ -28,8 +32,14 @@ class PaymentMethodWithValidation extends StatelessWidget {
           child: PaymentMethodWidget(
             selectedMethod: displayedPaymentMethod,
             onTap: () async {
-              // Navigate to payment method screen without extra data initially
-              final result = await context.push<Map<String, dynamic>>('/paymentMethod');
+              // ✅ NEW: Pass reservation and GRO mode context
+              final result = await context.push<Map<String, dynamic>>(
+                '/paymentMethod',
+                extra: {
+                  'isReservation': isReservation,
+                  'isGroMode': isGroMode,
+                },
+              );
               if (result != null) {
                 onMethodSelected(result);
               }

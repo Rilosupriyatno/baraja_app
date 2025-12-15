@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart';
 import '../../services/tax_service.dart'; // Import TaxCalculationResult from here
+import '../../services/calculation_service.dart';
+
 
 class CheckoutSummary extends StatelessWidget {
   final int totalPrice;
@@ -30,13 +32,18 @@ class CheckoutSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ PERBAIKAN: Gunakan totalPrice langsung dari cartProvider
-    // Sesuai dengan cart_screen.dart yang menggunakan cartProvider.totalPrice
-    final int subtotal = totalPrice; // Ini sudah benar sesuai cart_screen
-    final int finalTotal = subtotal - discount;
-    final int taxAmount = taxCalculation?.totalTaxAmount.round() ?? 0;
-    final int grandTotal = finalTotal + taxAmount;
-    final int downPaymentAmount = (grandTotal * 0.5).round();
+    // ✅ Use CalculationService for all calculations
+    final result = CalculationService.calculateGrandTotal(
+      subtotal: totalPrice,
+      discount: discount,
+      tax: taxCalculation?.totalTaxAmount.round() ?? 0,
+    );
+
+    final int subtotal = result.subtotal;
+    final int finalTotal = result.finalTotal;
+    final int taxAmount = result.tax;
+    final int grandTotal = result.grandTotal;
+    final int downPaymentAmount = CalculationService.calculateDownPayment(grandTotal);
 
     int amountToPay = grandTotal;
     if (isReservation && selectedPaymentType == PaymentType.downPayment) {

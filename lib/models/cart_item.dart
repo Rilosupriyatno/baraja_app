@@ -1,4 +1,5 @@
-// class CartItem {
+import '../services/calculation_service.dart';
+
 //   final String id;
 //   final String name;
 //   final String imageUrl;
@@ -88,29 +89,14 @@ class CartItem {
     this.isCustomAmount = false,
     this.customAmountDescription,
     this.dineType = 'Dine-In',
-  }) : _totalprice = totalprice ?? calculateTotalPrice(price, addons, toppings);
+  }) : _totalprice = totalprice ?? CalculationService.calculateItemPrice(
+    basePrice: price,
+    addons: addons,
+    toppings: toppings,
+  );
 
   int get totalprice => _totalprice;
 
-  static int calculateTotalPrice(int basePrice, List<Map<String, dynamic>> addons, dynamic toppings) {
-    int total = basePrice;
-
-    for (var addon in addons) {
-      if (addon.containsKey('price') && addon['price'] != null) {
-        total += addon['price'] as int;
-      }
-    }
-
-    if (toppings is List) {
-      for (var topping in toppings) {
-        if (topping is Map && topping.containsKey('price') && topping['price'] != null) {
-          total += topping['price'] as int;
-        }
-      }
-    }
-
-    return total;
-  }
 
   // ✅ NEW: Helper method to create custom amount item
   factory CartItem.customAmount({

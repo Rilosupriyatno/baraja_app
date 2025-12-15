@@ -254,6 +254,8 @@ class AppRouter {
             return PaymentMethodScreen(
               source: extra?['source'],
               eventData: extra?['eventData'],
+              isReservation: extra?['isReservation'] ?? false, // ✅ NEW
+              isGroMode: extra?['isGroMode'] ?? false, // ✅ NEW
             );
           },
         ),

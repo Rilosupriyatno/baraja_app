@@ -11,6 +11,8 @@ import '../providers/cart_provider.dart';
 import '../services/order_service.dart' as serviceorder;
 import '../services/table_service.dart';
 import '../services/tax_service.dart';
+import '../services/calculation_service.dart';
+
 import '../utils/gro_mode_badge.dart';
 import '../widgets/checkout/cart_item_widget.dart';
 import '../widgets/checkout/checkout_summary.dart';
@@ -68,6 +70,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
   ReservationType selectedReservationType = ReservationType.nonBlocking;
   Map<String, String> validationErrors = {};
   bool hasAttemptedSubmit = false;
+
+  // ✅ NEW: Manual DP and Tax toggle for GRO
+  bool _enableManualDP = false;
+  int? _manualDPAmount;
+  bool _enableTax = true; // Default ON
+  final TextEditingController _manualDPController = TextEditingController();
 
   final TaxService _taxService = TaxService();
   final TableService _tableService = TableService();
@@ -249,17 +257,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   int calculateDiscount(int subtotal) {
-    if (selectedVoucher == null) return 0;
-
-    int discount = 0;
-    if (selectedVoucher!.discountType == "percentage") {
-      discount = (subtotal * (selectedVoucher!.discountAmount / 100)).round();
-    } else if (selectedVoucher!.discountType == "fixed") {
-      discount = selectedVoucher!.discountAmount;
-    }
-
-    return discount;
+    return CalculationService.calculateDiscount(
+      subtotal: subtotal,
+      voucher: selectedVoucher,
+    );
   }
+
 
   @override
   void dispose() {
@@ -270,6 +273,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       // Ignore error if provider is already disposed
     }
     _scrollController.dispose();
+    _manualDPController.dispose(); // ✅ NEW: Dispose manual DP controller
     super.dispose();
   }
 
@@ -413,17 +417,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
         final int discount = calculateDiscount(subtotal);
         final int finalTotal = subtotal - discount;
-        final int taxAmount = _taxCalculation?.totalTaxAmount.round() ?? 0;
+        
+        // ✅ NEW: Tax calculation with toggle support
+        final int taxAmount = _enableTax 
+            ? (_taxCalculation?.totalTaxAmount.round() ?? 0)
+            : 0;
+        
         final int grandTotal = finalTotal + taxAmount;
-        final int downPaymentAmount = (grandTotal * 0.5).round();
+        
+        // ✅ NEW: Down payment with manual input support
+        int downPaymentAmount;
+        if (_enableManualDP && _manualDPAmount != null && _manualDPAmount! > 0) {
+          downPaymentAmount = _manualDPAmount!;
+        } else {
+          downPaymentAmount = CalculationService.calculateDownPayment(grandTotal);
+        }
 
         // Debug print untuk memastikan konsistensi
         print("\n💰 CHECKOUT CALCULATION (CONSISTENT):");
         print("  CartProvider.totalPrice: $subtotal");
         print("  Discount: $discount");
         print("  FinalTotal: $finalTotal");
+        print("  Tax Enabled: $_enableTax");
         print("  Tax: $taxAmount");
-        print("  GrandTotal: $grandTotal\n");
+        print("  GrandTotal: $grandTotal");
+        print("  Manual DP Enabled: $_enableManualDP");
+        print("  Manual DP Amount: $_manualDPAmount");
+        print("  DownPayment: $downPaymentAmount\n");
+
         // Debug print untuk memastikan perhitungan
         print("\n💰 CHECKOUT CALCULATION:");
         print("  Items count: ${cartItems.length}");
@@ -721,11 +742,170 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             const SizedBox(height: 24),
                           ],
 
+                          // ✅ NEW: Manual DP Input for GRO Reservation
+                          if (widget.isGroMode && cartProvider.isReservation && !_isReservationWithoutMenu(cartProvider)) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.purple.shade200),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.edit_note, color: Colors.purple.shade600, size: 20),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Input DP Manual',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Switch(
+                                        value: _enableManualDP,
+                                        activeColor: Colors.purple.shade600,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _enableManualDP = value;
+                                            if (!value) {
+                                              _manualDPAmount = null;
+                                              _manualDPController.clear();
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  if (_enableManualDP) ...[
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _manualDPController,
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(
+                                        labelText: 'Jumlah DP',
+                                        prefixText: 'Rp ',
+                                        filled: true,
+                                        fillColor: Colors.white,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide(color: Colors.purple.shade200),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide(color: Colors.purple.shade200),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide(color: Colors.purple.shade600, width: 2),
+                                        ),
+                                        helperText: 'Kosongkan untuk menggunakan 50% otomatis',
+                                        helperStyle: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                                          _manualDPAmount = cleanValue.isEmpty ? null : int.tryParse(cleanValue);
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Total Grand Total:',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatCurrency(grandTotal),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          // ✅ NEW: Tax Toggle for GRO (Reservation & Dine-In)
+                          if (widget.isGroMode) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.receipt_long, color: Colors.orange.shade600, size: 20),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Pajak & Service',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          if (_taxCalculation != null && _enableTax)
+                                            Text(
+                                              '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.orange.shade700,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  Switch(
+                                    value: _enableTax,
+                                    activeColor: Colors.orange.shade600,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _enableTax = value;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
                           PaymentMethodWithValidation(
                             displayedPaymentMethod: displayedPaymentMethod,
                             errorMessage: hasAttemptedSubmit
                                 ? validationErrors['paymentMethod']
                                 : null,
+                            isReservation: cartProvider.isReservation, // ✅ NEW
+                            isGroMode: widget.isGroMode, // ✅ NEW
                             onMethodSelected: (result) {
                               setState(() {
                                 selectedPaymentMethod =

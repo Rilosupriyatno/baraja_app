@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/cart_item.dart';
 import '../models/reservation_data.dart';
+import '../services/calculation_service.dart';
+
 
 class CartProvider with ChangeNotifier {
   // 🔒 USER ISOLATION: Track current user to prevent data leakage
@@ -290,50 +292,16 @@ class CartProvider with ChangeNotifier {
   int get totalPrice {
     final targetCart = _userCarts[_userKey] ?? [];
 
-    if (isReservation && targetCart.isEmpty) {
-      return 25000;
-    }
-
-    return targetCart.fold(0, (sum, item) {
-      int itemPrice = item.price;
-
-      if (item.toppings != null && item.toppings is List) {
-        for (var topping in item.toppings as List) {
-          if (topping is Map && topping.containsKey('price')) {
-            itemPrice += (topping['price'] as num).toInt();
-          }
-        }
-      }
-
-      for (var addon in item.addons as List) {
-        if (addon is Map && addon.containsKey('price')) {
-          itemPrice += (addon['price'] as num).toInt();
-        }
-      }
-
-      return sum + (itemPrice * item.quantity);
-    });
+    return CalculationService.calculateCartTotal(
+      items: targetCart,
+      isReservation: isReservation,
+    );
   }
 
   int getItemTotalPrice(CartItem item) {
-    int itemPrice = item.price;
-
-    if (item.toppings != null && item.toppings is List) {
-      for (var topping in item.toppings as List) {
-        if (topping is Map && topping.containsKey('price')) {
-          itemPrice += (topping['price'] as num).toInt();
-        }
-      }
-    }
-
-    for (var addon in item.addons as List) {
-      if (addon is Map && addon.containsKey('price')) {
-        itemPrice += (addon['price'] as num).toInt();
-      }
-    }
-
-    return itemPrice * item.quantity;
+    return CalculationService.calculateCartItemTotal(item);
   }
+
 
   // 🔒 Debug method - jangan gunakan di production
   void debugPrintAllCarts() {
