@@ -1,3 +1,4 @@
+import 'package:baraja_app/screens/gro_order_management_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -7,7 +8,6 @@ import '../screens/checkout_page.dart';
 import '../screens/custom_amount_form_screen.dart';
 import '../screens/favorit_screen.dart';
 import '../screens/gro_edit_reservation_Screen.dart';
-import '../screens/gro_management_reservation_screen.dart';
 import '../screens/gro_table_avaibility_screen.dart';
 import '../screens/notification_screen.dart';
 import '../screens/cart_screen.dart';
@@ -367,7 +367,7 @@ class AppRouter {
             final date = state.uri.queryParameters['date'];
             final extra = state.extra as Map<String, dynamic>?;
             
-            return GroReservationManagementScreen(
+            return GroOrderManagementScreen(
               filter: filter,
               initialDate: date,
               dashboardStats: extra?['dashboardStats'], // ✅ Pass stats untuk konsistensi

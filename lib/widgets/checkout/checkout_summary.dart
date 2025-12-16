@@ -2,7 +2,7 @@ import 'package:baraja_app/widgets/checkout/reservation_payment_type_widget.dart
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/currency_formatter.dart';
-import '../../services/tax_service.dart'; // Import TaxCalculationResult from here
+import '../../services/tax_service.dart';
 import '../../services/calculation_service.dart';
 
 
@@ -15,7 +15,8 @@ class CheckoutSummary extends StatelessWidget {
   final bool isOpenBill;
   final PaymentType? selectedPaymentType;
   final String? discountType;
-  final TaxCalculationResult? taxCalculation; // Now uses the class from tax_service.dart
+  final TaxCalculationResult? taxCalculation;
+  final int? manualDownPaymentAmount;
 
   const CheckoutSummary({
     super.key,
@@ -28,6 +29,7 @@ class CheckoutSummary extends StatelessWidget {
     this.selectedPaymentType,
     this.discountType,
     this.taxCalculation,
+    this.manualDownPaymentAmount,
   });
 
   @override
@@ -43,7 +45,9 @@ class CheckoutSummary extends StatelessWidget {
     final int finalTotal = result.finalTotal;
     final int taxAmount = result.tax;
     final int grandTotal = result.grandTotal;
-    final int downPaymentAmount = CalculationService.calculateDownPayment(grandTotal);
+    final int downPaymentAmount = manualDownPaymentAmount != null && manualDownPaymentAmount! > 0
+        ? manualDownPaymentAmount!
+        : CalculationService.calculateDownPayment(grandTotal);
 
     int amountToPay = grandTotal;
     if (isReservation && selectedPaymentType == PaymentType.downPayment) {
@@ -58,6 +62,9 @@ class CheckoutSummary extends StatelessWidget {
     print("  Tax: $taxAmount");
     print("  GrandTotal: $grandTotal");
     print("  AmountToPay: $amountToPay");
+    print("  taxCalculation: $taxCalculation");
+    print("  taxCalculation?.taxDetails: ${taxCalculation?.taxDetails}");
+    print("  taxCalculation?.taxDetails.length: ${taxCalculation?.taxDetails.length}");
 
     return SafeArea(
       child: Container(

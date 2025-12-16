@@ -6,7 +6,7 @@ import '../services/auth_service.dart';
 import '../services/gro_service.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/utils/role_based_widget.dart';
-import 'gro_management_reservation_screen.dart';
+import 'gro_order_management_screen.dart';
 import 'gro_table_avaibility_screen.dart';
 
 class GroDashboardScreen extends StatefulWidget {
@@ -20,6 +20,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     with RoleCheckMixin {
   final GROService _groService = GROService();
   Map<String, dynamic> _dashboardStats = {};
+  int? _actualOrderCount; // ✅ Calculated from actual data
+  int? _actualAvailableTables; // ✅ Calculated from actual table data
   bool _isLoading = true;
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
@@ -45,19 +47,102 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
 
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final result = await _groService.getDashboardStats(date: dateStr);
+      
+      // ✅ Fetch both reservations and table availability in parallel
+      final results = await Future.wait([
+        _groService.getReservations(
+          page: 1,
+          limit: 100,
+          date: dateStr,
+        ),
+        _groService.getTableAvailability(
+          date: dateStr,
+          outletId: "67cbc9560f025d897d69f889", // TODO: Get from user's outlet
+        ),
+      ]);
+      
+      final reservationsResult = results[0] as Map<String, dynamic>;
+      final tablesResult = results[1] as Map<String, dynamic>;
 
-      if (result['success']) {
-        setState(() {
-          _dashboardStats = result['data'];
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = result['error'];
-          _isLoading = false;
-        });
+      // ✅ Calculate order stats from actual data
+      if (reservationsResult['success'] && reservationsResult['data'] is List) {
+        final list = reservationsResult['data'] as List;
+        
+        int pending = 0;
+        int ongoing = 0;
+        int completed = 0;
+        int cancelled = 0;
+        
+        for (var item in list) {
+          final type = item['type'] ?? 'reservation';
+          final status = item['status'] ?? '';
+          
+          // Use same logic as GroOrderManagementScreen
+          if (type == 'dine-in-order') {
+            if (status == 'Pending' || status == 'Waiting' || status == 'Reserved') {
+              pending++;
+            } else if (status == 'OnProcess') {
+              ongoing++;
+            } else if (status == 'Completed') {
+              completed++;
+            } else if (status == 'Canceled') {
+              cancelled++;
+            }
+          } else {
+            // reservation type
+            if (status == 'pending') {
+              pending++;
+            } else if (status == 'confirmed') {
+              if (item['check_in_time'] != null && item['check_out_time'] == null) {
+                ongoing++;
+              } else {
+                pending++;
+              }
+            } else if (status == 'completed') {
+              completed++;
+            } else if (status == 'cancelled') {
+              cancelled++;
+            }
+          }
+        }
+        
+        _actualOrderCount = list.length;
+        _dashboardStats['allReservations'] = list.length;
+        _dashboardStats['pendingReservations'] = pending;
+        _dashboardStats['activeReservations'] = ongoing;
+        _dashboardStats['completedReservations'] = completed;
+        _dashboardStats['cancelledReservations'] = cancelled;
+        
+        print('✅ SIDEBAR STATS (from actual data):');
+        print('   Total: ${list.length}');
+        print('   Pending: $pending');
+        print('   Ongoing: $ongoing');
+        print('   Completed: $completed');
+        print('   Cancelled: $cancelled');
       }
+      
+      // ✅ Calculate table stats from actual data
+      if (tablesResult['success'] && tablesResult['data'] != null) {
+        final data = tablesResult['data'];
+        final tables = data['tables'] as List? ?? [];
+        
+        final total = tables.length;
+        final occupied = tables.where((t) => t['is_available'] == false).length;
+        final available = total - occupied;
+        
+        _actualAvailableTables = available;
+        _dashboardStats['totalTables'] = total;
+        _dashboardStats['availableTables'] = available;
+        
+        print('✅ SIDEBAR TABLE STATS (from actual data):');
+        print('   Total: $total');
+        print('   Available: $available');
+        print('   Occupied: $occupied');
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading dashboard: $e';
@@ -380,7 +465,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 children: [
                   _buildStatMenuItem(
                     'Kelola Order',
-                    _dashboardStats['allReservations'] ?? 0,
+                    _actualOrderCount ?? _dashboardStats['allReservations'] ?? 0,
                     Icons.restaurant,
                     const Color(0xFF6366F1),
                     'orders',
@@ -389,7 +474,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                   const SizedBox(height: 8),
                   _buildStatMenuItem(
                     'Ketersediaan Meja',
-                    _dashboardStats['availableTables'] ?? 0,
+                    _actualAvailableTables ?? _dashboardStats['availableTables'] ?? 0,
                     Icons.table_restaurant,
                     const Color(0xFF8B5CF6),
                     'tables',
@@ -646,7 +731,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       );
     }
 
-    return GroReservationManagementScreen(
+    return GroOrderManagementScreen(
       filter: 'all',
       initialDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
       dashboardStats: _dashboardStats, // ✅ Pass stats untuk badge

@@ -86,6 +86,18 @@ class _GroTableAvailabilityScreenState
     _scrollController.dispose();
     super.dispose();
   }
+  
+  @override
+  void didUpdateWidget(GroTableAvailabilityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ✅ Reload if date changes from parent (sidebar)
+    if (widget.selectedDate != oldWidget.selectedDate) {
+      setState(() {
+        _selectedDate = widget.selectedDate ?? DateTime.now();
+      });
+      _loadTableAvailability();
+    }
+  }
 
   Future<bool> _handleBackButton() async {
     if (_isMultiSelectMode) {
@@ -573,6 +585,15 @@ class _GroTableAvailabilityScreenState
   }
 
   Widget _buildFilters() {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+    
+    // ✅ Hide filters on tablet view (centralized in sidebar)
+    if (isTablet) {
+      return const SizedBox.shrink();
+    }
+    
+    // Show filters on mobile view
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -649,11 +670,29 @@ class _GroTableAvailabilityScreenState
   }
 
   Widget _buildSummaryCard(bool isTablet) {
-    // ✅ Use dashboardStats if available (from dashboard navigation)
-    // Otherwise fallback to _summary (from API, for direct navigation)
-    final total = widget.dashboardStats?['totalTables'] ?? _summary['total'] ?? 0;
-    final available = widget.dashboardStats?['availableTables'] ?? _summary['available'] ?? 0;
-    final occupied = total - available;
+    // ✅ NEW LOGIC: Count based on is_available (occupancy) not is_active (orders)
+    final total = _tables.length;
+    final occupied = _tables.where((t) => t['is_available'] == false).length;
+    final available = total - occupied;
+    
+    // ✅ Find tables that are occupied but have no active order
+    final occupiedWithoutOrders = _tables.where((t) => 
+      t['is_available'] == false && t['is_active'] == false
+    ).toList();
+    
+    // 🔍 DEBUG: Show table status
+    print('📊 TABLE AVAILABILITY:');
+    print('   Total tables: $total');
+    print('   Occupied (is_available=false): $occupied');
+    print('   Available: $available');
+    print('   Occupied without orders: ${occupiedWithoutOrders.length}');
+    
+    if (occupiedWithoutOrders.isNotEmpty) {
+      print('   ⚠️ Tables occupied without active orders:');
+      for (var table in occupiedWithoutOrders) {
+        print('      - ${table['table_number']} (is_available: ${table['is_available']}, is_active: ${table['is_active']})');
+      }
+    }
 
     if (total == 0) return const SizedBox();
 
@@ -672,6 +711,137 @@ class _GroTableAvailabilityScreenState
           Expanded(child: _buildSummaryItem('Tersedia', available.toString(), const Color(0xFF10B981), Icons.check_circle, isTablet)),
           Container(width: 1, height: isTablet ? 30 : 40, color: Colors.grey[300]),
           Expanded(child: _buildSummaryItem('Terisi', occupied.toString(), const Color(0xFFEF4444), Icons.cancel, isTablet)),
+          // ✅ Show alert icon if there are occupied tables without orders
+          if (occupiedWithoutOrders.isNotEmpty) ...[
+            Container(width: 1, height: isTablet ? 30 : 40, color: Colors.grey[300]),
+            GestureDetector(
+              onTap: () => _showOccupiedTablesWithoutOrdersDialog(occupiedWithoutOrders),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange, size: isTablet ? 20 : 24),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              occupiedWithoutOrders.length.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: isTablet ? 2 : 4),
+                    Text('No Order', style: TextStyle(fontSize: isTablet ? 9 : 10, color: Colors.orange, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  // ✅ NEW: Dialog to show occupied tables without active orders
+  void _showOccupiedTablesWithoutOrdersDialog(List<dynamic> tables) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('Meja Terisi Tanpa Order', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Meja berikut ditandai terisi (merah) tapi tidak memiliki orderan aktif:',
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: tables.length,
+                  itemBuilder: (context, index) {
+                    final table = tables[index];
+                    final tableNumber = table['table_number'] ?? 'N/A';
+                    final areaName = table['area']?['area_name'] ?? 'Unknown';
+                    final seats = table['seats'] ?? 0;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tableNumber,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(areaName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                Text('$seats kursi', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
         ],
       ),
     );

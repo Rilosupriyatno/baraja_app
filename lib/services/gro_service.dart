@@ -52,11 +52,34 @@ class GROService {
         queryParameters: queryParams,
       );
 
+      print("\n🔍 DEBUG RESERVATIONS LIST REQUEST:");
+      print("  URL: $baseUrl/api/gro/reservations");
+      print("  Params: $queryParams");
+      print("  Date requested: ${queryParams['date'] ?? 'TODAY/ALL'}");
+      print("  Status filter: ${queryParams['status'] ?? 'ALL'}");
+
       final response = await http.get(uri, headers: headers);
+
+      print("  Response Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         print("ini adalah response: $responseData");
+        
+        // Debug list items
+        if (responseData['data'] is List) {
+          final list = responseData['data'] as List;
+          print("  ✅ RESERVATIONS LIST DATA (Count: ${list.length}):");
+          for (var item in list) {
+            print("    - Item ID: ${item['id'] ?? item['_id']}");
+            print("      Type: ${item['type']}");
+            print("      Status: ${item['status']}");
+            print("      Date: ${item['reservation_date'] ?? item['createdAt']}");
+            print("      CheckIn: ${item['check_in_time']}");
+            print("      CheckOut: ${item['check_out_time']}");
+          }
+        }
+        
         return responseData;
       } else {
         throw Exception('Failed to load reservations: ${response.statusCode}');
@@ -611,7 +634,16 @@ class GROService {
       final headers = await _getHeaders();
 
       final queryParams = <String, String>{};
-      if (date != null) queryParams['date'] = date;
+      
+      // ✅ FIX: Ensure date is passed correctly
+      if (date != null && date.isNotEmpty) {
+        queryParams['date'] = date;
+      }
+
+      print("\n🔍 DEBUG DASHBOARD STATS REQUEST:");
+      print("  URL: $baseUrl/api/gro/dashboard-stats");
+      print("  Params: $queryParams");
+      print("  Date requested: ${queryParams['date'] ?? 'TODAY/ALL'}");
 
       final uri = Uri.parse('$baseUrl/api/gro/dashboard-stats').replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -619,8 +651,15 @@ class GROService {
 
       final response = await http.get(uri, headers: headers);
 
+      print("  Response Status: ${response.statusCode}");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        print("  ✅ DASHBOARD STATS DATA:");
+        print("    - All: ${responseData['data']['allReservations']}");
+        print("    - Pending: ${responseData['data']['pendingReservations']}");
+        print("    - Active: ${responseData['data']['activeReservations']}");
+        print("    - Completed: ${responseData['data']['completedReservations']}");
+        print("    - Cancelled: ${responseData['data']['cancelledReservations']}");
         return responseData;
       } else {
         throw Exception('Failed to load dashboard stats: ${response.statusCode}');

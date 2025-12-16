@@ -3,12 +3,12 @@ import 'package:intl/intl.dart';
 import '../services/gro_service.dart';
 import '../screens/gro_unified_order_detail_sheet.dart';
 
-class GroReservationManagementScreen extends StatefulWidget {
+class GroOrderManagementScreen extends StatefulWidget {
   final String? filter;
-  final String? initialDate;
+  final String? initialDate; // Formatted 'yyyy-MM-dd' from parent
   final Map<String, dynamic>? dashboardStats;
 
-  const GroReservationManagementScreen({
+  const GroOrderManagementScreen({
     super.key,
     this.filter,
     this.initialDate,
@@ -16,16 +16,64 @@ class GroReservationManagementScreen extends StatefulWidget {
   });
 
   @override
-  State<GroReservationManagementScreen> createState() =>
-      _GroReservationManagementScreenState();
+  State<GroOrderManagementScreen> createState() =>
+      _GroOrderManagementScreenState();
 }
 
-class _GroReservationManagementScreenState
-    extends State<GroReservationManagementScreen> {
+class _GroOrderManagementScreenState
+    extends State<GroOrderManagementScreen> {
   final GROService _groService = GROService();
   List<dynamic> _reservations = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  Map<String, int>? _localStats;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Use the date passed from Dashboard (Centralized Date)
+    _selectedDate = widget.initialDate != null && widget.initialDate!.isNotEmpty
+        ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
+        : DateTime.now();
+
+    _selectedFilter = widget.filter ?? 'all';
+
+    // Initialize local stats from passed dashboard stats if available
+    if (widget.dashboardStats != null) {
+      _localStats = {
+        'all': widget.dashboardStats!['allReservations'] ?? 0,
+        'pending': widget.dashboardStats!['pendingReservations'] ?? 0,
+        'ongoing': widget.dashboardStats!['activeReservations'] ?? 0,
+        'completed': widget.dashboardStats!['completedReservations'] ?? 0,
+        'cancelled': widget.dashboardStats!['cancelledReservations'] ?? 0,
+      };
+    }
+
+    _loadReservations();
+  }
+
+  @override
+  void didUpdateWidget(GroOrderManagementScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload if date changes from parent
+    if (widget.initialDate != oldWidget.initialDate) {
+      setState(() {
+         _selectedDate = widget.initialDate != null && widget.initialDate!.isNotEmpty
+            ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
+            : DateTime.now();
+      });
+      _loadReservations();
+    }
+    // Update dashboard stats if they change
+    if (widget.dashboardStats != oldWidget.dashboardStats) {
+       // We might want to re-initialize _localStats here, but 
+       // typically we prefer our locally calculated ones if we are already viewing the list.
+       // However, if the user changed the date, _loadReservations will run and re-calculate anyway.
+    }
+  }
+
 
   String __selectedFilter = 'all';
 
@@ -42,19 +90,6 @@ class _GroReservationManagementScreenState
   late DateTime _selectedDate;
   final TextEditingController _searchController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-
-    _selectedDate = widget.initialDate != null && widget.initialDate!.isNotEmpty
-        ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
-        : DateTime.now();
-
-    _selectedFilter = widget.filter ?? 'all';
-
-    _loadReservations();
-  }
-
   String? _mapFilterToApiStatus(String filter) {
     switch (filter) {
       case 'pending':
@@ -66,7 +101,7 @@ class _GroReservationManagementScreenState
       case 'cancelled':
         return 'cancelled';
       case 'all':
-        return null;
+        return null; // Special case: returns all statuses
       default:
         return null;
     }
@@ -84,7 +119,7 @@ class _GroReservationManagementScreenState
 
       final result = await _groService.getReservations(
         page: _currentPage,
-        limit: 20,
+        limit: 50, // Increase limit to try and get all items for accurate local counting
         status: apiStatus,
         search: _searchController.text.isNotEmpty
             ? _searchController.text
@@ -95,6 +130,7 @@ class _GroReservationManagementScreenState
       if (result['success']) {
         List<dynamic> reservations = List.from(result['data']);
 
+        // Client-side filtering for pending if needed
         if (_selectedFilter == 'pending') {
           reservations = reservations.where((item) {
             final type = item['type'] ?? 'reservation';
@@ -121,6 +157,12 @@ class _GroReservationManagementScreenState
           return DateTime.parse(bTime).compareTo(DateTime.parse(aTime));
         });
 
+        // ✅ NEW: Calculate local stats if we have all items (totalPages == 1) and filter is ALL
+        // This fixes the mismatch between server stats and actual list items
+        if (_selectedFilter == 'all' && result['pagination']['total_pages'] == 1) {
+           _calculateLocalStats(reservations);
+        }
+
         setState(() {
           _reservations = reservations;
           _totalPages = result['pagination']['total_pages'];
@@ -140,7 +182,49 @@ class _GroReservationManagementScreenState
     }
   }
 
+  void _calculateLocalStats(List<dynamic> allItems) {
+    int pending = 0;
+    int ongoing = 0;
+    int completed = 0;
+    int cancelled = 0;
+
+    for (var item in allItems) {
+       final status = _getDisplayStatus(item); // Uses frontend logic
+       switch (status) {
+         case 'Menunggu':
+           pending++;
+           break;
+         case 'Berlangsung':
+           ongoing++;
+           break;
+         case 'Selesai':
+           completed++;
+           break;
+         case 'Dibatalkan':
+           cancelled++;
+           break;
+       }
+    }
+
+    setState(() {
+      _localStats = {
+        'all': allItems.length,
+        'pending': pending,
+        'ongoing': ongoing,
+        'completed': completed,
+        'cancelled': cancelled,
+      };
+    });
+    
+    print("✅ LOCAL STATS UPDATED: $_localStats");
+  }
+
   int _getCountForFilter(String filter) {
+    // Prefer local stats if available (calculated from actual list)
+    if (_localStats != null) {
+       return _localStats![filter] ?? 0;
+    }
+
     if (widget.dashboardStats == null) return 0;
 
     switch (filter) {
@@ -408,42 +492,8 @@ class _GroReservationManagementScreenState
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Column(
         children: [
-          InkWell(
-            onTap: _selectDate,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    color: Color(0xFF2E8B57),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_drop_down,
-                    color: Colors.grey.shade600,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          // REMOVED DATE PICKER HERE (Centralized in Dashboard)
+          
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
@@ -479,34 +529,7 @@ class _GroReservationManagementScreenState
     );
   }
 
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 90)),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2E8B57),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-        _currentPage = 1;
-      });
-      _loadReservations();
-    }
-  }
+
 
   Widget _buildFilterSection() {
     return Container(

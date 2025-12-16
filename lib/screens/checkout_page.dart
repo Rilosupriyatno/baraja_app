@@ -12,6 +12,7 @@ import '../services/order_service.dart' as serviceorder;
 import '../services/table_service.dart';
 import '../services/tax_service.dart';
 import '../services/calculation_service.dart';
+import '../services/auth_service.dart';
 
 import '../utils/gro_mode_badge.dart';
 import '../widgets/checkout/cart_item_widget.dart';
@@ -74,7 +75,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // ✅ NEW: Manual DP and Tax toggle for GRO
   bool _enableManualDP = false;
   int? _manualDPAmount;
-  bool _enableTax = true; // Default ON
+  // bool _enableTax = true; // Tax will be always enabled for specific conditions
   final TextEditingController _manualDPController = TextEditingController();
 
   final TaxService _taxService = TaxService();
@@ -101,7 +102,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      
       cartProvider.addListener(_onCartChanged);
+
+      // 🔍 NEW: Get Outlet ID from logged in user (GRO) as fallback
+      String? userOutletId;
+      try {
+        final userOutlets = authService.getUserOutlets();
+        if (userOutlets.isNotEmpty) {
+          final firstOutlet = userOutlets.first;
+          print("🔍 CHECKOUT: Checking user outlet data: $firstOutlet");
+          
+          if (firstOutlet['outletId'] is Map && firstOutlet['outletId'].containsKey('_id')) {
+            userOutletId = firstOutlet['outletId']['_id']?.toString();
+            print("✅ CHECKOUT: Found outletId from user relation: $userOutletId");
+          } else if (firstOutlet.containsKey('_id')) {
+            userOutletId = firstOutlet['_id']?.toString();
+            print("✅ CHECKOUT: Found outletId from direct object: $userOutletId");
+          }
+        }
+      } catch (e) {
+        print("❌ CHECKOUT: Error getting user outlet: $e");
+      }
 
       if (_isReservationWithoutMenu(cartProvider)) {
         setState(() {
@@ -110,12 +133,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
 
       if (cartProvider.items.isNotEmpty) {
+        final firstItem = cartProvider.items.first;
+        print("🔍 DEBUG: First cart item:");
+        print("  - name: ${firstItem.name}");
+        print("  - outletId: ${firstItem.outletId}");
+        print("  - outletName: ${firstItem.outletName}");
+        
         setState(() {
-          outletId = cartProvider.items.first.outletId?.toString();
+          // ✅ FIX: Use item outletId if available, otherwise fallback to userOutletId
+          outletId = firstItem.outletId?.toString() ?? userOutletId;
         });
-        print("✅ OutletId set to: $outletId");
+        print("✅ OutletId set to: $outletId (User fallback: ${userOutletId != null})");
+        
+        if (outletId == null) {
+          print("⚠️ WARNING: Cart has items but outletId is null!");
+          print("⚠️ This will prevent tax calculation!");
+        }
       } else {
-        print("⚠️ Cart is empty, no outletId available");
+        // If cart is empty, use user outlet ID if available
+        if (userOutletId != null) {
+          setState(() {
+            outletId = userOutletId;
+          });
+          print("✅ Cart empty, using user OutletId: $outletId");
+        } else {
+          print("⚠️ Cart is empty and no user outletId available");
+        }
       }
 
       if (cartProvider.isReservation) {
@@ -136,9 +179,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (!mounted) return;
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     if (cartProvider.items.isNotEmpty) {
-      final newOutletId = cartProvider.items.first.outletId?.toString();
+      String? newOutletId = cartProvider.items.first.outletId?.toString();
+      
+      // ✅ Fallback to user outlet ID if cart item has no outlet ID
+      if (newOutletId == null) {
+         try {
+            final userOutlets = authService.getUserOutlets();
+            if (userOutlets.isNotEmpty) {
+              final firstOutlet = userOutlets.first;
+              if (firstOutlet['outletId'] is Map && firstOutlet['outletId'].containsKey('_id')) {
+                newOutletId = firstOutlet['outletId']['_id']?.toString();
+              } else if (firstOutlet.containsKey('_id')) {
+                newOutletId = firstOutlet['_id']?.toString();
+              }
+            }
+         } catch(e) {
+           print("Error getting fallback outlet in listener: $e");
+         }
+      }
+      
       if (newOutletId != outletId) {
         setState(() {
           outletId = newOutletId;
@@ -419,9 +481,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final int finalTotal = subtotal - discount;
         
         // ✅ NEW: Tax calculation with toggle support
-        final int taxAmount = _enableTax 
+        // Disable tax for reservation without menu (only reservation fee)
+        final bool isReservationOnly = _isReservationWithoutMenu(cartProvider);
+        final bool enableTax = !isReservationOnly; 
+        
+        final int taxAmount = enableTax 
             ? (_taxCalculation?.totalTaxAmount.round() ?? 0)
             : 0;
+        
         
         final int grandTotal = finalTotal + taxAmount;
         
@@ -438,12 +505,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
         print("  CartProvider.totalPrice: $subtotal");
         print("  Discount: $discount");
         print("  FinalTotal: $finalTotal");
-        print("  Tax Enabled: $_enableTax");
+        print("  Tax Enabled: $enableTax");
         print("  Tax: $taxAmount");
         print("  GrandTotal: $grandTotal");
         print("  Manual DP Enabled: $_enableManualDP");
         print("  Manual DP Amount: $_manualDPAmount");
-        print("  DownPayment: $downPaymentAmount\n");
+        print("  DownPayment: $downPaymentAmount");
+        print("  _taxCalculation: $_taxCalculation");
+        print("  _taxCalculation?.taxDetails: ${_taxCalculation?.taxDetails}");
+        print("  _taxCalculation?.totalTaxAmount: ${_taxCalculation?.totalTaxAmount}\n");
 
         // Debug print untuk memastikan perhitungan
         print("\n💰 CHECKOUT CALCULATION:");
@@ -846,7 +916,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           ],
 
                           // ✅ NEW: Tax Toggle for GRO (Reservation & Dine-In)
-                          if (widget.isGroMode) ...[
+                          // Removed Tax Toggle - Always show Tax Info if applied
+                          if (widget.isGroMode && _taxCalculation != null) ...[
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
@@ -871,28 +942,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                          if (_taxCalculation != null && _enableTax)
-                                            Text(
-                                              '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.orange.shade700,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                          Text(
+                                            '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.orange.shade700,
+                                              fontWeight: FontWeight.w500,
                                             ),
+                                          ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                  Switch(
-                                    value: _enableTax,
-                                    activeColor: Colors.orange.shade600,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _enableTax = value;
-                                      });
-                                    },
-                                  ),
+                                  // Switch removed
                                 ],
                               ),
                             ),
@@ -948,6 +1010,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   selectedPaymentType:
                       cartProvider.isReservation ? selectedPaymentType : null,
                   taxCalculation: _taxCalculation,
+                  manualDownPaymentAmount: _manualDPAmount, // ✅ Pass manual DP
                   onCheckoutPressed: () async {
                     print("➡️ Tombol checkout ditekan");
 
