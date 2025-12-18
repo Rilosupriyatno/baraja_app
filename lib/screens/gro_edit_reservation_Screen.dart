@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/gro_service.dart';
+import '../services/tax_service.dart';
+import '../services/product_service.dart';
 import '../models/cart_item.dart';
+import '../models/product.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/cart/cart_item_edit_dialog.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +25,7 @@ class GroEditReservationScreen extends StatefulWidget {
 
 class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
   final GROService _groService = GROService();
+  final TaxService _taxService = TaxService();
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
@@ -33,10 +37,16 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
   late List<CartItem> _menuItems;
   late List<Map<String, dynamic>> _customAmountItems;
 
+  // Tax calculation
+  String? _outletId;
+  TaxCalculationResult? _taxCalculation;
+  bool _taxesLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _initializeData();
+    _initializeTaxData();
   }
 
   void _initializeData() {
@@ -103,16 +113,22 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
           }
         }
 
+        // ✅ FIX: totalprice harus harga per item (base + addon + topping)
+        // subtotal dari API sudah termasuk quantity, jadi perlu dibagi
+        final int subtotal = item['subtotal'] ?? 0;
+        final int qty = item['quantity'] ?? 1;
+        final int pricePerItem = qty > 0 ? (subtotal / qty).round() : subtotal;
+
         _menuItems.add(CartItem(
           id: menuItem is Map ? (menuItem['_id'] ?? '') : menuItem ?? '',
           name: menuItem is Map ? (menuItem['name'] ?? 'Unknown Item') : 'Unknown Item',
           imageUrl: menuItem is Map ? (menuItem['imageURL'] ?? '') : '',
           price: menuItem is Map ? (menuItem['price'] ?? 0) : 0,
-          quantity: item['quantity'] ?? 1,
+          quantity: qty,
           addons: addonsList,
           toppings: toppingsList,
           notes: item['notes'] ?? '',
-          totalprice: item['subtotal'] ?? 0,
+          totalprice: pricePerItem, // harga per item, bukan subtotal
         ));
       }
 
@@ -124,23 +140,95 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
         'description': item['description'] ?? '',
         'dineType': item['dineType'] ?? 'Dine-In',
       }).toList();
+
+      // ✅ Extract outlet ID from order for tax calculation
+      if (order['outletId'] != null) {
+        if (order['outletId'] is Map) {
+          _outletId = order['outletId']['_id']?.toString();
+        } else {
+          _outletId = order['outletId']?.toString();
+        }
+      }
     } else {
       _customAmountItems = [];
     }
+
+    // Try to get outlet from tables if not found in order
+    if (_outletId == null && reservation['tables'] != null) {
+      final tables = reservation['tables'] as List?;
+      if (tables != null && tables.isNotEmpty) {
+        final firstTable = tables.first;
+        if (firstTable is Map && firstTable['outletId'] != null) {
+          if (firstTable['outletId'] is Map) {
+            _outletId = firstTable['outletId']['_id']?.toString();
+          } else {
+            _outletId = firstTable['outletId']?.toString();
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _initializeTaxData() async {
+    try {
+      await _taxService.getTaxesAndServices();
+      setState(() {
+        _taxesLoaded = true;
+      });
+      _calculateTaxes();
+    } catch (e) {
+      debugPrint('Error loading tax data: $e');
+      setState(() {
+        _taxesLoaded = true; // Still mark as loaded to avoid blocking
+      });
+    }
+  }
+
+  void _calculateTaxes() {
+    if (!_taxesLoaded || _outletId == null) return;
+
+    final subtotal = _calculateTotal();
+
+    final taxCalculation = _taxService.calculateTaxes(
+      subtotal: subtotal.toDouble(),
+      outletId: _outletId!,
+      isReservation: true,
+      isOpenBill: false,
+    );
+
+    setState(() {
+      _taxCalculation = taxCalculation;
+    });
+  }
+
+  int _getGrandTotal() {
+    final subtotal = _calculateTotal();
+    final taxAmount = _taxCalculation?.totalTaxAmount.round() ?? 0;
+    return subtotal + taxAmount;
   }
 
   Future<void> _addMenuItem() async {
-    // Navigate ke menu screen untuk tambah item
-    final result = await context.push('/menu', extra: {
-      'isGroMode': true,
-      'isEditMode': true,
-    });
+    // Tampilkan dialog pemilihan produk
+    showDialog(
+      context: context,
+      builder: (context) => _ProductSelectionDialog(
+        outletId: _outletId,
+        onProductSelected: (CartItem item) {
+          setState(() {
+            _menuItems.add(item);
+          });
+          _calculateTaxes();
 
-    if (result != null && result is CartItem) {
-      setState(() {
-        _menuItems.add(result);
-      });
-    }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${item.name} ditambahkan'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   // ✅ EDIT MENU ITEM - Sama seperti CartItemEditDialog
@@ -155,6 +243,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
           setState(() {
             _menuItems[index] = updatedItem;
           });
+          _calculateTaxes(); // Recalculate taxes
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -185,6 +274,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
                 _menuItems.removeAt(index);
               });
               Navigator.pop(context);
+              _calculateTaxes(); // Recalculate taxes
 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -212,6 +302,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
           setState(() {
             _customAmountItems.add(customAmount);
           });
+          _calculateTaxes(); // Recalculate taxes
         },
       ),
     );
@@ -246,6 +337,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
   }
 
   int _calculateTotal() {
+    // totalprice = harga per item (base + addon + topping), dikali quantity
     int menuTotal = _menuItems.fold(0, (sum, item) => sum + (item.totalprice * item.quantity));
     int customTotal = _customAmountItems.fold(0, (sum, item) => sum + (item['amount'] as int));
     return menuTotal + customTotal;
@@ -265,7 +357,10 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
           children: [
             const Text('Apakah Anda yakin ingin menyimpan perubahan?'),
             const SizedBox(height: 16),
-            Text('Total Pesanan: ${formatCurrency(_calculateTotal())}'),
+            Text('Subtotal: ${formatCurrency(_calculateTotal())}'),
+            if (_taxCalculation != null && _taxCalculation!.taxDetails.isNotEmpty)
+              Text('Pajak: ${formatCurrency(_taxCalculation!.totalTaxAmount.round())}'),
+            Text('Total Estimasi: ${formatCurrency(_getGrandTotal())}'),
             Text('Jumlah Menu: ${_menuItems.length} item'),
             Text('Penyesuaian Biaya: ${_customAmountItems.length} item'),
           ],
@@ -726,7 +821,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
 
             const SizedBox(height: 32),
 
-            // Total Summary
+            // Total Summary with Tax Breakdown
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -734,37 +829,100 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFF2E8B57)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  const Text(
-                    'Total Estimasi:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  // Subtotal
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Subtotal:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(_calculateTotal()),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    formatCurrency(_calculateTotal()),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E8B57),
+                  
+                  // Tax items
+                  if (_taxCalculation != null && _taxCalculation!.taxDetails.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ..._taxCalculation!.taxDetails.map((tax) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${tax['name']} (${(tax['percentage'] as num).toStringAsFixed(0)}%):',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            '+${formatCurrency((tax['amount'] as num).round())}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ] else if (!_taxesLoaded) ...[
+                    const SizedBox(height: 8),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Menghitung pajak...',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
                     ),
+                  ],
+                  
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  
+                  // Grand Total
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Estimasi:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(_getGrandTotal()),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E8B57),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 8),
-            const Text(
-              'Note: Total belum termasuk pajak dan service charge',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-              textAlign: TextAlign.center,
             ),
 
             const SizedBox(height: 32),
@@ -918,6 +1076,446 @@ class _CustomAmountDialogState extends State<_CustomAmountDialog> {
           child: const Text('Tambah', style: TextStyle(color: Colors.white)),
         ),
       ],
+    );
+  }
+}
+
+// Product Selection Dialog untuk menambah menu langsung
+class _ProductSelectionDialog extends StatefulWidget {
+  final String? outletId;
+  final Function(CartItem) onProductSelected;
+
+  const _ProductSelectionDialog({
+    required this.outletId,
+    required this.onProductSelected,
+  });
+
+  @override
+  State<_ProductSelectionDialog> createState() => _ProductSelectionDialogState();
+}
+
+class _ProductSelectionDialogState extends State<_ProductSelectionDialog> {
+  final ProductService _productService = ProductService();
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  
+  List<Product> _allProducts = [];
+  List<Product> _filteredProducts = [];
+  Product? _selectedProduct;
+  int _quantity = 1;
+  bool _isLoading = true;
+  
+  // Addon & Topping states
+  Map<String, AddonOption?> _selectedAddonOptions = {};
+  List<Topping> _selectedToppings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await _productService.getProducts();
+      setState(() {
+        _allProducts = products;
+        _filteredProducts = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      debugPrint('Error loading products: $e');
+    }
+  }
+
+  void _filterProducts(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _filteredProducts = _allProducts;
+      });
+    } else {
+      setState(() {
+        _filteredProducts = _allProducts.where((product) {
+          final name = product.name.toLowerCase();
+          final category = product.category?.toLowerCase() ?? '';
+          final searchQuery = query.toLowerCase();
+          return name.contains(searchQuery) || category.contains(searchQuery);
+        }).toList();
+      });
+    }
+  }
+
+  void _selectProduct(Product product) {
+    setState(() {
+      _selectedProduct = product;
+      _quantity = 1;
+      _selectedAddonOptions.clear();
+      _selectedToppings.clear();
+      _notesController.clear();
+      
+      // Init default addons
+      if (product.addons != null) {
+        for (var addon in product.addons!) {
+          if (addon.options.isNotEmpty) {
+            var defaultOption = addon.options.where((o) => o.isDefault).firstOrNull;
+            defaultOption ??= addon.options.first;
+            _selectedAddonOptions[addon.id] = defaultOption;
+          }
+        }
+      }
+    });
+  }
+
+  int _calculateItemPrice() {
+    if (_selectedProduct == null) return 0;
+    
+    int basePrice = (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0).toInt();
+    int toppingsTotal = _selectedToppings.fold(0, (sum, topping) => sum + topping.price.toInt());
+    
+    int addonOptionsTotal = 0;
+    _selectedAddonOptions.forEach((addonId, option) {
+      if (option != null) {
+        addonOptionsTotal += option.price.toInt();
+      }
+    });
+
+    return basePrice + toppingsTotal + addonOptionsTotal;
+  }
+
+  void _addToMenu() {
+    if (_selectedProduct == null) return;
+
+    // Prepare toppings list
+    List<Map<String, dynamic>> toppingsList = _selectedToppings
+        .map((topping) => {
+              'name': topping.name,
+              'price': topping.price.toInt(),
+            })
+        .toList();
+
+    // Prepare addons list
+    List<Map<String, dynamic>> addonList = [];
+    _selectedAddonOptions.forEach((addonId, option) {
+      if (option != null && _selectedProduct!.addons != null) {
+        final addon = _selectedProduct!.addons!.firstWhere((a) => a.id == addonId);
+        addonList.add({
+          'name': addon.name,
+          'label': option.label,
+          'price': option.price.toInt(),
+        });
+      }
+    });
+
+    final cartItem = CartItem(
+      id: _selectedProduct!.id,
+      name: _selectedProduct!.name,
+      imageUrl: _selectedProduct!.imageUrl,
+      price: (_selectedProduct!.originalPrice ?? _selectedProduct!.discountPrice ?? 0).toInt(),
+      totalprice: _calculateItemPrice(),
+      addons: addonList,
+      toppings: toppingsList,
+      quantity: _quantity,
+      notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+    );
+
+    widget.onProductSelected(cartItem);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 500),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E8B57),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.add_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Tambah Menu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            if (_isLoading)
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_selectedProduct == null)
+              // Product list
+              Expanded(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Cari menu...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onChanged: _filterProducts,
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _filteredProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = _filteredProducts[index];
+                          final price = product.discountPrice ?? product.originalPrice ?? 0;
+                          return ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                product.imageUrl,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.fastfood),
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              product.name,
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            subtitle: Text(
+                              product.category ?? '',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                            trailing: Text(
+                              formatCurrency(price.toInt()),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2E8B57),
+                              ),
+                            ),
+                            onTap: () => _selectProduct(product),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              // Product detail form
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Back button and product name
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => setState(() => _selectedProduct = null),
+                          ),
+                          Expanded(
+                            child: Text(
+                              _selectedProduct!.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 16),
+
+                      // Quantity
+                      const Text('Jumlah', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                            icon: Icon(
+                              Icons.remove_circle,
+                              color: _quantity > 1 ? Colors.red : Colors.grey,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$_quantity',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _quantity++),
+                            icon: const Icon(Icons.add_circle, color: Colors.green),
+                          ),
+                        ],
+                      ),
+
+                      // Toppings
+                      if (_selectedProduct!.toppings != null && _selectedProduct!.toppings!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text('Topping', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ..._selectedProduct!.toppings!.map((topping) => CheckboxListTile(
+                              title: Text(topping.name),
+                              subtitle: Text(formatCurrency(topping.price.toInt())),
+                              value: _selectedToppings.contains(topping),
+                              onChanged: (_) {
+                                setState(() {
+                                  if (_selectedToppings.contains(topping)) {
+                                    _selectedToppings.remove(topping);
+                                  } else {
+                                    _selectedToppings.add(topping);
+                                  }
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            )),
+                      ],
+
+                      // Addons
+                      if (_selectedProduct!.addons != null && _selectedProduct!.addons!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text('Tambahan', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ..._selectedProduct!.addons!.map((addon) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(addon.name, style: const TextStyle(fontSize: 14)),
+                                ),
+                                ...addon.options.map((option) => RadioListTile<AddonOption>(
+                                      title: Text(option.label),
+                                      subtitle: Text(formatCurrency(option.price.toInt())),
+                                      value: option,
+                                      groupValue: _selectedAddonOptions[addon.id],
+                                      onChanged: (value) {
+                                        setState(() => _selectedAddonOptions[addon.id] = value);
+                                      },
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    )),
+                              ],
+                            )),
+                      ],
+
+                      // Notes
+                      const SizedBox(height: 16),
+                      const Text('Catatan', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _notesController,
+                        decoration: InputDecoration(
+                          hintText: 'Tambahkan catatan...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      // Total
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E8B57).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text(
+                              formatCurrency(_calculateItemPrice() * _quantity),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2E8B57),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Footer (only show when product selected)
+            if (_selectedProduct != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _addToMenu,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E8B57),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text(
+                      'Tambahkan ke Pesanan',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

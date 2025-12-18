@@ -1259,12 +1259,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         'isGroMode': widget.isGroMode,
                       };
 
-                      if (widget.isGroMode) {
-                        context.push('/paymentConfirmation', extra: extraData);
-                        cartProvider.clearCart();
-                        return;
-                      }
-
+                      // ✅ FIX: Process open bill data for both GRO and customer flows
                       if (cartProvider.isOpenBill &&
                           cartProvider.openBillData != null) {
                         extraData['isOpenBill'] = true;
@@ -1273,6 +1268,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             orderResult['existingReservation'];
                       }
 
+                      // ✅ FIX: Process reservation/down payment data for BOTH GRO and customer flows
+                      // Previously GRO mode returned early and skipped this logic
                       if (cartProvider.isReservation &&
                           cartProvider.reservationData != null) {
                         extraData['reservationData'] =

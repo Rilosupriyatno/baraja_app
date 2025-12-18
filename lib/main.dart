@@ -39,9 +39,13 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
 
-  // Get FCM token
-  final fcmToken = await notificationService.getToken();
-  print('FCM Token: $fcmToken');
+  // Get FCM token (with error handling for devices without Google Play Services)
+  try {
+    final fcmToken = await notificationService.getToken();
+    print('FCM Token: $fcmToken');
+  } catch (e) {
+    print('Warning: Failed to get FCM token (push notifications may not work): $e');
+  }
 
   await initializeDateFormatting('id_ID', null);
   Intl.defaultLocale = 'id_ID';

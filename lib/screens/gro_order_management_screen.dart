@@ -25,6 +25,8 @@ class _GroOrderManagementScreenState
   final GROService _groService = GROService();
   List<dynamic> _reservations = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
   String? _errorMessage;
 
   Map<String, int>? _localStats;
@@ -87,6 +89,7 @@ class _GroOrderManagementScreenState
 
   int _currentPage = 1;
   int _totalPages = 1;
+  int _totalRecords = 0;
   late DateTime _selectedDate;
   final TextEditingController _searchController = TextEditingController();
 
@@ -107,10 +110,13 @@ class _GroOrderManagementScreenState
     }
   }
 
+  // ✅ Initial load - resets page to 1 and clears existing data
   Future<void> _loadReservations() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _currentPage = 1;
+      _hasMoreData = true;
     });
 
     try {
@@ -118,8 +124,8 @@ class _GroOrderManagementScreenState
       final apiStatus = _mapFilterToApiStatus(_selectedFilter);
 
       final result = await _groService.getReservations(
-        page: _currentPage,
-        limit: 50, // Increase limit to try and get all items for accurate local counting
+        page: 1,
+        limit: 30, // Reduced limit for faster initial load
         status: apiStatus,
         search: _searchController.text.isNotEmpty
             ? _searchController.text
@@ -157,15 +163,20 @@ class _GroOrderManagementScreenState
           return DateTime.parse(bTime).compareTo(DateTime.parse(aTime));
         });
 
-        // ✅ NEW: Calculate local stats if we have all items (totalPages == 1) and filter is ALL
-        // This fixes the mismatch between server stats and actual list items
+        // Calculate local stats if we have all items
         if (_selectedFilter == 'all' && result['pagination']['total_pages'] == 1) {
            _calculateLocalStats(reservations);
         }
 
+        final totalPages = result['pagination']['total_pages'] ?? 1;
+        final totalRecords = result['pagination']['total_records'] ?? reservations.length;
+
         setState(() {
           _reservations = reservations;
-          _totalPages = result['pagination']['total_pages'];
+          _totalPages = totalPages;
+          _totalRecords = totalRecords;
+          _currentPage = 1;
+          _hasMoreData = _currentPage < totalPages;
           _isLoading = false;
         });
       } else {
@@ -178,6 +189,84 @@ class _GroOrderManagementScreenState
       setState(() {
         _errorMessage = 'Error loading reservations: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  // ✅ Load more - appends data to existing list
+  Future<void> _loadMoreReservations() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final apiStatus = _mapFilterToApiStatus(_selectedFilter);
+      final nextPage = _currentPage + 1;
+
+      final result = await _groService.getReservations(
+        page: nextPage,
+        limit: 30,
+        status: apiStatus,
+        search: _searchController.text.isNotEmpty
+            ? _searchController.text
+            : null,
+        date: dateStr,
+      );
+
+      if (result['success']) {
+        List<dynamic> newReservations = List.from(result['data']);
+
+        // Client-side filtering for pending if needed
+        if (_selectedFilter == 'pending') {
+          newReservations = newReservations.where((item) {
+            final type = item['type'] ?? 'reservation';
+            final status = item['status'] ?? '';
+            if (type == 'dine-in-order') {
+              return status == 'Pending' ||
+                  status == 'Waiting' ||
+                  status == 'Reserved';
+            } else {
+              return status == 'pending' ||
+                  (status == 'confirmed' && item['check_in_time'] == null);
+            }
+          }).toList();
+        }
+
+        newReservations.sort((a, b) {
+          String? aTime = a['updatedAt'] ?? a['createdAt'];
+          String? bTime = b['updatedAt'] ?? b['createdAt'];
+
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+
+          return DateTime.parse(bTime).compareTo(DateTime.parse(aTime));
+        });
+
+        final totalPages = result['pagination']['total_pages'] ?? 1;
+
+        setState(() {
+          // Append new data to existing list
+          _reservations.addAll(newReservations);
+          _currentPage = nextPage;
+          _totalPages = totalPages;
+          _hasMoreData = nextPage < totalPages;
+          _isLoadingMore = false;
+        });
+
+        print('✅ Loaded page $nextPage, total items: ${_reservations.length}');
+      } else {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading more reservations: $e');
+      setState(() {
+        _isLoadingMore = false;
       });
     }
   }
@@ -718,46 +807,144 @@ class _GroOrderManagementScreenState
       color: const Color(0xFF2E8B57),
       child: Column(
         children: [
+          // ✅ Info jumlah orders yang ditampilkan vs total
+          if (_totalRecords > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey.shade100,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Menampilkan ${_reservations.length} dari $_totalRecords order',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  if (_hasMoreData)
+                    Text(
+                      'Swipe ke bawah untuk load lebih banyak',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Expanded(
             child: isTablet
                 ? _buildTabletGridView()
                 : _buildMobileListView(),
           ),
-          if (_totalPages > 1) _buildPagination(),
         ],
       ),
     );
   }
 
-  Widget _buildTabletGridView() {
-    // Deteksi ukuran layar untuk menentukan jumlah kolom
-    final size = MediaQuery.of(context).size;
-    final crossAxisCount = size.width >= 1200 ? 4 : 3; // 4 kolom untuk layar besar, 3 untuk layar sedang
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.70, // Lebih tinggi untuk menampung konten
-      ),
-      itemCount: _reservations.length,
-      itemBuilder: (context, index) {
-        final reservation = _reservations[index];
-        return _buildCompactReservationCard(reservation);
-      },
-    );
-  }
   // ✅ MOBILE: List View (tetap pakai layout lama)
   Widget _buildMobileListView() {
+    // +1 untuk Load More button jika masih ada data
+    final itemCount = _reservations.length + (_hasMoreData ? 1 : 0);
+    
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: _reservations.length,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
+        // Jika index terakhir dan masih ada data, tampilkan Load More button
+        if (index == _reservations.length && _hasMoreData) {
+          return _buildLoadMoreButton();
+        }
+        
         final reservation = _reservations[index];
         return _buildReservationCard(reservation);
       },
+    );
+  }
+
+  // ✅ TABLET: Grid View dengan Load More
+  Widget _buildTabletGridView() {
+    // Deteksi ukuran layar untuk menentukan jumlah kolom
+    final size = MediaQuery.of(context).size;
+    final crossAxisCount = size.width >= 1200 ? 4 : 3;
+
+    return Column(
+      children: [
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.70,
+            ),
+            itemCount: _reservations.length,
+            itemBuilder: (context, index) {
+              final reservation = _reservations[index];
+              return _buildCompactReservationCard(reservation);
+            },
+          ),
+        ),
+        // Load More button untuk tablet
+        if (_hasMoreData)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildLoadMoreButton(),
+          ),
+      ],
+    );
+  }
+
+  // ✅ Widget Load More Button
+  Widget _buildLoadMoreButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      child: _isLoadingMore
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                  color: Color(0xFF2E8B57),
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          : InkWell(
+              onTap: _loadMoreReservations,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E8B57).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF2E8B57).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.expand_more,
+                      color: Color(0xFF2E8B57),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Muat Lebih Banyak (${_reservations.length}/$_totalRecords)',
+                      style: const TextStyle(
+                        color: Color(0xFF2E8B57),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
