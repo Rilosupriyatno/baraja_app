@@ -9,6 +9,62 @@ class GROService {
   
   // ✅ CACHING: Cache token in memory to avoid repeated disk reads
   static String? _cachedToken;
+  
+  // ✅ PERFORMANCE: Data caching with expiration
+  static Map<String, dynamic>? _reservationsCache;
+  static DateTime? _reservationsCacheTime;
+  static const _reservationsCacheDuration = Duration(seconds: 30);
+  static String? _lastReservationsKey;
+  
+  static Map<String, dynamic>? _tableAvailabilityCache;
+  static DateTime? _tableAvailabilityCacheTime;
+  static const _tableAvailabilityCacheDuration = Duration(seconds: 20);
+  static String? _lastTableAvailabilityKey;
+  
+  static Map<String, dynamic>? _dashboardCache;
+  static DateTime? _dashboardCacheTime;
+  static const _dashboardCacheDuration = Duration(seconds: 60);
+  static String? _lastDashboardKey;
+
+  /// Check if cache is valid
+  bool _isCacheValid(DateTime? cacheTime, Duration cacheDuration) {
+    if (cacheTime == null) return false;
+    return DateTime.now().difference(cacheTime) < cacheDuration;
+  }
+  
+  /// Clear all caches (call on logout or data mutation)
+  static void clearAllCache() {
+    _cachedToken = null;
+    _reservationsCache = null;
+    _reservationsCacheTime = null;
+    _lastReservationsKey = null;
+    _tableAvailabilityCache = null;
+    _tableAvailabilityCacheTime = null;
+    _lastTableAvailabilityKey = null;
+    _dashboardCache = null;
+    _dashboardCacheTime = null;
+    _lastDashboardKey = null;
+    print('🗑️ GROService: All caches cleared');
+  }
+  
+  /// Invalidate specific cache type
+  static void invalidateCache({bool reservations = false, bool tables = false, bool dashboard = false}) {
+    if (reservations) {
+      _reservationsCache = null;
+      _reservationsCacheTime = null;
+      _lastReservationsKey = null;
+    }
+    if (tables) {
+      _tableAvailabilityCache = null;
+      _tableAvailabilityCacheTime = null;
+      _lastTableAvailabilityKey = null;
+    }
+    if (dashboard) {
+      _dashboardCache = null;
+      _dashboardCacheTime = null;
+      _lastDashboardKey = null;
+    }
+  }
 
   // Get auth token from SharedPreferences (with caching)
   Future<String?> _getToken() async {
@@ -32,7 +88,7 @@ class GROService {
     };
   }
 
-  // Get all reservations with filters
+  // ✅ OPTIMIZED: Get all reservations with caching
   Future<Map<String, dynamic>> getReservations({
     int page = 1,
     int limit = 20,
@@ -40,8 +96,20 @@ class GROService {
     String? date,
     String? areaId,
     String? search,
+    bool forceRefresh = false,
   }) async {
     try {
+      final cacheKey = '$date:$status:$areaId:$search:$page:$limit';
+      
+      // Return cached data if valid and not force refresh
+      if (!forceRefresh && 
+          _lastReservationsKey == cacheKey &&
+          _reservationsCache != null &&
+          _isCacheValid(_reservationsCacheTime, _reservationsCacheDuration)) {
+        print('📦 GRO: Using cached reservations data');
+        return _reservationsCache!;
+      }
+
       final headers = await _getHeaders();
 
       final queryParams = <String, String>{
@@ -62,15 +130,27 @@ class GROService {
         queryParameters: queryParams,
       );
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        
+        // Cache the result
+        _reservationsCache = responseData;
+        _reservationsCacheTime = DateTime.now();
+        _lastReservationsKey = cacheKey;
+        
         return responseData;
       } else {
         throw Exception('Failed to load reservations: ${response.statusCode}');
       }
     } catch (e) {
+      // Return stale cache if available on error
+      if (_reservationsCache != null) {
+        print('⚠️ GRO: Error fetching reservations, returning stale cache: $e');
+        return _reservationsCache!;
+      }
       throw Exception('Error fetching reservations: $e');
     }
   }
@@ -274,6 +354,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Reservasi berhasil dikonfirmasi',
@@ -307,6 +388,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Check-in berhasil',
@@ -342,6 +424,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Customer berhasil check-in',
@@ -379,6 +462,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Order berhasil dibatalkan',
@@ -552,6 +636,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Reservasi dibatalkan',
@@ -593,6 +678,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after table transfer
         return {
           'success': true,
           'message': responseData['message'] ?? 'Meja berhasil dipindahkan',
@@ -614,8 +700,23 @@ class GROService {
     }
   }
 
-  Future<Map<String, dynamic>> getDashboardStats({String? date}) async {
+  // ✅ OPTIMIZED: getDashboardStats with caching
+  Future<Map<String, dynamic>> getDashboardStats({
+    String? date,
+    bool forceRefresh = false,
+  }) async {
     try {
+      final cacheKey = 'dashboard:${date ?? 'today'}';
+      
+      // Return cached data if valid and not force refresh
+      if (!forceRefresh &&
+          _lastDashboardKey == cacheKey &&
+          _dashboardCache != null &&
+          _isCacheValid(_dashboardCacheTime, _dashboardCacheDuration)) {
+        print('📦 GRO: Using cached dashboard stats');
+        return _dashboardCache!;
+      }
+
       final headers = await _getHeaders();
 
       final queryParams = <String, String>{};
@@ -628,34 +729,55 @@ class GROService {
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        
+        // Cache the result
+        _dashboardCache = responseData;
+        _dashboardCacheTime = DateTime.now();
+        _lastDashboardKey = cacheKey;
+        
         return responseData;
       } else {
         throw Exception('Failed to load dashboard stats: ${response.statusCode}');
       }
     } catch (e) {
+      // Return stale cache if available on error
+      if (_dashboardCache != null) {
+        print('⚠️ GRO: Error fetching dashboard, returning stale cache: $e');
+        return _dashboardCache!;
+      }
       throw Exception('Error fetching dashboard stats: $e');
     }
   }
 
-  // Get table availability
-// services/gro_service.dart - Updated
-
-// Get table availability - TAMBAHKAN outletId
+  // ✅ OPTIMIZED: Get table availability with caching
   Future<Map<String, dynamic>> getTableAvailability({
     String? date,
     String? time,
     String? areaId,
-    required String outletId, // ✅ WAJIB DITAMBAHKAN
+    required String outletId,
+    bool forceRefresh = false,
   }) async {
     try {
+      final cacheKey = '$outletId:$date:$time:$areaId';
+      
+      // Return cached data if valid and not force refresh
+      if (!forceRefresh &&
+          _lastTableAvailabilityKey == cacheKey &&
+          _tableAvailabilityCache != null &&
+          _isCacheValid(_tableAvailabilityCacheTime, _tableAvailabilityCacheDuration)) {
+        print('📦 GRO: Using cached table availability data');
+        return _tableAvailabilityCache!;
+      }
+
       final headers = await _getHeaders();
 
       final queryParams = <String, String>{
-        'outletId': outletId, // ✅ KIRIM outletId
+        'outletId': outletId,
       };
 
       if (date != null) queryParams['date'] = date;
@@ -666,17 +788,106 @@ class GROService {
         queryParameters: queryParams,
       );
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http.get(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        
+        // Cache the result
+        _tableAvailabilityCache = responseData;
+        _tableAvailabilityCacheTime = DateTime.now();
+        _lastTableAvailabilityKey = cacheKey;
+        
         return responseData;
       } else {
         throw Exception('Failed to load table availability: ${response.statusCode}');
       }
     } catch (e) {
+      // Return stale cache if available on error
+      if (_tableAvailabilityCache != null) {
+        print('⚠️ GRO: Error fetching table availability, returning stale cache: $e');
+        return _tableAvailabilityCache!;
+      }
       print('Error fetching table availability: $e');
       throw Exception('Error fetching table availability: $e');
+    }
+  }
+
+  // ✅ CREATE FINAL PAYMENT (Cash Only) - Matches Customer's ConfirmService
+  Future<Map<String, dynamic>> createFinalPayment({
+    required String orderId,
+    required String paymentMethod,
+  }) async {
+    try {
+      // Match customer implementation - no auth header
+      final headers = {'Content-Type': 'application/json'};
+
+      final body = {
+        'payment_type': paymentMethod, // 'cash'
+        'order_id': orderId,
+        'gross_amount': 0, // Backend will use remaining amount
+      };
+
+      print('📤 Making Final Payment:');
+      print('URL: $baseUrl/api/final-payment');
+      print('Body: $body');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/final-payment'),
+        headers: headers,
+        body: json.encode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic>? responseData;
+        if (response.body.isNotEmpty) {
+          try {
+            responseData = json.decode(response.body);
+          } catch (e) {
+            print('Warning: Failed to parse response body: $e');
+          }
+        }
+        onDataMutation(); // Invalidate cache
+        // ✅ FIX: Spread semua data dari backend langsung
+        // Ini membuat 'actions' (QR code) bisa diakses langsung dari result['actions']
+        return {
+          'success': true,
+          'message': 'Pembayaran tunai pelunasan berhasil diproses',
+          ...?responseData,  // Spread all backend data including 'actions'
+        };
+      } else {
+        String errorMessage = 'Gagal memproses pembayaran tunai pelunasan';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = json.decode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          } catch (e) {
+            errorMessage = 'Error ${response.statusCode}: ${response.body}';
+          }
+        } else {
+          errorMessage = 'Error ${response.statusCode}: ${response.reasonPhrase}';
+        }
+        return {
+          'success': false,
+          'error': errorMessage,
+        };
+      }
+    } catch (e) {
+      print('❌ Error createFinalPayment: $e');
+      String errorMessage = 'Terjadi kesalahan saat membuat final payment';
+      if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi.';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'Tidak dapat terhubung ke server.';
+      }
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
     }
   }
 
@@ -1010,6 +1221,7 @@ class GROService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        onDataMutation(); // Invalidate cache after mutation
         return {
           'success': true,
           'message': responseData['message'] ?? 'Open bill berhasil ditutup',
@@ -1029,5 +1241,39 @@ class GROService {
         'error': 'Terjadi kesalahan: $e',
       };
     }
+  }
+
+  // ============================================
+  // ✅ PERFORMANCE: PREFETCH & CACHE UTILITIES
+  // ============================================
+
+  /// Prefetch sidebar data in background for faster navigation
+  /// Call this when entering GRO dashboard or on app resume
+  Future<void> prefetchSidebarData({
+    required String outletId,
+    String? date,
+  }) async {
+    print('🔄 GRO: Prefetching sidebar data...');
+    try {
+      // Run both in parallel for faster loading
+      await Future.wait([
+        getReservations(date: date, forceRefresh: true)
+            .catchError((_) => <String, dynamic>{}),
+        getTableAvailability(outletId: outletId, date: date, forceRefresh: true)
+            .catchError((_) => <String, dynamic>{}),
+        getDashboardStats(date: date, forceRefresh: true)
+            .catchError((_) => <String, dynamic>{}),
+      ]);
+      print('✅ GRO: Prefetched sidebar data successfully');
+    } catch (e) {
+      print('⚠️ GRO: Prefetch failed (non-blocking): $e');
+    }
+  }
+
+  /// Call this after any data mutation (confirm, cancel, check-in, etc.)
+  /// to ensure fresh data on next fetch
+  static void onDataMutation() {
+    invalidateCache(reservations: true, tables: true, dashboard: true);
+    print('🔄 GRO: Cache invalidated after data mutation');
   }
 }

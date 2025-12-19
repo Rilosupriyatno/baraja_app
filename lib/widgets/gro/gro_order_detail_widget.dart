@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../utils/currency_formatter.dart';
 import '../tracking_detail/payment_row_widget.dart';
@@ -6,12 +7,14 @@ class GroOrderDetailWidget extends StatelessWidget {
   final Map<String, dynamic> orderData;
   final bool showAddOrderButton;
   final VoidCallback? onAddOrder;
+  final VoidCallback? onFinalPayment; // Callback for final payment
 
   const GroOrderDetailWidget({
     super.key,
     required this.orderData,
     this.showAddOrderButton = false,
     this.onAddOrder,
+    this.onFinalPayment,
   });
 
   // Method untuk mendapatkan status pembayaran dengan dukungan down payment
@@ -20,8 +23,33 @@ class GroOrderDetailWidget extends StatelessWidget {
     if (paymentDetails != null && paymentDetails['isDownPayment'] == true) {
       final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
       final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
+      
+      // Check if there's a pending Final Payment
+      final hasPendingFinalPayment = paymentDetails['hasPendingFinalPayment'] == true;
+      
+      // ✅ FIX: Check if Final Payment has been settled
+      final pendingDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
+      final finalPaymentStatus = pendingDetails?['status']?.toString().toLowerCase();
+      final isFinalPaymentSettled = finalPaymentStatus == 'settlement' || finalPaymentStatus == 'capture';
+
+      // ✅ If Final Payment is settled, show LUNAS regardless of remainingAmount
+      if (isFinalPaymentSettled) {
+        return {
+          'label': 'Lunas',
+          'icon': Icons.check_circle,
+          'color': Colors.green,
+        };
+      }
 
       if (isDownPaymentPaid && remainingAmount > 0) {
+        // If there's a pending Final Payment, show different status
+        if (hasPendingFinalPayment) {
+          return {
+            'label': 'Menunggu Pelunasan di Kasir',
+            'icon': Icons.hourglass_bottom,
+            'color': Colors.amber,
+          };
+        }
         return {
           'label': 'DP Dibayar - Sisa Belum Lunas',
           'icon': Icons.schedule,
@@ -92,6 +120,121 @@ class GroOrderDetailWidget extends StatelessWidget {
           'color': Colors.grey,
         };
     }
+  }
+
+  // ✅ Helper untuk extract QR code dari actions array
+  String? _getQrCodeFromActions(List? actions) {
+    if (actions == null || actions.isEmpty) return null;
+    
+    for (var action in actions) {
+      if (action is Map) {
+        // Check for generate-qr-code action
+        if (action['name'] == 'generate-qr-code' && action['url'] != null) {
+          return action['url'].toString();
+        }
+      }
+    }
+    return null;
+  }
+
+  // ✅ Widget untuk menampilkan QR code pending final payment
+  Widget _buildPendingFinalPaymentQR(Map<String, dynamic>? paymentDetails) {
+    if (paymentDetails == null) return const SizedBox.shrink();
+    
+    final pendingDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
+    
+    if (pendingDetails == null || pendingDetails['status'] != 'pending') {
+      return const SizedBox.shrink();
+    }
+    
+    final actions = pendingDetails['actions'] as List?;
+    final qrCodeUrl = _getQrCodeFromActions(actions);
+    final amount = _getNumericValue(pendingDetails['amount']);
+    
+    if (qrCodeUrl == null || !qrCodeUrl.startsWith('data:image')) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Row(
+            children: [
+              Icon(Icons.qr_code_2, color: Colors.amber.shade700, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'QR Code Pelunasan',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.amber.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // QR Code
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Image.memory(
+              base64Decode(qrCodeUrl.split(',').last),
+              width: 180,
+              height: 180,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.qr_code, size: 60, color: Colors.grey),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Amount
+          Text(
+            'Jumlah Pelunasan: ${formatCurrency(amount)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepOrange,
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Instruction
+          Text(
+            'Scan QR ini di kasir untuk konfirmasi pembayaran',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Widget untuk menampilkan informasi down payment
@@ -258,6 +401,10 @@ class GroOrderDetailWidget extends StatelessWidget {
             ],
           ),
         ),
+        
+        // ✅ TAMBAHAN: Tampilkan QR code jika ada pending final payment
+        _buildPendingFinalPaymentQR(paymentDetails),
+        
         const SizedBox(height: 20),
 
         // Divider
@@ -824,6 +971,31 @@ class GroOrderDetailWidget extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // ✅ FINAL PAYMENT BUTTON
+                  if (onFinalPayment != null && 
+                      paymentStatus['label'] == 'DP Dibayar - Sisa Belum Lunas') ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onFinalPayment,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.payment, size: 18),
+                        label: const Text(
+                          'Pelunasan Pembayaran',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -4,6 +4,7 @@ import '../services/gro_service.dart';
 import '../models/reservation_data.dart';
 import '../screens/menu_screen.dart';
 import '../widgets/gro/gro_order_detail_widget.dart';
+import '../screens/gro_final_payment_screen.dart';
 
 class GroUnifiedOrderDetailSheet extends StatefulWidget {
   final String id;
@@ -388,6 +389,34 @@ class _GroUnifiedOrderDetailSheetState
     });
   }
 
+  void _handleFinalPayment() {
+    if (_orderDetail == null) return;
+
+    final paymentDetails = _orderDetail!['paymentDetails'] as Map<String, dynamic>?;
+    if (paymentDetails == null) return;
+
+    final remainingAmount = paymentDetails['remainingAmount'] ?? 0;
+    // Backend expects orderId string format (e.g., ORD-19ST19-001)
+    final orderId = _orderDetail!['orderId'] ?? _orderDetail!['_id'];
+    final orderNumber = _orderDetail!['orderNumber'] ?? '-';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroFinalPaymentScreen(
+          orderId: orderId.toString(),
+          remainingAmount: remainingAmount is int ? remainingAmount : int.tryParse(remainingAmount.toString()) ?? 0,
+          orderNumber: orderNumber.toString(),
+        ),
+      ),
+    ).then((result) {
+      // Refresh data if payment was successful
+      if (result == true) {
+        _loadData();
+      }
+    });
+  }
+
   Widget _buildContent() {
     if (_orderDetail != null) {
       return SingleChildScrollView(
@@ -395,6 +424,7 @@ class _GroUnifiedOrderDetailSheetState
           orderData: _orderDetail!,
           showAddOrderButton: _canAddOrder(),
           onAddOrder: _canAddOrder() ? _handleAddOrder : null,
+          onFinalPayment: _handleFinalPayment,
         ),
       );
     }
