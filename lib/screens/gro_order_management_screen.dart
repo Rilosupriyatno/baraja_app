@@ -125,7 +125,7 @@ class _GroOrderManagementScreenState
 
       final result = await _groService.getReservations(
         page: 1,
-        limit: 30, // Reduced limit for faster initial load
+        limit: 500, // Load all data at once for better search/filter
         status: apiStatus,
         search: _searchController.text.isNotEmpty
             ? _searchController.text
@@ -864,37 +864,57 @@ class _GroOrderManagementScreenState
     );
   }
 
-  // ✅ TABLET: Grid View dengan Load More
+  // ✅ TABLET: Grid View - Fixed 4 cards per row with consistent height
   Widget _buildTabletGridView() {
-    // Deteksi ukuran layar untuk menentukan jumlah kolom
-    final size = MediaQuery.of(context).size;
-    final crossAxisCount = size.width >= 1200 ? 4 : 3;
-
-    return Column(
-      children: [
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.70,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Fixed 4 columns for tablet
+        const crossAxisCount = 4;
+        final screenWidth = constraints.maxWidth;
+        final cardWidth = (screenWidth - (crossAxisCount + 1) * 8) / crossAxisCount;
+        
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    // Group cards into rows of 4
+                    for (int i = 0; i < _reservations.length; i += crossAxisCount)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (int j = i; j < i + crossAxisCount && j < _reservations.length; j++)
+                                Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(left: j == i ? 0 : 4, right: j == i + crossAxisCount - 1 || j == _reservations.length - 1 ? 0 : 4),
+                                    child: _buildCompactReservationCard(_reservations[j]),
+                                  ),
+                                ),
+                              // Fill empty slots with empty containers
+                              for (int k = 0; k < crossAxisCount - (_reservations.length - i).clamp(0, crossAxisCount); k++)
+                                Expanded(child: Container()),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-            itemCount: _reservations.length,
-            itemBuilder: (context, index) {
-              final reservation = _reservations[index];
-              return _buildCompactReservationCard(reservation);
-            },
-          ),
-        ),
-        // Load More button untuk tablet
-        if (_hasMoreData)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildLoadMoreButton(),
-          ),
-      ],
+            // Load More button for tablet (if needed)
+            if (_hasMoreData)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: _buildLoadMoreButton(),
+              ),
+          ],
+        );
+      },
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:baraja_app/screens/gro_order_management_screen.dart';
+import 'package:baraja_app/screens/gro_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/cart_item.dart';
@@ -352,12 +353,12 @@ class AppRouter {
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const ReservationScreen(),
         ),
-
-        // GoRoute(
-        //   path: '/gro-dashboard',
-        //   name: 'gro-dashboard',
-        //   builder: (context, state) => const GroDashboardScreen(),
-        // ),
+        // GRO Dashboard route
+        GoRoute(
+          path: '/gro-dashboard',
+          name: 'gro-dashboard',
+          builder: (context, state) => const GroDashboardScreen(),
+        ),
 
         // Setup route dengan query parameter dan extra data
         GoRoute(

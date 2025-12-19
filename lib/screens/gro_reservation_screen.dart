@@ -702,6 +702,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ TABLET DETECTION
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -716,177 +720,214 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: isTablet ? _buildTabletLayout() : _buildMobileLayout(),
+      ),
+    );
+  }
+
+  // ==================== TABLET LAYOUT ====================
+  Widget _buildTabletLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ TAMPILKAN MULTI-TABLE INFO DI ATAS
+              // ✅ Multi-table info banner at top
               _buildMultiTableInfoSection(),
-
-              // Date & Time Selectors
-              DateSelector(
-                selectedDate: _selectedDate,
-                onDateChanged: _onDateChanged,
-              ),
-              const SizedBox(height: 16),
-
-              TimeSelector(
-                selectedTime: _selectedTime,
-                selectedDate: _selectedDate,
-                onTimeChanged: _onTimeChanged,
-                selectTime: () => _selectTime(context),
-              ),
-              const SizedBox(height: 16),
-
-              // Guest Information
-              _buildSectionCard(
-                title: 'Informasi Tamu',
-                icon: Icons.person,
-                children: [
-                  _buildTextField(
-                    controller: _nameController,
-                    label: 'Nama Tamu',
-                    icon: Icons.person_outline,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama tamu harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTextField(
-                    controller: _phoneController,
-                    label: 'No. Telepon',
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'No. telepon harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTextField(
-                    controller: _guestCountController,
-                    label: 'Jumlah Tamu',
-                    icon: Icons.people_outline,
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Jumlah tamu harus diisi';
-                      }
-                      final number = int.tryParse(value);
-                      if (number == null || number < 1) {
-                        return 'Jumlah tamu minimal 1';
-                      }
-                      if (number > _totalCapacity) {
-                        return 'Kapasitas meja hanya $_totalCapacity orang';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Selected Tables Info (OLD VERSION - for reference)
-              _buildSectionCard(
-                title: 'Detail Meja',
-                icon: Icons.table_restaurant,
-                children: [_buildSelectedTablesInfo()],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Agenda Selector
-              AgendaSelector(
-                selectedAgenda: selectedAgenda,
-                onAgendaChanged: (agenda) {
-                  setState(() {
-                    selectedAgenda = agenda;
-                  });
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Serving Type Selector
-              ServingTypeSelector(
-                selectedServingType: selectedServingType,
-                onServingTypeChanged: (type) {
-                  setState(() {
-                    selectedServingType = type;
-                  });
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Equipment Selector
-              // EquipmentSelector(
-              //   selectedEquipment: selectedEquipment,
-              //   onEquipmentChanged: (equipment) {
-              //     setState(() {
-              //       selectedEquipment = equipment;
-              //     });
-              //   },
-              // ),
-              if (_areaCode != null && _shouldShowReservationType(_areaCode)) ...[
-                const SizedBox(height: 16),
-                EquipmentSelector(
-                  selectedEquipment: selectedEquipment,
-                  onEquipmentChanged: (equipment) {
-                    setState(() {
-                      selectedEquipment = equipment;
-                    });
-                  },
-                ),
-              ],
-
-              const SizedBox(height: 16),
-
-              // Food Serving Selector
-              FoodServingSelector(
-                selectedServingOption: selectedFoodServingOption,
-                selectedServingTime: selectedFoodServingOption == 'scheduled'
-                    ? (selectedFoodServingTime ?? _selectedDateTime)
-                    : null,
-                onServingChanged: (option, time) {
-                  setState(() {
-                    selectedFoodServingOption = option;
-                    if (option == 'scheduled') {
-                      selectedFoodServingTime = time ?? _selectedDateTime;
-                    } else {
-                      selectedFoodServingTime = null;
-                    }
-                  });
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Notes
-              _buildSectionCard(
-                title: 'Catatan (Opsional)',
-                icon: Icons.note_outlined,
-                children: [
-                  _buildTextField(
-                    controller: _notesController,
-                    label: 'Catatan',
-                    icon: Icons.note_outlined,
-                    maxLines: 3,
-                  ),
-                ],
-              ),
-
+              
               const SizedBox(height: 24),
-
+              
+              // ✅ TWO COLUMN LAYOUT
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // LEFT COLUMN (40%) - Date/Time + Guest Info
+                  Expanded(
+                    flex: 40,
+                    child: Column(
+                      children: [
+                        // Date & Time Section
+                        _buildSectionCard(
+                          title: 'Tanggal & Waktu',
+                          icon: Icons.schedule,
+                          children: [
+                            DateSelector(
+                              selectedDate: _selectedDate,
+                              onDateChanged: _onDateChanged,
+                            ),
+                            const SizedBox(height: 16),
+                            TimeSelector(
+                              selectedTime: _selectedTime,
+                              selectedDate: _selectedDate,
+                              onTimeChanged: _onTimeChanged,
+                              selectTime: () => _selectTime(context),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Guest Information
+                        _buildSectionCard(
+                          title: 'Informasi Tamu',
+                          icon: Icons.person,
+                          children: [
+                            _buildTextField(
+                              controller: _nameController,
+                              label: 'Nama Tamu',
+                              icon: Icons.person_outline,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Nama tamu harus diisi';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            _buildTextField(
+                              controller: _phoneController,
+                              label: 'No. Telepon',
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'No. telepon harus diisi';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            _buildTextField(
+                              controller: _guestCountController,
+                              label: 'Jumlah Tamu',
+                              icon: Icons.people_outline,
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Jumlah tamu harus diisi';
+                                }
+                                final number = int.tryParse(value);
+                                if (number == null || number < 1) {
+                                  return 'Jumlah tamu minimal 1';
+                                }
+                                if (number > _totalCapacity) {
+                                  return 'Kapasitas meja hanya $_totalCapacity orang';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Notes Section
+                        _buildSectionCard(
+                          title: 'Catatan (Opsional)',
+                          icon: Icons.note_outlined,
+                          children: [
+                            _buildTextField(
+                              controller: _notesController,
+                              label: 'Catatan',
+                              icon: Icons.note_outlined,
+                              maxLines: 3,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 24),
+                  
+                  // RIGHT COLUMN (60%) - Table Details + Options
+                  Expanded(
+                    flex: 60,
+                    child: Column(
+                      children: [
+                        // Selected Tables Info
+                        _buildSectionCard(
+                          title: 'Detail Meja',
+                          icon: Icons.table_restaurant,
+                          children: [_buildSelectedTablesInfo()],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Agenda & Serving Type in Row
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: AgendaSelector(
+                                selectedAgenda: selectedAgenda,
+                                onAgendaChanged: (agenda) {
+                                  setState(() {
+                                    selectedAgenda = agenda;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ServingTypeSelector(
+                                selectedServingType: selectedServingType,
+                                onServingTypeChanged: (type) {
+                                  setState(() {
+                                    selectedServingType = type;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        // Equipment Selector (conditional)
+                        if (_areaCode != null && _shouldShowReservationType(_areaCode)) ...[
+                          const SizedBox(height: 16),
+                          EquipmentSelector(
+                            selectedEquipment: selectedEquipment,
+                            onEquipmentChanged: (equipment) {
+                              setState(() {
+                                selectedEquipment = equipment;
+                              });
+                            },
+                          ),
+                        ],
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Food Serving Selector
+                        FoodServingSelector(
+                          selectedServingOption: selectedFoodServingOption,
+                          selectedServingTime: selectedFoodServingOption == 'scheduled'
+                              ? (selectedFoodServingTime ?? _selectedDateTime)
+                              : null,
+                          onServingChanged: (option, time) {
+                            setState(() {
+                              selectedFoodServingOption = option;
+                              if (option == 'scheduled') {
+                                selectedFoodServingTime = time ?? _selectedDateTime;
+                              } else {
+                                selectedFoodServingTime = null;
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ✅ PROCEED BUTTON - Full Width
               _buildProceedButton(),
-
+              
               // ✅ Multi-table info banner
               if (_isMultiTable) ...[
                 const SizedBox(height: 16),
@@ -897,29 +938,17 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.blue[200]!),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info, size: 16, color: Colors.blue[700]),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Reservasi Multi-Meja',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
+                      Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Anda akan mereservasi ${_selectedTables.length} meja sekaligus dengan total kapasitas $_totalCapacity orang.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue[700],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Anda akan mereservasi ${_selectedTables.length} meja sekaligus '
-                            'dengan total kapasitas $_totalCapacity orang.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue[700],
                         ),
                       ),
                     ],
@@ -929,6 +958,215 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ==================== MOBILE LAYOUT (Original) ====================
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ✅ TAMPILKAN MULTI-TABLE INFO DI ATAS
+          _buildMultiTableInfoSection(),
+
+          // Date & Time Selectors
+          DateSelector(
+            selectedDate: _selectedDate,
+            onDateChanged: _onDateChanged,
+          ),
+          const SizedBox(height: 16),
+
+          TimeSelector(
+            selectedTime: _selectedTime,
+            selectedDate: _selectedDate,
+            onTimeChanged: _onTimeChanged,
+            selectTime: () => _selectTime(context),
+          ),
+          const SizedBox(height: 16),
+
+          // Guest Information
+          _buildSectionCard(
+            title: 'Informasi Tamu',
+            icon: Icons.person,
+            children: [
+              _buildTextField(
+                controller: _nameController,
+                label: 'Nama Tamu',
+                icon: Icons.person_outline,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Nama tamu harus diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: _phoneController,
+                label: 'No. Telepon',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'No. telepon harus diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: _guestCountController,
+                label: 'Jumlah Tamu',
+                icon: Icons.people_outline,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Jumlah tamu harus diisi';
+                  }
+                  final number = int.tryParse(value);
+                  if (number == null || number < 1) {
+                    return 'Jumlah tamu minimal 1';
+                  }
+                  if (number > _totalCapacity) {
+                    return 'Kapasitas meja hanya $_totalCapacity orang';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Selected Tables Info (OLD VERSION - for reference)
+          _buildSectionCard(
+            title: 'Detail Meja',
+            icon: Icons.table_restaurant,
+            children: [_buildSelectedTablesInfo()],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Agenda Selector
+          AgendaSelector(
+            selectedAgenda: selectedAgenda,
+            onAgendaChanged: (agenda) {
+              setState(() {
+                selectedAgenda = agenda;
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // Serving Type Selector
+          ServingTypeSelector(
+            selectedServingType: selectedServingType,
+            onServingTypeChanged: (type) {
+              setState(() {
+                selectedServingType = type;
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // Equipment Selector
+          if (_areaCode != null && _shouldShowReservationType(_areaCode)) ...[
+            const SizedBox(height: 16),
+            EquipmentSelector(
+              selectedEquipment: selectedEquipment,
+              onEquipmentChanged: (equipment) {
+                setState(() {
+                  selectedEquipment = equipment;
+                });
+              },
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          // Food Serving Selector
+          FoodServingSelector(
+            selectedServingOption: selectedFoodServingOption,
+            selectedServingTime: selectedFoodServingOption == 'scheduled'
+                ? (selectedFoodServingTime ?? _selectedDateTime)
+                : null,
+            onServingChanged: (option, time) {
+              setState(() {
+                selectedFoodServingOption = option;
+                if (option == 'scheduled') {
+                  selectedFoodServingTime = time ?? _selectedDateTime;
+                } else {
+                  selectedFoodServingTime = null;
+                }
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // Notes
+          _buildSectionCard(
+            title: 'Catatan (Opsional)',
+            icon: Icons.note_outlined,
+            children: [
+              _buildTextField(
+                controller: _notesController,
+                label: 'Catatan',
+                icon: Icons.note_outlined,
+                maxLines: 3,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          _buildProceedButton(),
+
+          // ✅ Multi-table info banner
+          if (_isMultiTable) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reservasi Multi-Meja',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Anda akan mereservasi ${_selectedTables.length} meja sekaligus '
+                        'dengan total kapasitas $_totalCapacity orang.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

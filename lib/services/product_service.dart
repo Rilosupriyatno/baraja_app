@@ -7,11 +7,31 @@ import '../models/product.dart';
 
 class ProductService {
   final String? baseUrl = dotenv.env['BASE_URL'];
+  
+  // ✅ CACHING: Static cache for products with TTL
+  static List<Product>? _cachedProducts;
+  static DateTime? _cacheTime;
+  static const _cacheDuration = Duration(minutes: 5);
 
   ProductService();
+  
+  /// Clear the product cache (call on logout or when data changes)
+  static void clearCache() {
+    _cachedProducts = null;
+    _cacheTime = null;
+  }
 
-  Future<List<Product>> getProducts() async {
+  Future<List<Product>> getProducts({bool forceRefresh = false}) async {
     try {
+      // ✅ Return cached products if valid and not forcing refresh
+      if (!forceRefresh && _cachedProducts != null && _cacheTime != null) {
+        final cacheAge = DateTime.now().difference(_cacheTime!);
+        if (cacheAge < _cacheDuration) {
+          debugPrint('📦 Using cached products (${_cachedProducts!.length} items, age: ${cacheAge.inSeconds}s)');
+          return _cachedProducts!;
+        }
+      }
+      
       final response = await http.get(
         Uri.parse('$baseUrl/api/menu/menu-items'),
         headers: {
@@ -25,7 +45,7 @@ class ProductService {
         if (jsonData['success'] == true && jsonData['data'] != null) {
           final List<dynamic> productsJson = jsonData['data'];
 
-          return productsJson.map((productJson) {
+          final List<Product> productsList = productsJson.map((productJson) {
             // Parse toppings
             List<Topping>? toppings;
             if (productJson['toppings'] != null) {
@@ -154,15 +174,20 @@ class ProductService {
               availableAt: outlets,
             );
           }).toList();
+          
+          // ✅ Cache the products
+          _cachedProducts = productsList;
+          _cacheTime = DateTime.now();
+          debugPrint('📦 Cached ${productsList.length} products');
+          
+          return productsList;
         } else {
           debugPrint(
               'API returned error: ${jsonData['message'] ?? 'Unknown error'}');
-          debugPrint('Response body: ${response.body}');
           throw Exception('Failed to load products');
         }
       } else {
         debugPrint('HTTP error: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}');
         throw Exception('Failed to load products');
       }
     } catch (e) {

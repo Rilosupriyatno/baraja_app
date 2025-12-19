@@ -441,6 +441,10 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ TABLET DETECTION
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
     if (!_canEdit) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -448,7 +452,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC), // Light gray background
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -486,448 +490,758 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Guest Count
-            _buildSectionHeader('Informasi Tamu'),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: _guestCount.toString(),
-              decoration: InputDecoration(
-                labelText: 'Jumlah Tamu',
-                prefixIcon: Icon(Icons.people, color: AppTheme.barajaPrimary.primaryColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Jumlah tamu harus diisi';
-                }
-                final count = int.tryParse(value);
-                if (count == null || count < 1) {
-                  return 'Jumlah tamu minimal 1';
-                }
-                return null;
-              },
-              onChanged: (value) {
-                _guestCount = int.tryParse(value) ?? _guestCount;
-              },
-            ),
+        child: isTablet ? _buildTabletLayout() : _buildMobileLayout(),
+      ),
+    );
+  }
 
-            const SizedBox(height: 24),
+  // ==================== TABLET LAYOUT ====================
+  Widget _buildTabletLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ✅ TWO COLUMN LAYOUT
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // LEFT COLUMN - Guest Info + Menu Items
+                  Expanded(
+                    flex: 55,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Guest Count
+                          _buildSectionHeader('Informasi Tamu'),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            initialValue: _guestCount.toString(),
+                            decoration: InputDecoration(
+                              labelText: 'Jumlah Tamu',
+                              prefixIcon: Icon(Icons.people, color: Colors.grey.shade600),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey.shade700),
+                              ),
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Jumlah tamu harus diisi';
+                              }
+                              final count = int.tryParse(value);
+                              if (count == null || count < 1) {
+                                return 'Jumlah tamu minimal 1';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              _guestCount = int.tryParse(value) ?? _guestCount;
+                            },
+                          ),
 
-            // Menu Items
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionHeader('Menu Pesanan'),
-                Text(
-                  '${_menuItems.length} item',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                          const SizedBox(height: 24),
 
-            if (_menuItems.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.restaurant_menu, size: 48, color: Colors.grey),
-                    SizedBox(height: 8),
-                    Text(
-                      'Belum ada menu',
-                      style: TextStyle(color: Colors.grey),
+                          // Menu Items
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildSectionHeader('Menu Pesanan'),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${_menuItems.length} item',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          if (_menuItems.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.restaurant_menu, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Belum ada menu',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            ..._menuItems.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+                              return _buildMenuItemCard(item, index);
+                            }),
+
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _addMenuItem,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Tambah Menu'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 48),
+                              foregroundColor: Colors.grey.shade800,
+                              side: BorderSide(color: Colors.grey.shade400),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              )
-            else
-              ..._menuItems.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
+                  ),
 
-                // Build addons text
-                String addonsText = '';
-                if (item.addons.isNotEmpty) {
-                  addonsText = item.addons
-                      .map((addon) => addon['label'] ?? addon['name'])
-                      .join(', ');
-                }
+                  const SizedBox(width: 24),
 
-                // Build toppings text
-                String toppingsText = '';
-                if (item.toppings is List && (item.toppings as List).isNotEmpty) {
-                  toppingsText = (item.toppings as List)
-                      .map((topping) => topping['name'])
-                      .join(', ');
-                }
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
+                  // RIGHT COLUMN - Custom Amounts + Notes + Total
+                  Expanded(
+                    flex: 45,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        // Custom Amount Section
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    item.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                  _buildSectionHeader('Penyesuaian Biaya'),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item.quantity}x - ${formatCurrency(item.totalprice * item.quantity)}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF2E8B57),
-                                      fontWeight: FontWeight.w600,
+                                    child: Text(
+                                      '${_customAmountItems.length} item',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            // Edit button
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Color(0xFF2E8B57)),
-                              onPressed: () => _editMenuItem(index),
-                              tooltip: 'Edit',
-                            ),
-                            // Delete button
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _removeMenuItem(index),
-                              tooltip: 'Hapus',
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+
+                              if (_customAmountItems.isNotEmpty)
+                                ..._customAmountItems.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  return _buildCustomAmountCard(item, index);
+                                }),
+
+                              OutlinedButton.icon(
+                                onPressed: _addCustomAmount,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Tambah Penyesuaian'),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 48),
+                                  foregroundColor: Colors.grey.shade800,
+                                  side: BorderSide(color: Colors.grey.shade400),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
 
-                        // Show addons if any
-                        if (addonsText.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.add_circle_outline, size: 16, color: Colors.blue),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    addonsText,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        const SizedBox(height: 16),
 
-                        // Show toppings if any
-                        if (toppingsText.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.local_pizza_outlined, size: 16, color: Colors.orange),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    toppingsText,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        // Notes Section
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionHeader('Catatan'),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                initialValue: _notes,
+                                decoration: InputDecoration(
+                                  labelText: 'Catatan Tambahan',
+                                  prefixIcon: Icon(Icons.note_outlined, color: Colors.grey.shade600),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.grey[300]!),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.grey.shade700),
+                                  ),
+                                  alignLabelWithHint: true,
+                                ),
+                                maxLines: 3,
+                                onChanged: (value) {
+                                  _notes = value;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
 
-                        // Show notes if any
-                        if (item.notes != null && item.notes!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.note_outlined, size: 16, color: Colors.amber),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    item.notes!,
-                                    style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        const SizedBox(height: 16),
+
+                        // Total Summary with Tax Breakdown
+                        _buildTotalSummary(),
                       ],
                     ),
                   ),
-                );
-              }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _addMenuItem,
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Menu'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                foregroundColor: const Color(0xFF2E8B57),
+  // ==================== MOBILE LAYOUT (Original) ====================
+  Widget _buildMobileLayout() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Guest Count
+        _buildSectionHeader('Informasi Tamu'),
+        const SizedBox(height: 12),
+        TextFormField(
+          initialValue: _guestCount.toString(),
+          decoration: InputDecoration(
+            labelText: 'Jumlah Tamu',
+            prefixIcon: Icon(Icons.people, color: AppTheme.barajaPrimary.primaryColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+            ),
+          ),
+          keyboardType: TextInputType.number,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Jumlah tamu harus diisi';
+            }
+            final count = int.tryParse(value);
+            if (count == null || count < 1) {
+              return 'Jumlah tamu minimal 1';
+            }
+            return null;
+          },
+          onChanged: (value) {
+            _guestCount = int.tryParse(value) ?? _guestCount;
+          },
+        ),
+
+        const SizedBox(height: 24),
+
+        // Menu Items
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Menu Pesanan'),
+            Text(
+              '${_menuItems.length} item',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
-            const SizedBox(height: 24),
-
-            // Custom Amount Items
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        if (_menuItems.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
               children: [
-                _buildSectionHeader('Penyesuaian Biaya'),
+                Icon(Icons.restaurant_menu, size: 48, color: Colors.grey),
+                SizedBox(height: 8),
                 Text(
-                  '${_customAmountItems.length} item',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  'Belum ada menu',
+                  style: TextStyle(color: Colors.grey),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+          )
+        else
+          ..._menuItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return _buildMenuItemCard(item, index);
+          }),
 
-            if (_customAmountItems.isNotEmpty)
-              ..._customAmountItems.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.payment, color: Colors.purple),
-                    ),
-                    title: Text(
-                      item['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: item['description']?.isNotEmpty == true
-                        ? Text(item['description'], style: const TextStyle(fontSize: 12))
-                        : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          formatCurrency(item['amount']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF2E8B57),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _removeCustomAmount(index),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _addMenuItem,
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Menu'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            foregroundColor: const Color(0xFF2E8B57),
+          ),
+        ),
 
-            OutlinedButton.icon(
-              onPressed: _addCustomAmount,
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Penyesuaian Biaya'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                foregroundColor: const Color(0xFF2E8B57),
+        const SizedBox(height: 24),
+
+        // Custom Amount Items
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Penyesuaian Biaya'),
+            Text(
+              '${_customAmountItems.length} item',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
-            const SizedBox(height: 24),
+        if (_customAmountItems.isNotEmpty)
+          ..._customAmountItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return _buildCustomAmountCard(item, index);
+          }),
 
-            // Notes
-            _buildSectionHeader('Catatan'),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: _notes,
-              decoration: InputDecoration(
-                labelText: 'Catatan Tambahan',
-                prefixIcon: Icon(Icons.note_outlined, color: AppTheme.barajaPrimary.primaryColor),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
-                ),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 3,
-              onChanged: (value) {
-                _notes = value;
-              },
+        OutlinedButton.icon(
+          onPressed: _addCustomAmount,
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Penyesuaian Biaya'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            foregroundColor: const Color(0xFF2E8B57),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Notes
+        _buildSectionHeader('Catatan'),
+        const SizedBox(height: 12),
+        TextFormField(
+          initialValue: _notes,
+          decoration: InputDecoration(
+            labelText: 'Catatan Tambahan',
+            prefixIcon: Icon(Icons.note_outlined, color: AppTheme.barajaPrimary.primaryColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppTheme.barajaPrimary.primaryColor),
+            ),
+            alignLabelWithHint: true,
+          ),
+          maxLines: 3,
+          onChanged: (value) {
+            _notes = value;
+          },
+        ),
 
-            const SizedBox(height: 32),
+        const SizedBox(height: 32),
 
-            // Total Summary with Tax Breakdown
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E8B57).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF2E8B57)),
-              ),
-              child: Column(
-                children: [
-                  // Subtotal
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Subtotal:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
+        // Total Summary with Tax Breakdown
+        _buildTotalSummary(),
+
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  // ==================== HELPER WIDGETS ====================
+  Widget _buildMenuItemCard(CartItem item, int index) {
+    // Build addons text
+    String addonsText = '';
+    if (item.addons.isNotEmpty) {
+      addonsText = item.addons
+          .map((addon) => addon['label'] ?? addon['name'])
+          .join(', ');
+    }
+
+    // Build toppings text
+    String toppingsText = '';
+    if (item.toppings is List && (item.toppings as List).isNotEmpty) {
+      toppingsText = (item.toppings as List)
+          .map((topping) => topping['name'])
+          .join(', ');
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
-                      Text(
-                        formatCurrency(_calculateTotal()),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.quantity}x - ${formatCurrency(item.totalprice * item.quantity)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
-                  
-                  // Tax items
-                  if (_taxCalculation != null && _taxCalculation!.taxDetails.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ..._taxCalculation!.taxDetails.map((tax) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${tax['name']} (${(tax['percentage'] as num).toStringAsFixed(0)}%):',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          Text(
-                            '+${formatCurrency((tax['amount'] as num).round())}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                  ] else if (!_taxesLoaded) ...[
-                    const SizedBox(height: 8),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Menghitung pajak...',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
                     ),
                   ],
-                  
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  
-                  // Grand Total
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total Estimasi:',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        formatCurrency(_getGrandTotal()),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E8B57),
-                        ),
-                      ),
-                    ],
+                ),
+              ),
+              // Edit button
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600, size: 20),
+                onPressed: () => _editMenuItem(index),
+                tooltip: 'Edit',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              // Delete button
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                onPressed: () => _removeMenuItem(index),
+                tooltip: 'Hapus',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+
+          // Show addons if any
+          if (addonsText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle_outline, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      addonsText,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
                   ),
                 ],
               ),
             ),
+          ],
 
-            const SizedBox(height: 32),
+          // Show toppings if any
+          if (toppingsText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.local_pizza_outlined, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      toppingsText,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Show notes if any
+          if (item.notes != null && item.notes!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.note_outlined, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      item.notes!,
+                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomAmountCard(Map<String, dynamic> item, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.purple.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.payment, color: Colors.purple),
+        ),
+        title: Text(
+          item['name'],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: item['description']?.isNotEmpty == true
+            ? Text(item['description'], style: const TextStyle(fontSize: 12))
+            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              formatCurrency(item['amount']),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFF2E8B57),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _removeCustomAmount(index),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTotalSummary() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          // Subtotal
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Subtotal:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              Text(
+                formatCurrency(_calculateTotal()),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          
+          // Tax items
+          if (_taxCalculation != null && _taxCalculation!.taxDetails.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ..._taxCalculation!.taxDetails.map((tax) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${tax['name']} (${(tax['percentage'] as num).toStringAsFixed(0)}%):',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    '+${formatCurrency((tax['amount'] as num).round())}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ] else if (!_taxesLoaded) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey.shade400),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Menghitung pajak...',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ],
+          
+          const SizedBox(height: 12),
+          Divider(color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          
+          // Grand Total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Estimasi:',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                formatCurrency(_getGrandTotal()),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -938,7 +1252,7 @@ class _GroEditReservationScreenState extends State<GroEditReservationScreen> {
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF2E8B57),
+        color: Colors.black87,
       ),
     );
   }

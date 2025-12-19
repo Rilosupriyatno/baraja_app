@@ -20,12 +20,17 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     with RoleCheckMixin {
   final GROService _groService = GROService();
   Map<String, dynamic> _dashboardStats = {};
-  int? _actualOrderCount; // ✅ Calculated from actual data
-  int? _actualAvailableTables; // ✅ Calculated from actual table data
+  int? _actualOrderCount;
+  int? _actualAvailableTables;
   bool _isLoading = true;
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
-  String _selectedMenu = 'orders'; // orders atau tables
+  String _selectedMenu = 'orders';
+  
+  // ✅ CACHING: Static cache for dashboard stats
+  static Map<String, dynamic>? _cachedStats;
+  static DateTime? _cacheTime;
+  static const _cacheDuration = Duration(minutes: 2);
 
   @override
   void initState() {
@@ -35,11 +40,24 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       cartProvider.setGroMode(true);
-      debugPrint('📊 GRO Dashboard: GRO Mode activated');
     });
   }
 
-  Future<void> _loadDashboardStats() async {
+  Future<void> _loadDashboardStats({bool forceRefresh = false}) async {
+    // ✅ Return cached data if valid
+    if (!forceRefresh && _cachedStats != null && _cacheTime != null) {
+      final cacheAge = DateTime.now().difference(_cacheTime!);
+      if (cacheAge < _cacheDuration) {
+        setState(() {
+          _dashboardStats = Map.from(_cachedStats!);
+          _actualOrderCount = _cachedStats!['orderCount'];
+          _actualAvailableTables = _cachedStats!['availableTables'];
+          _isLoading = false;
+        });
+        return;
+      }
+    }
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -48,81 +66,32 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
-      // ✅ Fetch both reservations and table availability in parallel
+      // ✅ OPTIMIZED: Only load 1 item to get pagination total_records
       final results = await Future.wait([
         _groService.getReservations(
           page: 1,
-          limit: 100,
+          limit: 1, // Only need pagination meta, not actual data
           date: dateStr,
         ),
         _groService.getTableAvailability(
           date: dateStr,
-          outletId: "67cbc9560f025d897d69f889", // TODO: Get from user's outlet
+          outletId: "67cbc9560f025d897d69f889",
         ),
       ]);
       
       final reservationsResult = results[0] as Map<String, dynamic>;
       final tablesResult = results[1] as Map<String, dynamic>;
 
-      // ✅ Calculate order stats from actual data
-      if (reservationsResult['success'] && reservationsResult['data'] is List) {
-        final list = reservationsResult['data'] as List;
-        
-        int pending = 0;
-        int ongoing = 0;
-        int completed = 0;
-        int cancelled = 0;
-        
-        for (var item in list) {
-          final type = item['type'] ?? 'reservation';
-          final status = item['status'] ?? '';
-          
-          // Use same logic as GroOrderManagementScreen
-          if (type == 'dine-in-order') {
-            if (status == 'Pending' || status == 'Waiting' || status == 'Reserved') {
-              pending++;
-            } else if (status == 'OnProcess') {
-              ongoing++;
-            } else if (status == 'Completed') {
-              completed++;
-            } else if (status == 'Canceled') {
-              cancelled++;
-            }
-          } else {
-            // reservation type
-            if (status == 'pending') {
-              pending++;
-            } else if (status == 'confirmed') {
-              if (item['check_in_time'] != null && item['check_out_time'] == null) {
-                ongoing++;
-              } else {
-                pending++;
-              }
-            } else if (status == 'completed') {
-              completed++;
-            } else if (status == 'cancelled') {
-              cancelled++;
-            }
-          }
-        }
-        
-        _actualOrderCount = list.length;
-        _dashboardStats['allReservations'] = list.length;
-        _dashboardStats['pendingReservations'] = pending;
-        _dashboardStats['activeReservations'] = ongoing;
-        _dashboardStats['completedReservations'] = completed;
-        _dashboardStats['cancelledReservations'] = cancelled;
-        
-        print('✅ SIDEBAR STATS (from actual data):');
-        print('   Total: ${list.length}');
-        print('   Pending: $pending');
-        print('   Ongoing: $ongoing');
-        print('   Completed: $completed');
-        print('   Cancelled: $cancelled');
+      // ✅ Get total count from pagination meta (faster than loading all data)
+      if (reservationsResult['success'] == true) {
+        final pagination = reservationsResult['pagination'];
+        final totalRecords = pagination?['total_records'] ?? 0;
+        _actualOrderCount = totalRecords;
+        _dashboardStats['allReservations'] = totalRecords;
       }
       
-      // ✅ Calculate table stats from actual data
-      if (tablesResult['success'] && tablesResult['data'] != null) {
+      // ✅ Calculate table stats from actual data (this is already fast)
+      if (tablesResult['success'] == true && tablesResult['data'] != null) {
         final data = tablesResult['data'];
         final tables = data['tables'] as List? ?? [];
         
@@ -133,12 +102,15 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         _actualAvailableTables = available;
         _dashboardStats['totalTables'] = total;
         _dashboardStats['availableTables'] = available;
-        
-        print('✅ SIDEBAR TABLE STATS (from actual data):');
-        print('   Total: $total');
-        print('   Available: $available');
-        print('   Occupied: $occupied');
       }
+      
+      // ✅ Cache the results
+      _cachedStats = {
+        ..._dashboardStats,
+        'orderCount': _actualOrderCount,
+        'availableTables': _actualAvailableTables,
+      };
+      _cacheTime = DateTime.now();
 
       setState(() {
         _isLoading = false;
@@ -467,7 +439,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                     'Kelola Order',
                     _actualOrderCount ?? _dashboardStats['allReservations'] ?? 0,
                     Icons.restaurant,
-                    const Color(0xFF6366F1),
+                    const Color(0xFF2E8B57), // Changed to green
                     'orders',
                     subtitle: 'Semua Pesanan',
                   ),
@@ -476,7 +448,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                     'Ketersediaan Meja',
                     _actualAvailableTables ?? _dashboardStats['availableTables'] ?? 0,
                     Icons.table_restaurant,
-                    const Color(0xFF8B5CF6),
+                    const Color(0xFF2E8B57), // Changed from purple to green
                     'tables',
                     subtitle: 'Meja Tersedia',
                   ),

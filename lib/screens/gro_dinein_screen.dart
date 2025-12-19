@@ -112,6 +112,10 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ TABLET DETECTION
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -130,70 +134,90 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: isTablet ? _buildTabletLayout() : _buildMobileLayout(),
+      ),
+    );
+  }
+
+  // ==================== TABLET LAYOUT ====================
+  Widget _buildTabletLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-// ✅ UPDATED: Table Info Card with multi-table support
+              // ✅ Table Info Card at top
               _buildTableInfoCard(),
 
               const SizedBox(height: 24),
 
-// Guest Information Section
-              _buildSectionCard(
-                title: 'Informasi Tamu',
-                icon: Icons.person,
+              // ✅ TWO COLUMN LAYOUT for form
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTextField(
-                    controller: _nameController,
-                    label: 'Nama Tamu',
-                    icon: Icons.person_outline,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama tamu harus diisi';
-                      }
-                      return null;
-                    },
+                  // LEFT COLUMN - Guest Information
+                  Expanded(
+                    child: _buildSectionCard(
+                      title: 'Informasi Tamu',
+                      icon: Icons.person,
+                      children: [
+                        _buildTextField(
+                          controller: _nameController,
+                          label: 'Nama Tamu',
+                          icon: Icons.person_outline,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Nama tamu harus diisi';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: 'No. Telepon',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'No. telepon harus diisi';
+                            }
+                            if (value.length < 10) {
+                              return 'No. telepon minimal 10 digit';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _buildTextField(
-                    controller: _phoneController,
-                    label: 'No. Telepon',
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'No. telepon harus diisi';
-                      }
-                      if (value.length < 10) {
-                        return 'No. telepon minimal 10 digit';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(width: 24),
 
-// Notes Section
-              _buildSectionCard(
-                title: 'Catatan (Opsional)',
-                icon: Icons.note_outlined,
-                children: [
-                  _buildTextField(
-                    controller: _notesController,
-                    label: 'Catatan',
-                    icon: Icons.note_outlined,
-                    maxLines: 3,
+                  // RIGHT COLUMN - Notes
+                  Expanded(
+                    child: _buildSectionCard(
+                      title: 'Catatan (Opsional)',
+                      icon: Icons.note_outlined,
+                      children: [
+                        _buildTextField(
+                          controller: _notesController,
+                          label: 'Catatan',
+                          icon: Icons.note_outlined,
+                          maxLines: 4,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
 
               const SizedBox(height: 24),
 
-// Proceed Button
+              // ✅ Proceed Button - Full Width
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -218,7 +242,7 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
                 ),
               ),
 
-// ✅ Multi-table info banner
+              // ✅ Multi-table info banner
               if (_isMultiTable) ...[
                 const SizedBox(height: 16),
                 Container(
@@ -228,29 +252,18 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.blue[200]!),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info, size: 16, color: Colors.blue[700]),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Dine-In Multi-Meja',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
+                      Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Pesanan akan terkait dengan ${widget.tableNumbers?.length ?? 0} meja'
+                          '${widget.totalSeats != null ? " (Total kapasitas: ${widget.totalSeats} orang)" : ""}.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue[700],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Pesanan akan terkait dengan ${widget.tableNumbers?.length ?? 0} meja'
-                        '${widget.totalSeats != null ? " (Total kapasitas: ${widget.totalSeats} orang)" : ""}.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue[700],
                         ),
                       ),
                     ],
@@ -260,6 +273,140 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ==================== MOBILE LAYOUT (Original) ====================
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ✅ UPDATED: Table Info Card with multi-table support
+          _buildTableInfoCard(),
+
+          const SizedBox(height: 24),
+
+          // Guest Information Section
+          _buildSectionCard(
+            title: 'Informasi Tamu',
+            icon: Icons.person,
+            children: [
+              _buildTextField(
+                controller: _nameController,
+                label: 'Nama Tamu',
+                icon: Icons.person_outline,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Nama tamu harus diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: _phoneController,
+                label: 'No. Telepon',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'No. telepon harus diisi';
+                  }
+                  if (value.length < 10) {
+                    return 'No. telepon minimal 10 digit';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Notes Section
+          _buildSectionCard(
+            title: 'Catatan (Opsional)',
+            icon: Icons.note_outlined,
+            children: [
+              _buildTextField(
+                controller: _notesController,
+                label: 'Catatan',
+                icon: Icons.note_outlined,
+                maxLines: 3,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Proceed Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _canProceed ? _proceedToMenu : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _canProceed
+                    ? AppTheme.barajaPrimary.primaryColor
+                    : Colors.grey.shade300,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                _canProceed ? 'Lanjut ke Menu' : 'Lengkapi Data Tamu',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: _canProceed ? Colors.white : Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ),
+
+          // ✅ Multi-table info banner
+          if (_isMultiTable) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info, size: 16, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Dine-In Multi-Meja',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pesanan akan terkait dengan ${widget.tableNumbers?.length ?? 0} meja'
+                    '${widget.totalSeats != null ? " (Total kapasitas: ${widget.totalSeats} orang)" : ""}.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

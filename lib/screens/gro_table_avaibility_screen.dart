@@ -49,6 +49,12 @@ class _GroTableAvailabilityScreenState
 
   // ✅ Cache untuk menghindari rebuild berulang
   Map<String, List<dynamic>>? _cachedTablesByArea;
+  
+  // ✅ STATIC CACHE: Cache table data dengan TTL
+  static List<dynamic>? _cachedTables;
+  static Map<String, dynamic>? _cachedSummary;
+  static DateTime? _cacheTime;
+  static const _cacheDuration = Duration(minutes: 2);
 
   // ✅ Debounce untuk filter
   DateTime? _lastFilterTime;
@@ -111,8 +117,27 @@ class _GroTableAvailabilityScreenState
     return false;
   }
 
-  // ✅ OPTIMIZED: Load data lebih cepat dengan parallel execution
+  // ✅ OPTIMIZED: Load data lebih cepat dengan parallel execution + caching
   Future<void> _loadTableAvailabilityOptimized({bool forceRefresh = false}) async {
+    // ✅ Return cached data if valid and no filter applied
+    if (!forceRefresh && 
+        _cachedTables != null && 
+        _cachedSummary != null && 
+        _cacheTime != null &&
+        _selectedTime == null && 
+        _selectedAreaId == null) {
+      final cacheAge = DateTime.now().difference(_cacheTime!);
+      if (cacheAge < _cacheDuration) {
+        setState(() {
+          _tables = _cachedTables!;
+          _summary = Map.from(_cachedSummary!);
+          _cachedTablesByArea = null;
+          _isLoading = false;
+        });
+        return;
+      }
+    }
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -135,9 +160,19 @@ class _GroTableAvailabilityScreenState
       final result = results[1] as Map<String, dynamic>;
 
       if (result['success'] == true || result['data'] != null) {
+        final tables = result['data']['tables'] ?? [];
+        final summary = result['data']['summary'] ?? {};
+        
+        // ✅ Cache if no filter applied
+        if (_selectedTime == null && _selectedAreaId == null) {
+          _cachedTables = tables;
+          _cachedSummary = summary;
+          _cacheTime = DateTime.now();
+        }
+        
         setState(() {
-          _tables = result['data']['tables'] ?? [];
-          _summary = result['data']['summary'] ?? {};
+          _tables = tables;
+          _summary = summary;
           _cachedTablesByArea = null;
           _isLoading = false;
         });
@@ -1068,54 +1103,174 @@ class _GroTableAvailabilityScreenState
   void _showOrderTypeDialog(Map<String, dynamic> table) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Meja ${table['table_number']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Pilih jenis pesanan untuk meja ini:', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF8B5CF6).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Color(0xFF8B5CF6), size: 20),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Tip: Tekan & tahan meja untuk memilih banyak meja sekaligus', style: TextStyle(fontSize: 12, color: Color(0xFF8B5CF6)))),
-                ],
-              ),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360), // Limit width
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildDialogOption(
-              icon: Icons.restaurant,
-              title: 'Dine-In',
-              subtitle: 'Pesan langsung untuk meja ini',
-              color: const Color(0xFF3B82F6),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToDineIn(table);
-              },
-            ),
-            const SizedBox(height: 12),
-            _buildDialogOption(
-              icon: Icons.event_available,
-              title: 'Reservasi',
-              subtitle: 'Buat reservasi untuk meja ini',
-              color: const Color(0xFF2E8B57),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToReservation(table);
-              },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              // Header
+              Text(
+                'Meja ${table['table_number']}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pilih jenis pesanan untuk meja ini:',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              
+              // Tip box - gray theme
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey.shade600, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Tip: Tekan & tahan meja untuk memilih banyak meja sekaligus',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Dine-In option - white/gray theme
+              _buildCleanDialogOption(
+                icon: Icons.restaurant,
+                title: 'Dine-In',
+                subtitle: 'Pesan langsung untuk meja ini',
+                iconBgColor: const Color(0xFF2E8B57),
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToDineIn(table);
+                },
+              ),
+              const SizedBox(height: 12),
+              
+              // Reservasi option - white/gray theme
+              _buildCleanDialogOption(
+                icon: Icons.event_available,
+                title: 'Reservasi',
+                subtitle: 'Buat reservasi untuk meja ini',
+                iconBgColor: Colors.grey.shade700,
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToReservation(table);
+                },
+              ),
+              const SizedBox(height: 20),
+              
+              // Cancel button
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Batal',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        ),
+         ),
+    );
+  }
+  
+  // Clean dialog option with white/gray theme
+  Widget _buildCleanDialogOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconBgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal'))],
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 24, color: Colors.grey.shade400),
+          ],
+        ),
       ),
     );
   }
