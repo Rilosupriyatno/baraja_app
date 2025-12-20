@@ -7,12 +7,14 @@ class GroOrderManagementScreen extends StatefulWidget {
   final String? filter;
   final String? initialDate; // Formatted 'yyyy-MM-dd' from parent
   final Map<String, dynamic>? dashboardStats;
+  final Function(int)? onOrderCountLoaded; // ✅ NEW: Callback to report count to dashboard
 
   const GroOrderManagementScreen({
     super.key,
     this.filter,
     this.initialDate,
     this.dashboardStats,
+    this.onOrderCountLoaded, // ✅ NEW
   });
 
   @override
@@ -179,6 +181,9 @@ class _GroOrderManagementScreenState
           _hasMoreData = _currentPage < totalPages;
           _isLoading = false;
         });
+        
+        // ✅ NEW: Report count to parent dashboard
+        widget.onOrderCountLoaded?.call(totalRecords);
       } else {
         setState(() {
           _errorMessage = result['error'];

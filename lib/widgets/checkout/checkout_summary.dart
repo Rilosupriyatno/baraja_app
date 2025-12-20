@@ -81,6 +81,7 @@ class CheckoutSummary extends StatelessWidget {
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,  // ✅ FIXED: Prevents overflow when keyboard appears
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(

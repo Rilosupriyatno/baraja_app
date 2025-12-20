@@ -14,14 +14,16 @@ import 'gro_reservation_screen.dart';
 
 class GroTableAvailabilityScreen extends StatefulWidget {
   final bool isGroMode;
-  final Map<String, dynamic>? dashboardStats; // ✅ Single source of truth
+  final Map<String, dynamic>? dashboardStats; // ✅ Optional, kept for backwards compatibility
   final DateTime? selectedDate; // ✅ Initial date from dashboard
+  final Function(int)? onTableCountLoaded; // ✅ NEW: Callback to report count to dashboard
 
   const GroTableAvailabilityScreen({
     super.key,
     this.isGroMode = true,
-    this.dashboardStats, // ✅ Optional, fallback to API if null
-    this.selectedDate, // ✅ Optional, fallback to DateTime.now()
+    this.dashboardStats,
+    this.selectedDate,
+    this.onTableCountLoaded, // ✅ NEW
   });
 
   @override
@@ -50,11 +52,20 @@ class _GroTableAvailabilityScreenState
   // ✅ Cache untuk menghindari rebuild berulang
   Map<String, List<dynamic>>? _cachedTablesByArea;
   
-  // ✅ STATIC CACHE: Cache table data dengan TTL
+  // ✅ STATIC CACHE: Cache table data dengan TTL + date tracking
   static List<dynamic>? _cachedTables;
   static Map<String, dynamic>? _cachedSummary;
   static DateTime? _cacheTime;
+  static DateTime? _cachedDate; // ✅ NEW: Track cached date
   static const _cacheDuration = Duration(minutes: 2);
+  
+  // ✅ NEW: Static method to invalidate cache from outside
+  static void invalidateCache() {
+    _cachedTables = null;
+    _cachedSummary = null;
+    _cacheTime = null;
+    _cachedDate = null;
+  }
 
   // ✅ Debounce untuk filter
   DateTime? _lastFilterTime;
@@ -101,7 +112,7 @@ class _GroTableAvailabilityScreenState
       setState(() {
         _selectedDate = widget.selectedDate ?? DateTime.now();
       });
-      _loadTableAvailability();
+      _loadTableAvailability(forceRefresh: true); // ✅ Force refresh on date change
     }
   }
 
@@ -119,15 +130,20 @@ class _GroTableAvailabilityScreenState
 
   // ✅ OPTIMIZED: Load data lebih cepat dengan parallel execution + caching
   Future<void> _loadTableAvailabilityOptimized({bool forceRefresh = false}) async {
-    // ✅ Return cached data if valid and no filter applied
+    // ✅ Return cached data if valid, same date, and no filter applied
     if (!forceRefresh && 
         _cachedTables != null && 
         _cachedSummary != null && 
         _cacheTime != null &&
+        _cachedDate != null && // ✅ Must have cached date
         _selectedTime == null && 
         _selectedAreaId == null) {
       final cacheAge = DateTime.now().difference(_cacheTime!);
-      if (cacheAge < _cacheDuration) {
+      final isSameDate = _cachedDate!.year == _selectedDate.year &&
+          _cachedDate!.month == _selectedDate.month &&
+          _cachedDate!.day == _selectedDate.day;
+      
+      if (cacheAge < _cacheDuration && isSameDate) {
         setState(() {
           _tables = _cachedTables!;
           _summary = Map.from(_cachedSummary!);
@@ -146,28 +162,28 @@ class _GroTableAvailabilityScreenState
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      // ✅ PARALLEL EXECUTION: Sync dan fetch data bersamaan
-      final results = await Future.wait([
-        _syncTableStatus().catchError((_) => null),
-        _groService.getTableAvailability(
-          date: dateStr,
-          time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
-          areaId: _selectedAreaId,
-          outletId: outletId,
-        ),
-      ]);
-
-      final result = results[1] as Map<String, dynamic>;
+      // ✅ OPTIMIZED: Run sync in background - don't wait for it
+      // Sync is just for keeping data fresh, not needed for display
+      _syncTableStatus(); // Fire-and-forget, no await
+      
+      // ✅ FAST: Only wait for the actual data fetch
+      final result = await _groService.getTableAvailability(
+        date: dateStr,
+        time: _selectedTime != null && _selectedTime!.isNotEmpty ? _selectedTime : null,
+        areaId: _selectedAreaId,
+        outletId: outletId,
+      );
 
       if (result['success'] == true || result['data'] != null) {
         final tables = result['data']['tables'] ?? [];
         final summary = result['data']['summary'] ?? {};
         
-        // ✅ Cache if no filter applied
+        // ✅ Cache if no filter applied - include date
         if (_selectedTime == null && _selectedAreaId == null) {
           _cachedTables = tables;
           _cachedSummary = summary;
           _cacheTime = DateTime.now();
+          _cachedDate = _selectedDate; // ✅ Store cached date
         }
         
         setState(() {
@@ -176,6 +192,10 @@ class _GroTableAvailabilityScreenState
           _cachedTablesByArea = null;
           _isLoading = false;
         });
+        
+        // ✅ NEW: Report available count to parent dashboard
+        final availableCount = tables.where((t) => t['is_available'] == true).length;
+        widget.onTableCountLoaded?.call(availableCount);
       } else {
         setState(() {
           _errorMessage = result['error'] ?? 'Gagal memuat data';

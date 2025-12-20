@@ -43,18 +43,35 @@ class TimeSelector extends StatelessWidget {
     return false;
   }
 
-  // Method untuk mendapatkan waktu minimum yang bisa dipilih
+  // ✅ FIXED: Only show minimum time text for TODAY
+  // For future dates, all times are valid so no warning needed
   String _getMinimumTimeText() {
     final DateTime now = DateTime.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
     final DateTime selectedDateOnly = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
 
+    // ✅ Only show for TODAY - future dates don't need this restriction
     if (selectedDateOnly.isAtSameMomentAs(today)) {
       final DateTime minimumTime = now.add(const Duration(minutes: 5));
       return '${minimumTime.hour.toString().padLeft(2, '0')}:${minimumTime.minute.toString().padLeft(2, '0')}';
     }
 
-    return '';
+    return ''; // No restriction for future dates
+  }
+  
+  // ✅ NEW: Check if we should show ANY time validation warning
+  bool _shouldShowTimeWarning() {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime selectedDateOnly = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    
+    // ✅ For future dates, NEVER show warning - all times are valid
+    if (selectedDateOnly.isAfter(today)) {
+      return false;
+    }
+    
+    // For today, only show warning if time is actually invalid
+    return !_isValidTime(selectedTime, selectedDate);
   }
 
   @override
@@ -157,8 +174,9 @@ class TimeSelector extends StatelessWidget {
             ),
           ),
 
-          // Tampilkan peringatan jika waktu tidak valid
-          if (!isTimeValid) ...[
+          // Tampilkan peringatan HANYA jika waktu tidak valid DAN tanggal adalah hari ini
+          // ✅ FIXED: Use _shouldShowTimeWarning() to prevent false warnings on future dates
+          if (_shouldShowTimeWarning()) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
