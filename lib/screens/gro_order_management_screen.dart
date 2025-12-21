@@ -1512,7 +1512,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Check-out', style: TextStyle(fontSize: 11)),
+              child: const Text('Selesai', style: TextStyle(fontSize: 11)),
             ),
           ),
           const SizedBox(width: 6),
@@ -2057,7 +2057,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
             child: ElevatedButton.icon(
               onPressed: () => _checkOutReservation(id),
               icon: const Icon(Icons.logout, size: 16),
-              label: const Text('Check-out', style: TextStyle(fontSize: 13)),
+              label: const Text('Selesai', style: TextStyle(fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: Colors.white,
@@ -2308,7 +2308,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           );
-          _loadReservations();
+          _loadReservations(forceRefresh: true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -2329,9 +2329,9 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Check-out Reservasi'),
+        title: const Text('Selesaikan Reservasi'),
         content:
-            const Text('Apakah tamu sudah selesai dan siap untuk check-out?'),
+            const Text('Apakah tamu sudah selesai? Status akan diubah ke Completed.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -2340,11 +2340,11 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B),
+              backgroundColor: const Color(0xFF10B981),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Check-out'),
+            child: const Text('Selesai'),
           ),
         ],
       ),
@@ -2355,18 +2355,18 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
         if (result['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Check-out berhasil'),
+              content: Text(result['message'] ?? 'Reservasi berhasil diselesaikan'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
           );
-          _loadReservations();
+          _loadReservations(forceRefresh: true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['error'] ?? 'Gagal check-out'),
+              content: Text(result['error'] ?? 'Gagal menyelesaikan reservasi'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -2437,7 +2437,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           );
-          _loadReservations();
+          _loadReservations(forceRefresh: true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

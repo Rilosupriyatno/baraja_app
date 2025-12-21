@@ -22,15 +22,15 @@ class ReservationTypeSelectorWidget extends StatelessWidget {
 
   // apakah area code butuh pilihan reservation type
   bool _shouldShowReservationType(String? areaCode) {
-    return areaCode == 'I' || areaCode == 'G';
+    return areaCode == 'I' || areaCode == 'F';
   }
 
   // cek apakah blocking bisa dipilih
   bool _canSelectBlocking(String? areaCode, int totalAmount) {
     if (areaCode == 'I') {
-      return totalAmount >= 3000000;
-    } else if (areaCode == 'G') {
       return totalAmount >= 2000000;
+    } else if (areaCode == 'F') {
+      return totalAmount >= 3000000;
     }
     return false;
   }
@@ -38,9 +38,9 @@ class ReservationTypeSelectorWidget extends StatelessWidget {
   // minimum amount untuk blocking
   int _getMinimumAmountForBlocking(String? areaCode) {
     if (areaCode == 'I') {
-      return 3000000;
-    } else if (areaCode == 'G') {
       return 2000000;
+    } else if (areaCode == 'F') {
+      return 3000000;
     }
     return 0;
   }

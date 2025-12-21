@@ -109,9 +109,11 @@ class CalculationService {
   static int calculateCartTotal({
     required List<CartItem> items,
     bool isReservation = false,
+    bool isReservationWithoutMenu = false, // ✅ NEW: True only for "tanpa menu" mode
   }) {
-    // Special case: reservation without menu
-    if (isReservation && items.isEmpty) {
+    // Special case: reservation without menu (only if explicitly set)
+    // Show 25k ONLY for true "tanpa menu" reservation, not for "dengan menu tapi belum pilih"
+    if (isReservation && items.isEmpty && isReservationWithoutMenu) {
       return 25000;
     }
 

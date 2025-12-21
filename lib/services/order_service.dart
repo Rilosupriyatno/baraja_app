@@ -38,6 +38,9 @@ class OrderService {
     bool isGroMode = false,
     String? groId,
     String? guestPhone,
+    // ✅ NEW: DP Already Paid for GRO Reservation
+    bool dpAlreadyPaid = false,
+    Map<String, dynamic>? dpBankInfo,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -113,6 +116,9 @@ class OrderService {
         'isGroMode': isGroMode,
         'groId': finalGroId,
         'guestPhone': guestPhone,
+        // ✅ NEW: DP Already Paid data
+        if (dpAlreadyPaid) 'dpAlreadyPaid': true,
+        if (dpAlreadyPaid && dpBankInfo != null) 'dpBankInfo': dpBankInfo,
       };
 
       if (voucherCode != null && voucherCode.isNotEmpty) {

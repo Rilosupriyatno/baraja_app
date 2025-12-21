@@ -406,6 +406,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
 
     cartProvider.setReservationData(true, reservationData);
+    cartProvider.setReservationWithoutMenu(true); // ✅ Set "Tanpa Menu" mode = Rp 25.000
 
     Navigator.pushReplacement(
       context,
@@ -430,6 +431,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
 
     cartProvider.setReservationData(true, reservationData);
+    cartProvider.setReservationWithoutMenu(false); // ✅ Set "Dengan Menu" mode = Rp 0 (until items added)
 
     // ✅ Use context.push instead of Navigator.pushReplacement for proper back navigation
     context.push('/menu', extra: {

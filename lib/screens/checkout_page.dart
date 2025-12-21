@@ -75,8 +75,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // ✅ NEW: Manual DP and Tax toggle for GRO
   bool _enableManualDP = false;
   int? _manualDPAmount;
-  // bool _enableTax = true; // Tax will be always enabled for specific conditions
+  bool _enableTax = true; // ✅ Tax toggle for GRO
   final TextEditingController _manualDPController = TextEditingController();
+
+  // ✅ NEW: DP Already Paid (for GRO Reservation)
+  bool _dpAlreadyPaid = false;
+  String? _dpBankCode; // 'bca' or 'mandiri'
+  String? _dpBankName;
 
   final TaxService _taxService = TaxService();
   final TableService _tableService = TableService();
@@ -415,18 +420,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   bool _canSelectBlocking(String? areaCode, int totalAmount) {
     if (areaCode == 'I') {
-      return totalAmount >= 3000000;
-    } else if (areaCode == 'F') {
       return totalAmount >= 2000000;
+    } else if (areaCode == 'F') {
+      return totalAmount >= 3000000;
     }
     return false;
   }
 
   int _getMinimumAmountForBlocking(String? areaCode) {
     if (areaCode == 'I') {
-      return 3000000;
-    } else if (areaCode == 'F') {
       return 2000000;
+    } else if (areaCode == 'F') {
+      return 3000000;
     }
     return 0;
   }
@@ -487,7 +492,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         // ✅ NEW: Tax calculation with toggle support
         // Disable tax for reservation without menu (only reservation fee)
         final bool isReservationOnly = _isReservationWithoutMenu(cartProvider);
-        final bool enableTax = !isReservationOnly;
+        // ✅ UPDATED: Use _enableTax state for GRO mode
+        final bool enableTax = !isReservationOnly && _enableTax;
 
         final int taxAmount =
             enableTax ? (_taxCalculation?.totalTaxAmount.round() ?? 0) : 0;
@@ -936,15 +942,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       const SizedBox(height: 16),
                     ],
 
-                    // ✅ NEW: Tax Toggle for GRO (Reservation & Dine-In)
-                    // Removed Tax Toggle - Always show Tax Info if applied
+                    // ✅ Tax Toggle for GRO
                     if (widget.isGroMode && _taxCalculation != null) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                          color: _enableTax ? Colors.orange.shade50 : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.shade200),
+                          border: Border.all(
+                            color: _enableTax ? Colors.orange.shade200 : Colors.grey.shade300,
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -952,23 +959,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             Row(
                               children: [
                                 Icon(Icons.receipt_long,
-                                    color: Colors.orange.shade600, size: 20),
+                                    color: _enableTax ? Colors.orange.shade600 : Colors.grey.shade500,
+                                    size: 20),
                                 const SizedBox(width: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Pajak & Service',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
+                                        color: _enableTax ? Colors.black : Colors.grey.shade600,
                                       ),
                                     ),
                                     Text(
-                                      '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
+                                      _enableTax
+                                          ? '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}'
+                                          : 'Tidak dikenakan pajak',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: Colors.orange.shade700,
+                                        color: _enableTax ? Colors.orange.shade700 : Colors.grey.shade500,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -976,12 +987,215 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 ),
                               ],
                             ),
-                            // Switch removed
+                            // ✅ Tax Toggle Switch
+                            Switch(
+                              value: _enableTax,
+                              activeColor: Colors.orange.shade600,
+                              onChanged: (value) {
+                                setState(() {
+                                  _enableTax = value;
+                                });
+                              },
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
+
+                    // ✅ NEW: DP Already Paid Checkbox (GRO + Reservation + DP type only)
+                    if (widget.isGroMode &&
+                        cartProvider.isReservation &&
+                        selectedPaymentType == PaymentType.downPayment) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _dpAlreadyPaid ? Colors.green.shade50 : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _dpAlreadyPaid ? Colors.green.shade300 : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Checkbox Row
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _dpAlreadyPaid,
+                                  activeColor: Colors.green.shade600,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _dpAlreadyPaid = value ?? false;
+                                      if (!_dpAlreadyPaid) {
+                                        _dpBankCode = null;
+                                        _dpBankName = null;
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'DP Sudah Dibayar (Transfer Bank)',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: _dpAlreadyPaid ? Colors.green.shade700 : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Centang jika tamu sudah transfer DP',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Bank Selector (show when checked)
+                            if (_dpAlreadyPaid) ...[
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Pilih Bank Tujuan Transfer:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  // BCA Button
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _dpBankCode = 'bca_pt';
+                                          _dpBankName = 'BCA (PT SCN)';
+                                          // ✅ Use Cash flow for instant settlement (no Midtrans)
+                                          selectedPaymentMethod = 'cash';
+                                          selectedPaymentMethodName = 'Cash'; // Must match Order enum
+                                          selectedBankName = 'BCA (PT SCN)';
+                                          selectedBankCode = 'bca_pt';
+                                          validationErrors.remove('paymentMethod');
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: _dpBankCode == 'bca_pt'
+                                              ? Colors.blue.shade600
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: _dpBankCode == 'bca_pt'
+                                                ? Colors.blue.shade600
+                                                : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'BCA (PT SCN)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: _dpBankCode == 'bca_pt'
+                                                  ? Colors.white
+                                                  : Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Mandiri Button
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _dpBankCode = 'mandiri_pt';
+                                          _dpBankName = 'Mandiri (PT SCN)';
+                                          // ✅ Use Cash flow for instant settlement (no Midtrans)
+                                          selectedPaymentMethod = 'cash';
+                                          selectedPaymentMethodName = 'Cash'; // Must match Order enum
+                                          selectedBankName = 'Mandiri (PT SCN)';
+                                          selectedBankCode = 'mandiri_pt';
+                                          validationErrors.remove('paymentMethod');
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: _dpBankCode == 'mandiri_pt'
+                                              ? Colors.amber.shade600
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: _dpBankCode == 'mandiri_pt'
+                                                ? Colors.amber.shade600
+                                                : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'Mandiri (PT SCN)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: _dpBankCode == 'mandiri_pt'
+                                                  ? Colors.white
+                                                  : Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_dpBankCode != null) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          color: Colors.green.shade700, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'DP akan langsung tercatat sebagai lunas (settlement)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.green.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
 
                     PaymentMethodWithValidation(
                       displayedPaymentMethod: displayedPaymentMethod,
@@ -1245,6 +1459,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             isGroMode: widget.isGroMode,
                             groId: groId,
                             guestPhone: guestPhone,
+                            // ✅ NEW: DP Already Paid for instant settlement
+                            dpAlreadyPaid: _dpAlreadyPaid,
+                            dpBankInfo: _dpAlreadyPaid && _dpBankCode != null
+                                ? {
+                                    'bankCode': _dpBankCode,
+                                    'bankName': _dpBankName,
+                                  }
+                                : null,
                           );
 
                           print("✅ createOrder berhasil: $orderResult");

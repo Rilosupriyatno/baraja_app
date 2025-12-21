@@ -64,6 +64,12 @@ class _MenuScreenState extends State<MenuScreen> {
   Map<String, AddonOption?> _selectedAddonOptions = {};
   List<Topping> _selectedToppings = [];
 
+  // ✅ FIX: Controllers untuk custom amount form - pindah ke class level
+  final TextEditingController _customNameController = TextEditingController();
+  final TextEditingController _customAmountController = TextEditingController();
+  final TextEditingController _customDescriptionController = TextEditingController();
+  final GlobalKey<FormState> _customAmountFormKey = GlobalKey<FormState>();
+
   // Helper to calculate total
   double _calculateTotal() {
     if (_selectedProduct == null) return 0;
@@ -157,6 +163,16 @@ class _MenuScreenState extends State<MenuScreen> {
       }
     });
   }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    _customNameController.dispose();
+    _customAmountController.dispose();
+    _customDescriptionController.dispose();
+    super.dispose();
+  }
+
   // void initState() {
   //   super.initState();
   //   _loadProducts();
@@ -1519,18 +1535,14 @@ class _MenuScreenState extends State<MenuScreen> {
 
   // ✅ Custom Amount Form (Inline)
   Widget _buildCustomAmountForm() {
-    // Local controllers for custom amount form
-    final nameController = TextEditingController();
-    final amountController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+    // ✅ FIX: Gunakan class-level controllers untuk menghindari keyboard hilang
 
     return Container(
       color: Colors.white,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
-          key: formKey,
+          key: _customAmountFormKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1590,7 +1602,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: nameController,
+                controller: _customNameController,
                 decoration: InputDecoration(
                   hintText: 'Contoh: Biaya Layanan',
                   hintStyle:
@@ -1630,7 +1642,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: amountController,
+                controller: _customAmountController,
                 decoration: InputDecoration(
                   hintText: '0',
                   hintStyle:
@@ -1679,7 +1691,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: descriptionController,
+                controller: _customDescriptionController,
                 decoration: InputDecoration(
                   hintText: 'Tambahkan keterangan',
                   hintStyle:
@@ -1712,13 +1724,13 @@ class _MenuScreenState extends State<MenuScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (!formKey.currentState!.validate()) {
+                    if (!_customAmountFormKey.currentState!.validate()) {
                       return;
                     }
 
                     final cartProvider =
                         Provider.of<CartProvider>(context, listen: false);
-                    final amountStr = amountController.text
+                    final amountStr = _customAmountController.text
                         .replaceAll('.', '')
                         .replaceAll(',', '');
                     final amount = int.tryParse(amountStr) ?? 0;
@@ -1735,11 +1747,11 @@ class _MenuScreenState extends State<MenuScreen> {
 
                     // Create custom amount cart item
                     final customAmountItem = CartItem.customAmount(
-                      name: nameController.text.trim(),
+                      name: _customNameController.text.trim(),
                       amount: amount,
-                      description: descriptionController.text.trim().isEmpty
+                      description: _customDescriptionController.text.trim().isEmpty
                           ? null
-                          : descriptionController.text.trim(),
+                          : _customDescriptionController.text.trim(),
                       dineType: 'Dine-In',
                     );
 
@@ -1750,11 +1762,16 @@ class _MenuScreenState extends State<MenuScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                            '${nameController.text} ditambahkan ke keranjang'),
+                            '${_customNameController.text} ditambahkan ke keranjang'),
                         backgroundColor: const Color(0xFF2E8B57),
                         duration: const Duration(seconds: 2),
                       ),
                     );
+
+                    // Clear form dan close
+                    _customNameController.clear();
+                    _customAmountController.clear();
+                    _customDescriptionController.clear();
 
                     // Close form
                     setState(() {

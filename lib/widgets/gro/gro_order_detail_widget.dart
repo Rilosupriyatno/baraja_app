@@ -241,13 +241,28 @@ class GroOrderDetailWidget extends StatelessWidget {
   Widget _buildDownPaymentSection(Map<String, dynamic> orderData) {
     final paymentDetails = orderData['paymentDetails'] as Map<String, dynamic>?;
 
-    if (paymentDetails == null || paymentDetails['isDownPayment'] != true) {
+    // ✅ FIX: Juga tampilkan jika ada pending Final Payment
+    final isDownPayment = paymentDetails?['isDownPayment'] == true;
+    final hasPendingFinalPayment = paymentDetails?['hasPendingFinalPayment'] == true;
+    
+    if (paymentDetails == null || (!isDownPayment && !hasPendingFinalPayment)) {
       return const SizedBox.shrink();
     }
 
     final paidAmount = _getNumericValue(paymentDetails['paidAmount']);
     final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
     final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
+    
+    // ✅ Get pending Final Payment details
+    final pendingFPDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
+    final fpAmount = _getNumericValue(pendingFPDetails?['amount']);
+    final fpTotalAmount = _getNumericValue(pendingFPDetails?['totalAmount']);
+    final paymentType = paymentDetails['paymentType']?.toString() ?? '';
+    
+    // ✅ FIX: Sisa Pembayaran = FP.totalAmount jika ada FP, kalau tidak dari DP.remainingAmount
+    final sisaPembayaran = hasPendingFinalPayment && fpTotalAmount > 0 
+        ? fpTotalAmount 
+        : remainingAmount;
 
     return Column(
       children: [
@@ -266,10 +281,10 @@ class GroOrderDetailWidget extends StatelessWidget {
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'Informasi Down Payment',
-              style: TextStyle(
+        const SizedBox(width: 12),
+            Text(
+              hasPendingFinalPayment ? 'Informasi Pelunasan' : 'Informasi Down Payment',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
@@ -345,6 +360,63 @@ class GroOrderDetailWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+              
+              // ✅ NEW: Jumlah Tambahan (FP Amount) - show only when Final Payment pending
+              if (hasPendingFinalPayment && fpAmount > 0)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.purple.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.add_shopping_cart,
+                        size: 20,
+                        color: Colors.purple,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tambahan Order',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            Text(
+                              'Pesanan Tambahan',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.purple.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(fpAmount),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              if (hasPendingFinalPayment && fpAmount > 0)
+                const SizedBox(height: 8),
 
               // Remaining Amount
               Container(
@@ -377,10 +449,10 @@ class GroOrderDetailWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            remainingAmount > 0 ? 'Belum Lunas' : 'Lunas',
+                            sisaPembayaran > 0 ? 'Belum Lunas' : 'Lunas',
                             style: TextStyle(
                               fontSize: 12,
-                              color: remainingAmount > 0 ? Colors.orange : Colors.green,
+                              color: sisaPembayaran > 0 ? Colors.orange : Colors.green,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -388,11 +460,11 @@ class GroOrderDetailWidget extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatCurrency(remainingAmount),
+                      formatCurrency(sisaPembayaran),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: remainingAmount > 0 ? Colors.orange : Colors.green,
+                        color: sisaPembayaran > 0 ? Colors.orange : Colors.green,
                       ),
                     ),
                   ],
@@ -401,11 +473,6 @@ class GroOrderDetailWidget extends StatelessWidget {
             ],
           ),
         ),
-        
-        // ✅ TAMBAHAN: Tampilkan QR code jika ada pending final payment
-        _buildPendingFinalPaymentQR(paymentDetails),
-        
-        const SizedBox(height: 20),
 
         // Divider
         Container(
@@ -445,6 +512,22 @@ class GroOrderDetailWidget extends StatelessWidget {
     print('Payment Details: $paymentDetails');
     print('Items count: ${items.length}');
     print('Custom Amount Items count: ${customAmountItems.length}');
+    
+    // ✅ DEBUG: Additional logging for DP and Final Payment
+    print('=== DEBUG PAYMENT INFO ===' );
+    print('isDownPayment: ${paymentDetails?['isDownPayment']}');
+    print('downPaymentPaid: ${paymentDetails?['downPaymentPaid']}');
+    print('paidAmount: ${paymentDetails?['paidAmount']}');
+    print('remainingAmount: ${paymentDetails?['remainingAmount']}');
+    print('hasPendingFinalPayment: ${paymentDetails?['hasPendingFinalPayment']}');
+    final pendingFPDetails = paymentDetails?['pendingFinalPaymentDetails'];
+    print('pendingFinalPaymentDetails: $pendingFPDetails');
+    if (pendingFPDetails != null) {
+      print('  - status: ${pendingFPDetails['status']}');
+      print('  - amount: ${pendingFPDetails['amount']}');
+      print('  - actions: ${pendingFPDetails['actions']}');
+    }
+    print('=========================');
 
     return Container(
       width: double.infinity,
@@ -996,6 +1079,9 @@ class GroOrderDetailWidget extends StatelessWidget {
                       ),
                     ),
                   ],
+                  
+                  // ✅ QR Code at the very bottom
+                  _buildPendingFinalPaymentQR(paymentDetails),
                 ],
               ),
             ),

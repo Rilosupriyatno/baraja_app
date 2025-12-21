@@ -20,6 +20,7 @@ class CartProvider with ChangeNotifier {
   final Map<String, bool> _userIsOpenBill = {};
   final Map<String, OpenBillData?> _userOpenBillData = {};
   final Map<String, bool> _userIsGroMode = {};
+  final Map<String, bool> _userIsReservationWithoutMenu = {}; // ✅ NEW: Track tanpa menu mode
 
   // Guest data - per user
   final Map<String, String?> _userGuestName = {};
@@ -76,6 +77,7 @@ class CartProvider with ChangeNotifier {
   bool get isDineIn => _userIsDineIn[_userKey] ?? false;
   String? get tableNumber => _userTableNumber[_userKey];
   bool get isGroMode => _userIsGroMode[_userKey] ?? (_currentUserRole == 'gro');
+  bool get isReservationWithoutMenu => _userIsReservationWithoutMenu[_userKey] ?? false; // ✅ NEW
 
   String? get guestName => _userGuestName[_userKey];
   String? get guestPhone => _userGuestPhone[_userKey];
@@ -161,6 +163,13 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ NEW: Set reservation without menu mode
+  void setReservationWithoutMenu(bool value) {
+    _userIsReservationWithoutMenu[_userKey] = value;
+    debugPrint('📋 Reservation Without Menu set to: $value for user $_userKey');
+    notifyListeners();
+  }
+
   void clearOrderContext() {
     _userIsReservation[_userKey] = false;
     _userReservationData.remove(_userKey);
@@ -168,6 +177,7 @@ class CartProvider with ChangeNotifier {
     _userTableNumber.remove(_userKey);
     _userIsOpenBill[_userKey] = false;
     _userOpenBillData.remove(_userKey);
+    _userIsReservationWithoutMenu[_userKey] = false; // ✅ Clear this too
     notifyListeners();
   }
 
@@ -295,6 +305,7 @@ class CartProvider with ChangeNotifier {
     return CalculationService.calculateCartTotal(
       items: targetCart,
       isReservation: isReservation,
+      isReservationWithoutMenu: isReservationWithoutMenu, // ✅ Pass the flag
     );
   }
 
