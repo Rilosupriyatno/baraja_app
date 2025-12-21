@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:skeletonizer/skeletonizer.dart'; // ✅ NEW: Skeleton loading
 import '../services/gro_service.dart';
 import 'gro_dinein_screen.dart';
 import 'gro_reservation_screen.dart';
@@ -25,6 +26,21 @@ class GroTableAvailabilityScreen extends StatefulWidget {
     this.selectedDate,
     this.onTableCountLoaded, // ✅ NEW
   });
+  
+  // ✅ STATIC CACHE: Accessible from outside for invalidation
+  static List<dynamic>? _cachedTables;
+  static Map<String, dynamic>? _cachedSummary;
+  static DateTime? _cacheTime;
+  static DateTime? _cachedDate;
+  static const _cacheDuration = Duration(minutes: 2);
+  
+  // ✅ PUBLIC: Invalidate cache on socket events
+  static void invalidateCache() {
+    _cachedTables = null;
+    _cachedSummary = null;
+    _cacheTime = null;
+    _cachedDate = null;
+  }
 
   @override
   State<GroTableAvailabilityScreen> createState() =>
@@ -51,21 +67,6 @@ class _GroTableAvailabilityScreenState
 
   // ✅ Cache untuk menghindari rebuild berulang
   Map<String, List<dynamic>>? _cachedTablesByArea;
-  
-  // ✅ STATIC CACHE: Cache table data dengan TTL + date tracking
-  static List<dynamic>? _cachedTables;
-  static Map<String, dynamic>? _cachedSummary;
-  static DateTime? _cacheTime;
-  static DateTime? _cachedDate; // ✅ NEW: Track cached date
-  static const _cacheDuration = Duration(minutes: 2);
-  
-  // ✅ NEW: Static method to invalidate cache from outside
-  static void invalidateCache() {
-    _cachedTables = null;
-    _cachedSummary = null;
-    _cacheTime = null;
-    _cachedDate = null;
-  }
 
   // ✅ Debounce untuk filter
   DateTime? _lastFilterTime;
@@ -132,21 +133,21 @@ class _GroTableAvailabilityScreenState
   Future<void> _loadTableAvailabilityOptimized({bool forceRefresh = false}) async {
     // ✅ Return cached data if valid, same date, and no filter applied
     if (!forceRefresh && 
-        _cachedTables != null && 
-        _cachedSummary != null && 
-        _cacheTime != null &&
-        _cachedDate != null && // ✅ Must have cached date
+        GroTableAvailabilityScreen._cachedTables != null && 
+        GroTableAvailabilityScreen._cachedSummary != null && 
+        GroTableAvailabilityScreen._cacheTime != null &&
+        GroTableAvailabilityScreen._cachedDate != null && // ✅ Must have cached date
         _selectedTime == null && 
         _selectedAreaId == null) {
-      final cacheAge = DateTime.now().difference(_cacheTime!);
-      final isSameDate = _cachedDate!.year == _selectedDate.year &&
-          _cachedDate!.month == _selectedDate.month &&
-          _cachedDate!.day == _selectedDate.day;
+      final cacheAge = DateTime.now().difference(GroTableAvailabilityScreen._cacheTime!);
+      final isSameDate = GroTableAvailabilityScreen._cachedDate!.year == _selectedDate.year &&
+          GroTableAvailabilityScreen._cachedDate!.month == _selectedDate.month &&
+          GroTableAvailabilityScreen._cachedDate!.day == _selectedDate.day;
       
-      if (cacheAge < _cacheDuration && isSameDate) {
+      if (cacheAge < GroTableAvailabilityScreen._cacheDuration && isSameDate) {
         setState(() {
-          _tables = _cachedTables!;
-          _summary = Map.from(_cachedSummary!);
+          _tables = GroTableAvailabilityScreen._cachedTables!;
+          _summary = Map.from(GroTableAvailabilityScreen._cachedSummary!);
           _cachedTablesByArea = null;
           _isLoading = false;
         });
@@ -180,10 +181,10 @@ class _GroTableAvailabilityScreenState
         
         // ✅ Cache if no filter applied - include date
         if (_selectedTime == null && _selectedAreaId == null) {
-          _cachedTables = tables;
-          _cachedSummary = summary;
-          _cacheTime = DateTime.now();
-          _cachedDate = _selectedDate; // ✅ Store cached date
+          GroTableAvailabilityScreen._cachedTables = tables;
+          GroTableAvailabilityScreen._cachedSummary = summary;
+          GroTableAvailabilityScreen._cacheTime = DateTime.now();
+          GroTableAvailabilityScreen._cachedDate = _selectedDate; // ✅ Store cached date
         }
         
         setState(() {
@@ -549,12 +550,6 @@ class _GroTableAvailabilityScreenState
                 onPressed: _proceedWithMultiTableReservation,
                 icon: const Icon(Icons.check_circle, color: Colors.white),
                 tooltip: 'Lanjutkan Reservasi',
-              )
-            else if (!_isMultiSelectMode)
-              IconButton(
-                onPressed: _loadTableAvailability,
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Refresh',
               ),
             const SizedBox(width: 8),
           ],
@@ -569,11 +564,13 @@ class _GroTableAvailabilityScreenState
             _buildFilters(),
             _buildSummaryCard(isTablet),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
+              child: _errorMessage != null
                   ? _buildErrorState()
-                  : _buildTableGrid(isTablet),
+                  : Skeletonizer(
+                      enabled: _isLoading, // ✅ Skeleton effect when loading
+                      enableSwitchAnimation: true,
+                      child: _buildTableGrid(isTablet),
+                    ),
             ),
           ],
         ),
@@ -968,18 +965,15 @@ class _GroTableAvailabilityScreenState
 
     final tablesByArea = _getTablesByArea();
 
-    return RefreshIndicator(
-      onRefresh: _loadTableAvailability,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: EdgeInsets.fromLTRB(isTablet ? 12 : 16, isTablet ? 12 : 16, isTablet ? 12 : 16, 100),
-        itemCount: tablesByArea.length,
-        itemBuilder: (context, index) {
-          final areaName = tablesByArea.keys.elementAt(index);
-          final tables = tablesByArea[areaName]!;
-          return _buildAreaSection(areaName, tables, isTablet);
-        },
-      ),
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.fromLTRB(isTablet ? 12 : 16, isTablet ? 12 : 16, isTablet ? 12 : 16, 100),
+      itemCount: tablesByArea.length,
+      itemBuilder: (context, index) {
+        final areaName = tablesByArea.keys.elementAt(index);
+        final tables = tablesByArea[areaName]!;
+        return _buildAreaSection(areaName, tables, isTablet);
+      },
     );
   }
 

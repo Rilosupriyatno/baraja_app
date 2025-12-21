@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:skeletonizer/skeletonizer.dart'; // ✅ NEW: Skeleton loading
 import '../services/gro_service.dart';
 import '../screens/gro_unified_order_detail_sheet.dart';
 
@@ -7,7 +9,8 @@ class GroOrderManagementScreen extends StatefulWidget {
   final String? filter;
   final String? initialDate; // Formatted 'yyyy-MM-dd' from parent
   final Map<String, dynamic>? dashboardStats;
-  final Function(int)? onOrderCountLoaded; // ✅ NEW: Callback to report count to dashboard
+  final Function(int)?
+      onOrderCountLoaded; // ✅ NEW: Callback to report count to dashboard
 
   const GroOrderManagementScreen({
     super.key,
@@ -17,13 +20,27 @@ class GroOrderManagementScreen extends StatefulWidget {
     this.onOrderCountLoaded, // ✅ NEW
   });
 
+  // ✅ STATIC CACHE: Accessible from outside for invalidation
+  static List<dynamic>? _cachedReservations;
+  static Map<String, int>? _cachedStats;
+  static DateTime? _cacheTime;
+  static String? _cachedDate;
+  static const _cacheDuration = Duration(minutes: 2);
+
+  // ✅ PUBLIC: Invalidate cache on socket events
+  static void invalidateCache() {
+    _cachedReservations = null;
+    _cachedStats = null;
+    _cacheTime = null;
+    _cachedDate = null;
+  }
+
   @override
   State<GroOrderManagementScreen> createState() =>
       _GroOrderManagementScreenState();
 }
 
-class _GroOrderManagementScreenState
-    extends State<GroOrderManagementScreen> {
+class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
   final GROService _groService = GROService();
   List<dynamic> _reservations = [];
   bool _isLoading = true;
@@ -32,6 +49,13 @@ class _GroOrderManagementScreenState
   String? _errorMessage;
 
   Map<String, int>? _localStats;
+
+  // ✅ CLIENT-SIDE PAGINATION: Display only, all data loaded for search
+  int _displayPage = 1;
+  static const int _itemsPerPage = 20;
+
+  // ✅ SEARCH DEBOUNCE: Prevent race conditions
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -64,20 +88,20 @@ class _GroOrderManagementScreenState
     // Reload if date changes from parent
     if (widget.initialDate != oldWidget.initialDate) {
       setState(() {
-         _selectedDate = widget.initialDate != null && widget.initialDate!.isNotEmpty
-            ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
-            : DateTime.now();
+        _selectedDate =
+            widget.initialDate != null && widget.initialDate!.isNotEmpty
+                ? DateTime.tryParse(widget.initialDate!) ?? DateTime.now()
+                : DateTime.now();
       });
       _loadReservations();
     }
     // Update dashboard stats if they change
     if (widget.dashboardStats != oldWidget.dashboardStats) {
-       // We might want to re-initialize _localStats here, but 
-       // typically we prefer our locally calculated ones if we are already viewing the list.
-       // However, if the user changed the date, _loadReservations will run and re-calculate anyway.
+      // We might want to re-initialize _localStats here, but
+      // typically we prefer our locally calculated ones if we are already viewing the list.
+      // However, if the user changed the date, _loadReservations will run and re-calculate anyway.
     }
   }
-
 
   String __selectedFilter = 'all';
 
@@ -94,6 +118,19 @@ class _GroOrderManagementScreenState
   int _totalRecords = 0;
   late DateTime _selectedDate;
   final TextEditingController _searchController = TextEditingController();
+
+  // ✅ CLIENT-SIDE PAGINATION: Computed properties
+  List<dynamic> get _paginatedReservations {
+    if (_reservations.isEmpty) return [];
+    final startIndex = (_displayPage - 1) * _itemsPerPage;
+    final endIndex =
+        (startIndex + _itemsPerPage).clamp(0, _reservations.length);
+    if (startIndex >= _reservations.length) return [];
+    return _reservations.sublist(startIndex, endIndex);
+  }
+
+  int get _totalDisplayPages =>
+      (_reservations.length / _itemsPerPage).ceil().clamp(1, 999);
 
   String? _mapFilterToApiStatus(String filter) {
     switch (filter) {
@@ -112,26 +149,54 @@ class _GroOrderManagementScreenState
     }
   }
 
-  // ✅ Initial load - resets page to 1 and clears existing data
-  Future<void> _loadReservations() async {
+  // ✅ Initial load - with caching to prevent reload on tab switch
+  Future<void> _loadReservations({bool forceRefresh = false}) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    // ✅ CHECK CACHE: Return cached data if valid, same date, and no search
+    if (!forceRefresh &&
+        GroOrderManagementScreen._cachedReservations != null &&
+        GroOrderManagementScreen._cachedStats != null &&
+        GroOrderManagementScreen._cacheTime != null &&
+        GroOrderManagementScreen._cachedDate != null &&
+        _selectedFilter == 'all' &&
+        _searchController.text.isEmpty) {
+      final cacheAge =
+          DateTime.now().difference(GroOrderManagementScreen._cacheTime!);
+      final isSameDate = GroOrderManagementScreen._cachedDate == dateStr;
+
+      if (cacheAge < GroOrderManagementScreen._cacheDuration && isSameDate) {
+        // Use cached data - NO loading, instant display
+        setState(() {
+          _reservations = GroOrderManagementScreen._cachedReservations!;
+          _localStats =
+              Map<String, int>.from(GroOrderManagementScreen._cachedStats!);
+          _isLoading = false;
+        });
+
+        // Report count to parent
+        widget.onOrderCountLoaded?.call(_reservations.length);
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _currentPage = 1;
       _hasMoreData = true;
+      _displayPage = 1; // ✅ Reset pagination when data reloads
     });
 
     try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final apiStatus = _mapFilterToApiStatus(_selectedFilter);
 
       final result = await _groService.getReservations(
         page: 1,
         limit: 500, // Load all data at once for better search/filter
         status: apiStatus,
-        search: _searchController.text.isNotEmpty
-            ? _searchController.text
-            : null,
+        search:
+            _searchController.text.isNotEmpty ? _searchController.text : null,
         date: dateStr,
       );
 
@@ -166,12 +231,23 @@ class _GroOrderManagementScreenState
         });
 
         // Calculate local stats if we have all items
-        if (_selectedFilter == 'all' && result['pagination']['total_pages'] == 1) {
-           _calculateLocalStats(reservations);
+        if (_selectedFilter == 'all' &&
+            result['pagination']['total_pages'] == 1) {
+          _calculateLocalStats(reservations);
+
+          // ✅ CACHE: Store data for tab switching (only for 'all' filter without search)
+          if (_searchController.text.isEmpty) {
+            GroOrderManagementScreen._cachedReservations = reservations;
+            GroOrderManagementScreen._cachedStats =
+                Map<String, int>.from(_localStats!);
+            GroOrderManagementScreen._cacheTime = DateTime.now();
+            GroOrderManagementScreen._cachedDate = dateStr;
+          }
         }
 
         final totalPages = result['pagination']['total_pages'] ?? 1;
-        final totalRecords = result['pagination']['total_records'] ?? reservations.length;
+        final totalRecords =
+            result['pagination']['total_records'] ?? reservations.length;
 
         setState(() {
           _reservations = reservations;
@@ -181,8 +257,8 @@ class _GroOrderManagementScreenState
           _hasMoreData = _currentPage < totalPages;
           _isLoading = false;
         });
-        
-        // ✅ NEW: Report count to parent dashboard
+
+        // ✅ Report count to parent dashboard
         widget.onOrderCountLoaded?.call(totalRecords);
       } else {
         setState(() {
@@ -215,9 +291,8 @@ class _GroOrderManagementScreenState
         page: nextPage,
         limit: 30,
         status: apiStatus,
-        search: _searchController.text.isNotEmpty
-            ? _searchController.text
-            : null,
+        search:
+            _searchController.text.isNotEmpty ? _searchController.text : null,
         date: dateStr,
       );
 
@@ -283,21 +358,21 @@ class _GroOrderManagementScreenState
     int cancelled = 0;
 
     for (var item in allItems) {
-       final status = _getDisplayStatus(item); // Uses frontend logic
-       switch (status) {
-         case 'Menunggu':
-           pending++;
-           break;
-         case 'Berlangsung':
-           ongoing++;
-           break;
-         case 'Selesai':
-           completed++;
-           break;
-         case 'Dibatalkan':
-           cancelled++;
-           break;
-       }
+      final status = _getDisplayStatus(item); // Uses frontend logic
+      switch (status) {
+        case 'Menunggu':
+          pending++;
+          break;
+        case 'Berlangsung':
+          ongoing++;
+          break;
+        case 'Selesai':
+          completed++;
+          break;
+        case 'Dibatalkan':
+          cancelled++;
+          break;
+      }
     }
 
     setState(() {
@@ -309,14 +384,14 @@ class _GroOrderManagementScreenState
         'cancelled': cancelled,
       };
     });
-    
+
     print("✅ LOCAL STATS UPDATED: $_localStats");
   }
 
   int _getCountForFilter(String filter) {
     // Prefer local stats if available (calculated from actual list)
     if (_localStats != null) {
-       return _localStats![filter] ?? 0;
+      return _localStats![filter] ?? 0;
     }
 
     if (widget.dashboardStats == null) return 0;
@@ -340,29 +415,27 @@ class _GroOrderManagementScreenState
   Future<void> _checkInDineInOrder(String orderId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Check-in Customer'),
-            content: const Text(
-                'Apakah customer sudah datang dan siap untuk check-in?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Check-in'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Check-in Customer'),
+        content:
+            const Text('Apakah customer sudah datang dan siap untuk check-in?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Check-in'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.checkInDineInOrder(orderId);
@@ -397,45 +470,43 @@ class _GroOrderManagementScreenState
     final reasonController = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Batalkan Order'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Apakah Anda yakin ingin membatalkan order ini?'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: reasonController,
-                  decoration: InputDecoration(
-                    labelText: 'Alasan pembatalan (opsional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  maxLines: 2,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Batalkan Order'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Apakah Anda yakin ingin membatalkan order ini?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Alasan pembatalan (opsional)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
+              ),
+              maxLines: 2,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Batalkan Order'),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Batalkan Order'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.cancelDineInOrder(
@@ -544,14 +615,8 @@ class _GroOrderManagementScreenState
         ),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _loadReservations,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            splashRadius: 24,
-          ),
-          const SizedBox(width: 8),
+        actions: const [
+          SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -566,15 +631,13 @@ class _GroOrderManagementScreenState
             ),
           ),
           Expanded(
-            child: _isLoading
-                ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF2E8B57),
-              ),
-            )
-                : _errorMessage != null
+            child: _errorMessage != null
                 ? _buildErrorState()
-                : _buildReservationsList(isTablet),
+                : Skeletonizer(
+                    enabled: _isLoading, // ✅ Skeleton effect when loading
+                    enableSwitchAnimation: true,
+                    child: _buildReservationsList(isTablet),
+                  ),
           ),
         ],
       ),
@@ -587,7 +650,7 @@ class _GroOrderManagementScreenState
       child: Column(
         children: [
           // REMOVED DATE PICKER HERE (Centralized in Dashboard)
-          
+
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
@@ -599,31 +662,40 @@ class _GroOrderManagementScreenState
               decoration: InputDecoration(
                 hintText: 'Cari nama pemesan, kode reservasi, atau nama GRO...',
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                prefixIcon: Icon(
-                    Icons.search, color: Colors.grey.shade600, size: 20),
+                prefixIcon:
+                    Icon(Icons.search, color: Colors.grey.shade600, size: 20),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                  icon: Icon(
-                      Icons.clear, color: Colors.grey.shade600, size: 20),
-                  onPressed: () {
-                    _searchController.clear();
-                    _loadReservations();
-                  },
-                )
+                        icon: Icon(Icons.clear,
+                            color: Colors.grey.shade600, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _loadReservations(forceRefresh: true);
+                        },
+                      )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
-              onSubmitted: (_) => _loadReservations(),
+              onChanged: (value) {
+                // ✅ DEBOUNCED SEARCH: Wait 400ms after user stops typing
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+                  _loadReservations(forceRefresh: true);
+                });
+                setState(() {}); // Update UI for clear button
+              },
+              onSubmitted: (_) {
+                _searchDebounce?.cancel();
+                _loadReservations(forceRefresh: true);
+              },
             ),
           ),
         ],
       ),
     );
   }
-
-
 
   Widget _buildFilterSection() {
     return Container(
@@ -632,22 +704,28 @@ class _GroOrderManagementScreenState
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('all', 'Riwayat', Icons.history, _getCountForFilter('all')),
+            _buildFilterChip(
+                'all', 'Riwayat', Icons.history, _getCountForFilter('all')),
             const SizedBox(width: 8),
-            _buildFilterChip('pending', 'Menunggu', Icons.schedule, _getCountForFilter('pending')),
+            _buildFilterChip('pending', 'Menunggu', Icons.schedule,
+                _getCountForFilter('pending')),
             const SizedBox(width: 8),
-            _buildFilterChip('ongoing', 'Berlangsung', Icons.dining, _getCountForFilter('ongoing')),
+            _buildFilterChip('ongoing', 'Berlangsung', Icons.dining,
+                _getCountForFilter('ongoing')),
             const SizedBox(width: 8),
-            _buildFilterChip('completed', 'Selesai', Icons.check_circle, _getCountForFilter('completed')),
+            _buildFilterChip('completed', 'Selesai', Icons.check_circle,
+                _getCountForFilter('completed')),
             const SizedBox(width: 8),
-            _buildFilterChip('cancelled', 'Dibatalkan', Icons.cancel, _getCountForFilter('cancelled')),
+            _buildFilterChip('cancelled', 'Dibatalkan', Icons.cancel,
+                _getCountForFilter('cancelled')),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterChip(String value, String label, IconData icon, int count) {
+  Widget _buildFilterChip(
+      String value, String label, IconData icon, int count) {
     final isSelected = _selectedFilter == value;
 
     return InkWell(
@@ -670,12 +748,12 @@ class _GroOrderManagementScreenState
           ),
           boxShadow: isSelected
               ? [
-            BoxShadow(
-              color: const Color(0xFF2E8B57).withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ]
+                  BoxShadow(
+                    color: const Color(0xFF2E8B57).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : [],
         ),
         child: Row(
@@ -699,7 +777,9 @@ class _GroOrderManagementScreenState
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.3) : const Color(0xFF2E8B57).withOpacity(0.1),
+                color: isSelected
+                    ? Colors.white.withOpacity(0.3)
+                    : const Color(0xFF2E8B57).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -753,8 +833,8 @@ class _GroOrderManagementScreenState
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2E8B57),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -770,102 +850,103 @@ class _GroOrderManagementScreenState
   Widget _buildReservationsList(bool isTablet) {
     if (_reservations.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.event_busy,
-                size: 48,
-                color: Colors.grey.shade400,
-              ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.event_busy,
+                    size: 48,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Tidak ada reservasi',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Belum ada data untuk filter ini',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Tidak ada reservasi',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Belum ada data untuk filter ini',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadReservations,
-      color: const Color(0xFF2E8B57),
-      child: Column(
-        children: [
-          // ✅ Info jumlah orders yang ditampilkan vs total
-          if (_totalRecords > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.grey.shade100,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+    return Column(
+      children: [
+        // ✅ Info jumlah orders yang ditampilkan (paginated)
+        if (_reservations.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.grey.shade100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Menampilkan ${((_displayPage - 1) * _itemsPerPage) + 1}-${((_displayPage - 1) * _itemsPerPage + _paginatedReservations.length).clamp(0, _reservations.length)} dari ${_reservations.length} order',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                if (_totalDisplayPages > 1)
                   Text(
-                    'Menampilkan ${_reservations.length} dari $_totalRecords order',
+                    'Halaman $_displayPage dari $_totalDisplayPages',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
                     ),
                   ),
-                  if (_hasMoreData)
-                    Text(
-                      'Swipe ke bawah untuk load lebih banyak',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
-          Expanded(
-            child: isTablet
-                ? _buildTabletGridView()
-                : _buildMobileListView(),
           ),
-        ],
-      ),
+        Expanded(
+          child: isTablet ? _buildTabletGridView() : _buildMobileListView(),
+        ),
+      ],
     );
   }
 
-  // ✅ MOBILE: List View (tetap pakai layout lama)
+  // ✅ MOBILE: List View with client-side pagination
   Widget _buildMobileListView() {
-    // +1 untuk Load More button jika masih ada data
-    final itemCount = _reservations.length + (_hasMoreData ? 1 : 0);
-    
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        // Jika index terakhir dan masih ada data, tampilkan Load More button
-        if (index == _reservations.length && _hasMoreData) {
-          return _buildLoadMoreButton();
-        }
-        
-        final reservation = _reservations[index];
-        return _buildReservationCard(reservation);
-      },
+    final items = _paginatedReservations;
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final reservation = items[index];
+              return _buildReservationCard(reservation);
+            },
+          ),
+        ),
+        // ✅ Pagination controls at bottom
+        _buildPaginationControls(),
+      ],
     );
   }
 
@@ -875,9 +956,8 @@ class _GroOrderManagementScreenState
       builder: (context, constraints) {
         // Fixed 4 columns for tablet
         const crossAxisCount = 4;
-        final screenWidth = constraints.maxWidth;
-        final cardWidth = (screenWidth - (crossAxisCount + 1) * 8) / crossAxisCount;
-        
+        final items = _paginatedReservations; // ✅ Use paginated data
+
         return Column(
           children: [
             Expanded(
@@ -886,22 +966,35 @@ class _GroOrderManagementScreenState
                 child: Column(
                   children: [
                     // Group cards into rows of 4
-                    for (int i = 0; i < _reservations.length; i += crossAxisCount)
+                    for (int i = 0; i < items.length; i += crossAxisCount)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              for (int j = i; j < i + crossAxisCount && j < _reservations.length; j++)
+                              for (int j = i;
+                                  j < i + crossAxisCount && j < items.length;
+                                  j++)
                                 Expanded(
                                   child: Padding(
-                                    padding: EdgeInsets.only(left: j == i ? 0 : 4, right: j == i + crossAxisCount - 1 || j == _reservations.length - 1 ? 0 : 4),
-                                    child: _buildCompactReservationCard(_reservations[j]),
+                                    padding: EdgeInsets.only(
+                                        left: j == i ? 0 : 4,
+                                        right: j == i + crossAxisCount - 1 ||
+                                                j == items.length - 1
+                                            ? 0
+                                            : 4),
+                                    child:
+                                        _buildCompactReservationCard(items[j]),
                                   ),
                                 ),
                               // Fill empty slots with empty containers
-                              for (int k = 0; k < crossAxisCount - (_reservations.length - i).clamp(0, crossAxisCount); k++)
+                              for (int k = 0;
+                                  k <
+                                      crossAxisCount -
+                                          (items.length - i)
+                                              .clamp(0, crossAxisCount);
+                                  k++)
                                 Expanded(child: Container()),
                             ],
                           ),
@@ -911,66 +1004,72 @@ class _GroOrderManagementScreenState
                 ),
               ),
             ),
-            // Load More button for tablet (if needed)
-            if (_hasMoreData)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildLoadMoreButton(),
-              ),
+            // ✅ Pagination controls at bottom
+            _buildPaginationControls(),
           ],
         );
       },
     );
   }
 
-  // ✅ Widget Load More Button
-  Widget _buildLoadMoreButton() {
+  // ✅ CLIENT-SIDE PAGINATION CONTROLS with swipe/tap support
+  Widget _buildPaginationControls() {
+    if (_totalDisplayPages <= 1) return const SizedBox.shrink();
+
+    // ✅ COMPACT: Simple < 1/3 > design - minimal space
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      child: _isLoadingMore
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(
-                  color: Color(0xFF2E8B57),
-                  strokeWidth: 2,
-                ),
-              ),
-            )
-          : InkWell(
-              onTap: _loadMoreReservations,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2E8B57).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF2E8B57).withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.expand_more,
-                      color: Color(0xFF2E8B57),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Muat Lebih Banyak (${_reservations.length}/$_totalRecords)',
-                      style: const TextStyle(
-                        color: Color(0xFF2E8B57),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border:
+            Border(top: BorderSide(color: Colors.grey.shade200, width: 0.5)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Previous arrow
+          GestureDetector(
+            onTap: _displayPage > 1 ? () => _goToPage(_displayPage - 1) : null,
+            child: Icon(
+              Icons.chevron_left,
+              size: 24,
+              color: _displayPage > 1
+                  ? const Color(0xFF2E8B57)
+                  : Colors.grey.shade300,
             ),
+          ),
+          const SizedBox(width: 12),
+          // Page indicator: "1 / 3"
+          Text(
+            '$_displayPage / $_totalDisplayPages',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF2E8B57),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Next arrow
+          GestureDetector(
+            onTap: _displayPage < _totalDisplayPages
+                ? () => _goToPage(_displayPage + 1)
+                : null,
+            child: Icon(
+              Icons.chevron_right,
+              size: 24,
+              color: _displayPage < _totalDisplayPages
+                  ? const Color(0xFF2E8B57)
+                  : Colors.grey.shade300,
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _goToPage(int page) {
+    if (page < 1 || page > _totalDisplayPages) return;
+    setState(() => _displayPage = page);
   }
 
 // Replace the _buildCompactReservationCard method with this fixed version:
@@ -980,8 +1079,8 @@ class _GroOrderManagementScreenState
   Widget _buildCompactReservationCard(Map<String, dynamic> reservation) {
     final displayStatus = _getDisplayStatus(reservation);
     final statusColor = _getDisplayStatusColor(displayStatus);
-    final reservationCode = reservation['reservation_code'] ??
-        reservation['order_id'] ?? '';
+    final reservationCode =
+        reservation['reservation_code'] ?? reservation['order_id'] ?? '';
 
     final guestName = _getGuestName(reservation);
     final groName = _getGroName(reservation);
@@ -1038,12 +1137,16 @@ class _GroOrderManagementScreenState
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Reduced padding
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2), // Reduced padding
                     decoration: BoxDecoration(
-                      color: isDineIn ? Colors.blue.shade50 : Colors.green.shade50,
+                      color:
+                          isDineIn ? Colors.blue.shade50 : Colors.green.shade50,
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: isDineIn ? Colors.blue.shade200 : Colors.green.shade200,
+                        color: isDineIn
+                            ? Colors.blue.shade200
+                            : Colors.green.shade200,
                       ),
                     ),
                     child: Text(
@@ -1051,13 +1154,16 @@ class _GroOrderManagementScreenState
                       style: TextStyle(
                         fontSize: 8, // Reduced from 9
                         fontWeight: FontWeight.bold,
-                        color: isDineIn ? Colors.blue.shade700 : Colors.green.shade700,
+                        color: isDineIn
+                            ? Colors.blue.shade700
+                            : Colors.green.shade700,
                       ),
                     ),
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 3), // Reduced padding
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10), // Reduced radius
@@ -1104,7 +1210,8 @@ class _GroOrderManagementScreenState
 
               // GRO Info
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced padding
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 3), // Reduced padding
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(5),
@@ -1145,11 +1252,13 @@ class _GroOrderManagementScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: _buildCompactInfo(Icons.calendar_today, formattedDate, const Color(0xFF6366F1)),
+                          child: _buildCompactInfo(Icons.calendar_today,
+                              formattedDate, const Color(0xFF6366F1)),
                         ),
                         const SizedBox(width: 4), // Reduced from 6
                         Expanded(
-                          child: _buildCompactInfo(Icons.access_time, time, const Color(0xFF8B5CF6)),
+                          child: _buildCompactInfo(
+                              Icons.access_time, time, const Color(0xFF8B5CF6)),
                         ),
                       ],
                     ),
@@ -1157,11 +1266,13 @@ class _GroOrderManagementScreenState
                     Row(
                       children: [
                         Expanded(
-                          child: _buildCompactInfo(Icons.people, '$guestCount org', const Color(0xFF10B981)),
+                          child: _buildCompactInfo(Icons.people,
+                              '$guestCount org', const Color(0xFF10B981)),
                         ),
                         const SizedBox(width: 4), // Reduced from 6
                         Expanded(
-                          child: _buildCompactInfo(Icons.location_on, areaName, const Color(0xFFEF4444)),
+                          child: _buildCompactInfo(Icons.location_on, areaName,
+                              const Color(0xFFEF4444)),
                         ),
                       ],
                     ),
@@ -1186,6 +1297,7 @@ class _GroOrderManagementScreenState
       ),
     );
   }
+
   Widget _buildCompactInfo(IconData icon, String text, Color color) {
     return Row(
       children: [
@@ -1429,8 +1541,8 @@ class _GroOrderManagementScreenState
   Widget _buildReservationCard(Map<String, dynamic> reservation) {
     final displayStatus = _getDisplayStatus(reservation);
     final statusColor = _getDisplayStatusColor(displayStatus);
-    final reservationCode = reservation['reservation_code'] ??
-        reservation['order_id'] ?? '';
+    final reservationCode =
+        reservation['reservation_code'] ?? reservation['order_id'] ?? '';
 
     final guestName = _getGuestName(reservation);
     final groName = _getGroName(reservation);
@@ -1487,12 +1599,16 @@ class _GroOrderManagementScreenState
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDineIn ? Colors.blue.shade50 : Colors.green.shade50,
+                      color:
+                          isDineIn ? Colors.blue.shade50 : Colors.green.shade50,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: isDineIn ? Colors.blue.shade200 : Colors.green.shade200,
+                        color: isDineIn
+                            ? Colors.blue.shade200
+                            : Colors.green.shade200,
                       ),
                     ),
                     child: Text(
@@ -1500,7 +1616,9 @@ class _GroOrderManagementScreenState
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: isDineIn ? Colors.blue.shade700 : Colors.green.shade700,
+                        color: isDineIn
+                            ? Colors.blue.shade700
+                            : Colors.green.shade700,
                       ),
                     ),
                   ),
@@ -1529,7 +1647,6 @@ class _GroOrderManagementScreenState
                 ],
               ),
               const SizedBox(height: 12),
-
               Row(
                 children: [
                   Container(
@@ -1572,9 +1689,9 @@ class _GroOrderManagementScreenState
                 ],
               ),
               const SizedBox(height: 16),
-
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -1598,7 +1715,6 @@ class _GroOrderManagementScreenState
                 ),
               ),
               const SizedBox(height: 16),
-
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1650,7 +1766,8 @@ class _GroOrderManagementScreenState
   }
 
   String _getGuestName(Map<String, dynamic> reservation) {
-    if (reservation['guest_name'] != null && reservation['guest_name'].toString().isNotEmpty) {
+    if (reservation['guest_name'] != null &&
+        reservation['guest_name'].toString().isNotEmpty) {
       return reservation['guest_name'].toString();
     }
 
@@ -1661,7 +1778,8 @@ class _GroOrderManagementScreenState
       }
     }
 
-    if (reservation['user'] != null && reservation['user'].toString().isNotEmpty) {
+    if (reservation['user'] != null &&
+        reservation['user'].toString().isNotEmpty) {
       return reservation['user'].toString();
     }
 
@@ -1931,7 +2049,9 @@ class _GroOrderManagementScreenState
             ),
           ),
         ],
-        if (status == 'confirmed' && checkInTime != null && checkOutTime == null) ...[
+        if (status == 'confirmed' &&
+            checkInTime != null &&
+            checkOutTime == null) ...[
           SizedBox(
             width: (MediaQuery.of(context).size.width - 64) / 2 - 4,
             child: ElevatedButton.icon(
@@ -1996,9 +2116,9 @@ class _GroOrderManagementScreenState
             child: IconButton(
               onPressed: _currentPage > 1
                   ? () {
-                setState(() => _currentPage--);
-                _loadReservations();
-              }
+                      setState(() => _currentPage--);
+                      _loadReservations();
+                    }
                   : null,
               icon: const Icon(Icons.arrow_back),
               color: _currentPage > 1 ? const Color(0xFF2E8B57) : Colors.grey,
@@ -2017,16 +2137,17 @@ class _GroOrderManagementScreenState
           ),
           Container(
             decoration: BoxDecoration(
-              color: _currentPage < _totalPages ? const Color(0xFF2E8B57)
-                  .withOpacity(0.1) : Colors.grey.shade100,
+              color: _currentPage < _totalPages
+                  ? const Color(0xFF2E8B57).withOpacity(0.1)
+                  : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
               onPressed: _currentPage < _totalPages
                   ? () {
-                setState(() => _currentPage++);
-                _loadReservations();
-              }
+                      setState(() => _currentPage++);
+                      _loadReservations();
+                    }
                   : null,
               icon: const Icon(Icons.arrow_forward),
               color: _currentPage < _totalPages
@@ -2042,29 +2163,27 @@ class _GroOrderManagementScreenState
   Future<void> _completeDineIn(String orderId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Selesaikan Order'),
-            content: const Text(
-                'Apakah Anda yakin ingin menyelesaikan order ini? Meja akan menjadi tersedia.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Selesaikan'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Selesaikan Order'),
+        content: const Text(
+            'Apakah Anda yakin ingin menyelesaikan order ini? Meja akan menjadi tersedia.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Selesaikan'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.completeDineInOrder(orderId);
@@ -2098,29 +2217,27 @@ class _GroOrderManagementScreenState
   Future<void> _confirmReservation(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Konfirmasi Reservasi'),
-            content: const Text(
-                'Apakah Anda yakin ingin mengkonfirmasi reservasi ini?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Konfirmasi'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Konfirmasi Reservasi'),
+        content:
+            const Text('Apakah Anda yakin ingin mengkonfirmasi reservasi ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Konfirmasi'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.confirmReservation(id);
@@ -2128,8 +2245,8 @@ class _GroOrderManagementScreenState
         if (result['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  result['message'] ?? 'Reservasi berhasil dikonfirmasi'),
+              content:
+                  Text(result['message'] ?? 'Reservasi berhasil dikonfirmasi'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -2140,8 +2257,8 @@ class _GroOrderManagementScreenState
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  result['error'] ?? 'Gagal mengkonfirmasi reservasi'),
+              content:
+                  Text(result['error'] ?? 'Gagal mengkonfirmasi reservasi'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -2156,29 +2273,27 @@ class _GroOrderManagementScreenState
   Future<void> _checkInReservation(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Check-in Reservasi'),
-            content: const Text(
-                'Apakah tamu sudah datang dan siap untuk check-in?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Check-in'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Check-in Reservasi'),
+        content:
+            const Text('Apakah tamu sudah datang dan siap untuk check-in?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Check-in'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.checkInReservation(id);
@@ -2212,29 +2327,27 @@ class _GroOrderManagementScreenState
   Future<void> _checkOutReservation(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Check-out Reservasi'),
-            content: const Text(
-                'Apakah tamu sudah selesai dan siap untuk check-out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF59E0B),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Check-out'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Check-out Reservasi'),
+        content:
+            const Text('Apakah tamu sudah selesai dan siap untuk check-out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Check-out'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.checkOutReservation(id);
@@ -2269,46 +2382,43 @@ class _GroOrderManagementScreenState
     final reasonController = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Text('Batalkan Reservasi'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                    'Apakah Anda yakin ingin membatalkan reservasi ini?'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: reasonController,
-                  decoration: InputDecoration(
-                    labelText: 'Alasan pembatalan (opsional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  maxLines: 2,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Batalkan Reservasi'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Apakah Anda yakin ingin membatalkan reservasi ini?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Alasan pembatalan (opsional)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
+              ),
+              maxLines: 2,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Batalkan Reservasi'),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Batalkan Reservasi'),
+          ),
+        ],
+      ),
     );
     if (confirm == true) {
       final result = await _groService.cancelReservation(
@@ -2319,8 +2429,8 @@ class _GroOrderManagementScreenState
         if (result['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  result['message'] ?? 'Reservasi berhasil dibatalkan'),
+              content:
+                  Text(result['message'] ?? 'Reservasi berhasil dibatalkan'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -2348,11 +2458,10 @@ class _GroOrderManagementScreenState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          GroUnifiedOrderDetailSheet(
-            id: reservation['_id'],
-            isReservation: reservation['type'] != 'dine-in-order',
-          ),
+      builder: (context) => GroUnifiedOrderDetailSheet(
+        id: reservation['_id'],
+        isReservation: reservation['type'] != 'dine-in-order',
+      ),
     ).then((_) {
       _loadReservations();
     });

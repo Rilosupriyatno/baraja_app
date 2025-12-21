@@ -118,16 +118,23 @@ android {
 
     buildTypes {
         release {
-            // Biarkan ini menggunakan signingConfigs.debug (atau signing config default Flutter)
-            // Sesuai permintaan: APK build tetap normal/cepat.
-//            signingConfig = signingConfigs.debug
             signingConfig signingConfigs.releaseKey
-            minifyEnabled false
-            shrinkResources false
+            
+            // ✅ R8 ENABLED: Reduces APK size by ~30-50%
+            minifyEnabled true
+            shrinkResources true
+            
+            // ProGuard rules for Flutter
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
             debuggable false
+            
+            // ✅ Native debug symbols for Play Store crash reporting
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
         debug {
-            // Tidak perlu diubah, gunakan signingConfigs.debug (default)
             signingConfig = signingConfigs.debug
         }
     }

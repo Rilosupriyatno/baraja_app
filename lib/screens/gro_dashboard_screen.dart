@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:skeletonizer/skeletonizer.dart'; // ✅ NEW: Skeleton loading
 import '../services/auth_service.dart';
 import '../services/gro_service.dart'; // ✅ Needed for mobile layout stats
+import '../services/gro_socket_service.dart'; // ✅ NEW: Real-time socket updates
 import '../providers/cart_provider.dart';
 import '../widgets/utils/role_based_widget.dart';
 import 'gro_order_management_screen.dart';
@@ -19,85 +21,179 @@ class GroDashboardScreen extends StatefulWidget {
 class _GroDashboardScreenState extends State<GroDashboardScreen>
     with RoleCheckMixin {
   final GROService _groService = GROService(); // ✅ Needed for mobile layout
-  
+  final GroSocketService _socketService =
+      GroSocketService(); // ✅ NEW: Socket for real-time
+
   // ✅ TABLET: Child screens report their data via callbacks
-  int? _orderCount;       // Updated by GroOrderManagementScreen
-  int? _availableTables;  // Updated by GroTableAvailabilityScreen
-  
+  // ✅ SMOOTH: Use non-nullable with default 0 - no loading spinner, immediate display
+  int _orderCount = 0; // Updated by GroOrderManagementScreen
+  int _availableTables = 0; // Updated by GroTableAvailabilityScreen
+
   // ✅ MOBILE: Needs full stats for stats grid
-  Map<String, dynamic> _mobileStats = {};
+  // Initialize with skeleton-friendly default values
+  Map<String, dynamic> _mobileStats = {
+    'allReservations': 0,
+    'pendingReservations': 0,
+    'activeReservations': 0,
+    'completedReservations': 0,
+    'cancelledReservations': 0,
+    'availableTables': 0,
+  };
   bool _isLoadingMobileStats = true;
-  
+
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
   String _selectedMenu = 'orders';
+  int _refreshKey = 0; // ✅ Key to force child screens to reload
 
   @override
   void initState() {
     super.initState();
+
+    // ✅ REAL-TIME: Connect to socket and set up listeners
+    _setupSocketListeners();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       cartProvider.setGroMode(true);
-      
+
       final size = MediaQuery.of(context).size;
       final isTablet = size.width >= 768;
-      
+
       if (isTablet) {
-        // ✅ TABLET: Fetch table count immediately for sidebar badge
-        // Don't wait for Table Availability screen to mount
-        _loadTableBadgeCount();
+        // ✅ TABLET: Load badge counts IMMEDIATELY using SAME API as child screens
+        // This ensures badges show correct data even before content is opened
+        _loadBadgeCountsImmediately();
       } else {
         // ✅ MOBILE: Load full stats for stats grid
         _loadMobileStats();
       }
     });
   }
-  
-  // ✅ NEW: Lightweight fetch just for table badge on tablet
-  Future<void> _loadTableBadgeCount() async {
+
+  @override
+  void dispose() {
+    // ✅ Clean up socket callbacks when leaving dashboard
+    _socketService.clearCallbacks();
+    super.dispose();
+  }
+
+  // ✅ IMMEDIATE BADGE LOADING: Uses EXACT SAME API as child screens
+  // This guarantees consistency: Badge count = Displayed data count
+  Future<void> _loadBadgeCountsImmediately() async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    // Run both API calls in parallel for speed
+    await Future.wait([
+      _loadOrderBadgeCount(dateStr),
+      _loadTableBadgeCount(dateStr),
+    ]);
+  }
+
+  // ✅ Order badge: Uses EXACT same API as GroOrderManagementScreen._loadReservations()
+  // API: getReservations(page: 1, limit: 500, status: null, date: dateStr)
+  // Count: pagination.total_records
+  Future<void> _loadOrderBadgeCount(String dateStr) async {
     try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      // EXACT SAME parameters as GroOrderManagementScreen line 128-136
+      final result = await _groService.getReservations(
+        page: 1,
+        limit: 500, // Same as child screen
+        status: null, // Same as child screen (filter 'all')
+        date: dateStr,
+      );
+
+      if (mounted &&
+          result['success'] == true &&
+          result['pagination'] != null) {
+        final totalRecords = result['pagination']['total_records'] ?? 0;
+        setState(() => _orderCount = totalRecords);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error loading order badge: $e');
+    }
+  }
+
+  // ✅ Table badge: Uses EXACT same API as GroTableAvailabilityScreen._loadTableAvailabilityOptimized()
+  // Count: tables.where(is_available == true).length
+  Future<void> _loadTableBadgeCount(String dateStr) async {
+    try {
       final result = await _groService.getTableAvailability(
         date: dateStr,
-        outletId: "67cbc9560f025d897d69f889",
+        outletId: "67cbc9560f025d897d69f889", // Same outlet ID
       );
-      
+
       if (mounted && result['success'] == true && result['data'] != null) {
         final tables = result['data']['tables'] as List? ?? [];
         final available = tables.where((t) => t['is_available'] == true).length;
         setState(() => _availableTables = available);
       }
     } catch (e) {
-      // Silently fail - badge will show loading
       debugPrint('⚠️ Error loading table badge: $e');
     }
   }
-  
-  // ✅ NEW: Lightweight fetch just for order badge on tablet
-  // This is called when date changes while on tables page (order screen not visible)
-  Future<void> _loadOrderBadgeCount() async {
-    try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final result = await _groService.getReservations(
-        date: dateStr,
-        page: 1,
-        limit: 1, // We only need total_records, not actual data
-      );
-      
-      if (mounted && result['success'] == true && result['pagination'] != null) {
-        final totalRecords = result['pagination']['total_records'] ?? 0;
-        setState(() => _orderCount = totalRecords);
+
+  // ✅ Socket listeners - triggers BOTH badge refresh AND child screen reload
+  // IMPORTANT: Invalidate cache to ensure fresh data on real-time events
+  void _setupSocketListeners() {
+    _socketService.connect();
+
+    // When any data changes via socket, refresh badges AND child screens
+    _socketService.onDataChanged = () {
+      debugPrint('🔄 GRO Dashboard: Socket data changed, refreshing...');
+      if (mounted) {
+        // ✅ INVALIDATE CACHE: Ensure fresh data
+        GroOrderManagementScreen.invalidateCache();
+        GroTableAvailabilityScreen.invalidateCache();
+
+        setState(() => _refreshKey++);
+        _loadBadgeCountsImmediately();
       }
-    } catch (e) {
-      // Silently fail - badge will show loading
-      debugPrint('⚠️ Error loading order badge: $e');
-    }
+    };
+
+    // Handle order status changes
+    _socketService.onOrderStatusUpdated = (data) {
+      debugPrint(
+          '📦 GRO Dashboard: Order ${data['order_id']} -> ${data['status']}');
+      if (mounted) {
+        // ✅ INVALIDATE ORDER CACHE: Data has changed
+        GroOrderManagementScreen.invalidateCache();
+
+        setState(() => _refreshKey++);
+        _loadBadgeCountsImmediately();
+      }
+    };
+
+    // Handle table status changes
+    _socketService.onTableStatusUpdated = (data) {
+      debugPrint('🪑 GRO Dashboard: Table status updated');
+      if (mounted) {
+        // ✅ INVALIDATE TABLE CACHE: Data has changed
+        GroTableAvailabilityScreen.invalidateCache();
+
+        setState(() => _refreshKey++);
+        _loadBadgeCountsImmediately();
+      }
+    };
+
+    // Handle reservation events
+    _socketService.onReservationCancelled = (data) {
+      debugPrint('❌ GRO Dashboard: Reservation cancelled');
+      if (mounted) {
+        // ✅ INVALIDATE CACHE: Reservation data changed
+        GroOrderManagementScreen.invalidateCache();
+        GroTableAvailabilityScreen.invalidateCache();
+
+        setState(() => _refreshKey++);
+        _loadBadgeCountsImmediately();
+      }
+    };
   }
-  
+
   // ✅ MOBILE ONLY: Load full stats for mobile dashboard cards
   Future<void> _loadMobileStats() async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    
+
     setState(() {
       _isLoadingMobileStats = true;
       _errorMessage = null;
@@ -106,13 +202,15 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     try {
       // Get reservations with stats
       final result = await _groService.getReservations(
-        page: 1, limit: 1, date: dateStr,
+        page: 1,
+        limit: 1,
+        date: dateStr,
       );
 
       if (result['success'] == true) {
         final filtered = result['filtered'] ?? {};
         final pagination = result['pagination'] ?? {};
-        
+
         setState(() {
           _mobileStats = {
             'allReservations': pagination['total_records'] ?? 0,
@@ -123,16 +221,17 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
           };
         });
       }
-      
+
       // Get table availability
       final tableResult = await _groService.getTableAvailability(
-        date: dateStr, outletId: "67cbc9560f025d897d69f889",
+        date: dateStr,
+        outletId: "67cbc9560f025d897d69f889",
       );
-      
+
       if (tableResult['success'] == true && tableResult['data'] != null) {
         final tables = tableResult['data']['tables'] as List? ?? [];
         final available = tables.where((t) => t['is_available'] == true).length;
-        
+
         setState(() {
           _mobileStats['availableTables'] = available;
           _isLoadingMobileStats = false;
@@ -147,44 +246,42 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       });
     }
   }
-  
+
   // ✅ TABLET CALLBACKS: Child screens call these to update badges
   void _onOrderCountLoaded(int count) {
     if (mounted && _orderCount != count) {
       setState(() => _orderCount = count);
     }
   }
-  
+
   void _onTableCountLoaded(int availableCount) {
     if (mounted && _availableTables != availableCount) {
       setState(() => _availableTables = availableCount);
     }
   }
-  
-  // ✅ MANUAL REFRESH: Forces child screens to reload via key change
-  int _refreshKey = 0;
-  
+
+  // ✅ MANUAL REFRESH: Forces child screens to reload AND updates badges immediately
   void _refreshData() {
+    // ✅ INVALIDATE ALL CACHES: User explicitly wants fresh data
+    GroOrderManagementScreen.invalidateCache();
+    GroTableAvailabilityScreen.invalidateCache();
+
     setState(() {
       _refreshKey++;
-      _orderCount = null;
-      _availableTables = null;
       _isLoadingMobileStats = true;
     });
-    
+
     final size = MediaQuery.of(context).size;
     final isTablet = size.width >= 768;
-    
+
     if (isTablet) {
-      // ✅ TABLET: Reload BOTH badges
-      _loadTableBadgeCount();
-      _loadOrderBadgeCount(); // ✅ NEW: Also load order count on refresh
+      // ✅ TABLET: Reload badge counts immediately
+      _loadBadgeCountsImmediately();
     } else {
       // ✅ MOBILE: Reload full stats
       _loadMobileStats();
     }
   }
-
 
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
@@ -210,17 +307,17 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        // ✅ Reset counts when date changes
-        _orderCount = null;
-        _availableTables = null;
         _refreshKey++;
       });
-      
-      // ✅ TABLET: Reload BOTH badges immediately (child screen will also reload its own data)
+
+      // ✅ IMMEDIATELY load new badge counts for selected date
       final size = MediaQuery.of(context).size;
-      if (size.width >= 768) {
-        _loadTableBadgeCount();
-        _loadOrderBadgeCount(); // ✅ NEW: Also load order count when date changes
+      final isTablet = size.width >= 768;
+
+      if (isTablet) {
+        _loadBadgeCountsImmediately();
+      } else {
+        _loadMobileStats();
       }
     }
   }
@@ -335,239 +432,242 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   Widget _buildSidebarContent() {
     return Consumer<AuthService>(
       builder: (context, authService, _) {
-        return Column(
-          children: [
-            // Header dengan Gradient
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2E8B57), Color(0xFF25704B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+        return SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header dengan Gradient
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2E8B57), Color(0xFF25704B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.restaurant_menu,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'GRO Dashboard',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Kelola Restoran',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Cart Icon
-                      Consumer<CartProvider>(
-                        builder: (context, cartProvider, child) {
-                          final totalItems = cartProvider.totalItems;
-                          return Stack(
-                            clipBehavior: Clip.none,
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              IconButton(
-                                onPressed: _navigateToGroCart,
-                                icon: const Icon(Icons.shopping_cart),
-                                color: Colors.white,
-                                tooltip: 'Lihat Keranjang GRO',
+                              Text(
+                                'GRO Dashboard',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              if (totalItems > 0)
-                                Positioned(
-                                  right: 6,
-                                  top: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 18,
-                                      minHeight: 18,
-                                    ),
-                                    child: Text(
-                                      totalItems.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
+                              Text(
+                                'Kelola Restoran',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Cart Icon
+                        Consumer<CartProvider>(
+                          builder: (context, cartProvider, child) {
+                            final totalItems = cartProvider.totalItems;
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                IconButton(
+                                  onPressed: _navigateToGroCart,
+                                  icon: const Icon(Icons.shopping_cart),
+                                  color: Colors.white,
+                                  tooltip: 'Lihat Keranjang GRO',
+                                ),
+                                if (totalItems > 0)
+                                  Positioned(
+                                    right: 6,
+                                    top: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                      textAlign: TextAlign.center,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        totalItems.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Outlet Info Compact
-                  _buildOutletInfoCompact(authService),
-                ],
-              ),
-            ),
-
-            // Date Selector
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: InkWell(
-                onTap: _selectDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today,
-                        color: Color(0xFF2E8B57),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Tanggal',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            Text(
-                              DateFormat('dd MMM yyyy', 'id_ID')
-                                  .format(_selectedDate),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                              ],
+                            );
+                          },
                         ),
-                      ),
-                      Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-                    ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Outlet Info Compact
+                    _buildOutletInfoCompact(authService),
+                  ],
+                ),
+              ),
+
+              // Date Selector
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: InkWell(
+                  onTap: _selectDate,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today,
+                          color: Color(0xFF2E8B57),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Tanggal',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                DateFormat('dd MMM yyyy', 'id_ID')
+                                    .format(_selectedDate),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_drop_down,
+                            color: Colors.grey.shade600),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Stats Menu Items - ✅ FIXED: Flexible allows shrinking when keyboard appears
-            Flexible(
-              fit: FlexFit.loose, // ✅ Allows shrinking instead of forcing expansion
-              child: _errorMessage != null
-                  ? _buildErrorStateSidebar()
-                  : ListView(
-                shrinkWrap: true, // ✅ Only take needed space
+              // Stats Menu Items
+              Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildStatMenuItem(
-                    'Kelola Order',
-                    _orderCount, // ✅ SIMPLIFIED: null = loading, number = value
-                    Icons.restaurant,
-                    const Color(0xFF2E8B57),
-                    'orders',
-                    subtitle: 'Semua Pesanan',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildStatMenuItem(
-                    'Ketersediaan Meja',
-                    _availableTables, // ✅ SIMPLIFIED: null = loading, number = value
-                    Icons.table_restaurant,
-                    const Color(0xFF2E8B57),
-                    'tables',
-                    subtitle: 'Meja Tersedia',
-                  ),
-                ],
+                child: _errorMessage != null
+                    ? _buildErrorStateSidebar()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildStatMenuItem(
+                            'Kelola Order',
+                            _orderCount,
+                            Icons.restaurant,
+                            const Color(0xFF2E8B57),
+                            'orders',
+                            subtitle: 'Semua Pesanan',
+                          ),
+                          const SizedBox(height: 8),
+                          _buildStatMenuItem(
+                            'Ketersediaan Meja',
+                            _availableTables,
+                            Icons.table_restaurant,
+                            const Color(0xFF2E8B57),
+                            'tables',
+                            subtitle: 'Meja Tersedia',
+                          ),
+                        ],
+                      ),
               ),
-            ),
 
-            // Refresh Button
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _refreshData, // ✅ Use new refresh method
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Refresh Data'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2E8B57),
-                        side: const BorderSide(color: Color(0xFF2E8B57)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+              // Refresh Button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _refreshData, // ✅ Use new refresh method
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Refresh Data'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2E8B57),
+                          side: const BorderSide(color: Color(0xFF2E8B57)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Logout Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _handleLogout,
-                      icon: const Icon(Icons.logout, size: 18),
-                      label: const Text('Keluar'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    const SizedBox(height: 12),
+                    // Logout Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _handleLogout,
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text('Keluar'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -620,16 +720,16 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     );
   }
 
+  // ✅ SMOOTH: Use non-nullable int - badge shows immediately with value (default 0)
   Widget _buildStatMenuItem(
-      String title,
-      int? value, // ✅ CHANGED: nullable for loading state
-      IconData icon,
-      Color color,
-      String menuKey, {
-        String? subtitle,
-      }) {
+    String title,
+    int value, // ✅ SMOOTH: non-nullable, no loading spinner needed
+    IconData icon,
+    Color color,
+    String menuKey, {
+    String? subtitle,
+  }) {
     final isSelected = _selectedMenu == menuKey;
-    final isLoading = value == null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -672,7 +772,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? color : Colors.black87,
                         ),
                       ),
@@ -687,42 +787,23 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                     ],
                   ),
                 ),
-                // ✅ BADGE: Show loading spinner or value
-                isLoading
-                    ? Container(
-                        width: 40,
-                        height: 28,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          value.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                // ✅ SMOOTH: Badge shows immediately with value - no loading spinner
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    value.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -730,7 +811,6 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       ),
     );
   }
-
 
   Widget _buildErrorStateSidebar() {
     return Center(
@@ -755,7 +835,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 backgroundColor: const Color(0xFF2E8B57),
                 foregroundColor: Colors.white,
                 padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -773,7 +853,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         key: ValueKey('tables_$_refreshKey'), // ✅ Force rebuild when refresh
         isGroMode: true,
         selectedDate: _selectedDate,
-        onTableCountLoaded: _onTableCountLoaded, // ✅ NEW: Callback to update badge
+        onTableCountLoaded:
+            _onTableCountLoaded, // ✅ NEW: Callback to update badge
       );
     }
 
@@ -781,7 +862,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       key: ValueKey('orders_$_refreshKey'), // ✅ Force rebuild when refresh
       filter: 'all',
       initialDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-      onOrderCountLoaded: _onOrderCountLoaded, // ✅ NEW: Callback to update badge
+      onOrderCountLoaded:
+          _onOrderCountLoaded, // ✅ NEW: Callback to update badge
     );
   }
 
@@ -865,12 +947,14 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       ),
       body: RefreshIndicator(
         onRefresh: () async => _refreshData(),
-        child: _isLoadingMobileStats // ✅ FIXED: Use mobile loading state
-            ? const Center(
-            child: CircularProgressIndicator(color: Color(0xFF2E8B57)))
-            : _errorMessage != null
+        child: _errorMessage != null
             ? _buildErrorState()
-            : _buildDashboardContent(),
+            : Skeletonizer(
+                enabled:
+                    _isLoadingMobileStats, // ✅ Skeleton effect when loading
+                enableSwitchAnimation: true,
+                child: _buildDashboardContent(),
+              ),
       ),
     );
   }
@@ -900,7 +984,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 ),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2E8B57).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1421,7 +1505,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 ),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF076A3B),
                     borderRadius: BorderRadius.circular(20),
@@ -1491,7 +1575,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 backgroundColor: const Color(0xFF2E8B57),
                 foregroundColor: Colors.white,
                 padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1507,7 +1591,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                 backgroundColor: const Color(0xFF076A3B),
                 foregroundColor: Colors.white,
                 padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

@@ -4,10 +4,10 @@
 // ============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
-import 'menu_screen.dart';
 
 class GroDineInGuestFormScreen extends StatefulWidget {
 // ✅ UPDATED: Support multiple tables
@@ -98,16 +98,12 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
     }
 
 // Navigate to menu
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MenuScreen(
-          isDineIn: true,
-          tableNumber: _displayTableInfo,
-          isGroMode: true,
-        ),
-      ),
-    );
+    // ✅ Use context.push instead of Navigator.pushReplacement for proper back navigation
+    context.push('/menu', extra: {
+      'isDineIn': true,
+      'tableNumber': _displayTableInfo,
+      'isGroMode': true,
+    });
   }
 
   @override

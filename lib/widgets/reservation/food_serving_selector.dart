@@ -92,15 +92,7 @@ class _FoodServingSelectorState extends State<FoodServingSelector> {
                   color: AppTheme.barajaPrimary.primaryColor,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Kapan makanan akan disajikan? (Opsional)',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
+          ],
           ),
           const SizedBox(height: 12),
 

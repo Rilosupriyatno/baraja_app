@@ -59,7 +59,7 @@ class _MenuScreenState extends State<MenuScreen> {
   Product? _selectedProduct; // Product yang dipilih untuk order form
   int _selectedQuantity = 1; // Quantity untuk product yang dipilih
   final TextEditingController _notesController = TextEditingController();
-  
+
   // Addon & Topping states
   Map<String, AddonOption?> _selectedAddonOptions = {};
   List<Topping> _selectedToppings = [];
@@ -67,10 +67,12 @@ class _MenuScreenState extends State<MenuScreen> {
   // Helper to calculate total
   double _calculateTotal() {
     if (_selectedProduct == null) return 0;
-    
-    double basePrice = _selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0;
-    double toppingsTotal = _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
-    
+
+    double basePrice =
+        _selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0;
+    double toppingsTotal =
+        _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
+
     double addonOptionsTotal = 0;
     _selectedAddonOptions.forEach((addonId, option) {
       if (option != null) {
@@ -89,14 +91,15 @@ class _MenuScreenState extends State<MenuScreen> {
       _selectedAddonOptions.clear();
       _selectedToppings.clear();
       _notesController.clear();
-      
+
       // Init default addons
       if (product.addons != null) {
         for (var addon in product.addons!) {
           if (addon.options.isNotEmpty) {
-             var defaultOption = addon.options.where((o) => o.isDefault).firstOrNull;
-             defaultOption ??= addon.options.first;
-             _selectedAddonOptions[addon.id] = defaultOption;
+            var defaultOption =
+                addon.options.where((o) => o.isDefault).firstOrNull;
+            defaultOption ??= addon.options.first;
+            _selectedAddonOptions[addon.id] = defaultOption;
           }
         }
       }
@@ -110,7 +113,8 @@ class _MenuScreenState extends State<MenuScreen> {
       builder: (context) => CartItemEditDialog(
         item: item,
         onSave: (updatedItem) {
-          final cartProvider = Provider.of<CartProvider>(context, listen: false);
+          final cartProvider =
+              Provider.of<CartProvider>(context, listen: false);
           int index = cartProvider.items.indexOf(item);
           if (index != -1) {
             cartProvider.updateCartItem(index, updatedItem);
@@ -119,6 +123,7 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   } // Notes controller
+
   bool _showCustomAmountForm = false; // Toggle untuk custom amount form
 
   @override
@@ -143,7 +148,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
       // Set data sesuai parameter dengan validasi mode
       if (widget.isReservation && widget.reservationData != null) {
-        cartProvider.setReservationData(widget.isReservation, widget.reservationData);
+        cartProvider.setReservationData(
+            widget.isReservation, widget.reservationData);
       } else if (widget.isDineIn && widget.tableNumber != null) {
         cartProvider.setDineInData(widget.isDineIn, widget.tableNumber);
       } else if (widget.isOpenBill && widget.openBillData != null) {
@@ -212,9 +218,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
       _categoriesMap = {};
       tempCategoriesMap.forEach((mainCategory, categories) {
-        _categoriesMap[mainCategory] = categories
-            .map((name) => Category(name: name))
-            .toList();
+        _categoriesMap[mainCategory] =
+            categories.map((name) => Category(name: name)).toList();
       });
 
       debugPrint("Generated categories: $_categoriesMap");
@@ -233,14 +238,16 @@ class _MenuScreenState extends State<MenuScreen> {
     final size = MediaQuery.of(context).size;
     final isTablet = size.width >= 768;
     final isGroTabletMode = widget.isGroMode && isTablet;
-    
+
     return _allProducts.where((product) {
       // Filter by search query first
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         final matchesName = product.name.toLowerCase().contains(query);
-        final matchesCategory = product.category?.toLowerCase().contains(query) ?? false;
-        final matchesDescription = product.description.toLowerCase().contains(query);
+        final matchesCategory =
+            product.category?.toLowerCase().contains(query) ?? false;
+        final matchesDescription =
+            product.description.toLowerCase().contains(query);
 
         return matchesName || matchesCategory || matchesDescription;
       }
@@ -298,7 +305,7 @@ class _MenuScreenState extends State<MenuScreen> {
   List<Product> _getDummyProducts() {
     return List.generate(
       6,
-          (index) => Product(
+      (index) => Product(
         id: 'dummy_$index',
         name: 'Loading Product Name',
         category: 'Loading',
@@ -350,7 +357,8 @@ class _MenuScreenState extends State<MenuScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
+              Icon(Icons.restaurant_menu,
+                  color: Colors.orange.shade700, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Detail Reservasi',
@@ -368,12 +376,14 @@ class _MenuScreenState extends State<MenuScreen> {
               Expanded(
                 child: Text(
                   '📅 ${data.formattedDate}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
               Text(
                 '🕐 ${data.formattedTime}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -422,7 +432,8 @@ class _MenuScreenState extends State<MenuScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.restaurant_menu, color: Colors.orange.shade700, size: 18),
+              Icon(Icons.restaurant_menu,
+                  color: Colors.orange.shade700, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Detail Open Bill',
@@ -440,12 +451,14 @@ class _MenuScreenState extends State<MenuScreen> {
               Expanded(
                 child: Text(
                   '📅 ${DateFormat('yyyy-MM-dd').format(data.date)}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
               Text(
                 '🕐 ${data.time.hour}:${data.time.minute.toString().padLeft(2, '0')}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -564,10 +577,9 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-
   String _getBackRoute() {
     if (widget.isGroMode) {
-      return '/gro-table-availability';
+      return '/gro-dashboard';
     } else {
       return '/main';
     }
@@ -591,9 +603,8 @@ class _MenuScreenState extends State<MenuScreen> {
   // ✅ MOBILE LAYOUT (existing code)
   Widget _buildMobileLayout() {
     final List<Category> categoryList = _categoriesMap[selectedMenu] ?? [];
-    final List<Product> filteredProducts = _isLoading
-        ? _getDummyProducts()
-        : _getFilteredProducts();
+    final List<Product> filteredProducts =
+        _isLoading ? _getDummyProducts() : _getFilteredProducts();
 
     return BaseScreenWrapper(
       canPop: false,
@@ -615,15 +626,15 @@ class _MenuScreenState extends State<MenuScreen> {
                 widget.isReservation
                     ? 'Menu Reservasi'
                     : widget.isDineIn
-                    ? 'Menu Dine In'
-                    : 'Menu',
+                        ? 'Menu Dine In'
+                        : 'Menu',
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              if (widget.isGroMode) ...[ 
+              if (widget.isGroMode) ...[
                 const SizedBox(width: 12),
                 const GroModeAppBarBadge(), // ✅ Badge di AppBar
               ],
@@ -648,87 +659,86 @@ class _MenuScreenState extends State<MenuScreen> {
           child: _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : Column(
-            children: [
-              // ✅ BANNER GRO MODE (Optional - bisa dihilangkan jika tidak perlu)
-              if (widget.isGroMode)
-              _buildReservationInfo(),
-              _buildOpenBillInfo(),
-              _buildDineInInfo(),
+                  children: [
+                    // ✅ BANNER GRO MODE (Optional - bisa dihilangkan jika tidak perlu)
+                    if (widget.isGroMode) _buildReservationInfo(),
+                    _buildOpenBillInfo(),
+                    _buildDineInInfo(),
 
-              // Search Widget
-              SearchMenuWidget(
-                onSearchChanged: _onSearchChanged,
-                onClearSearch: _onClearSearch,
-              ),
-
-              // Search Results Info
-              _buildSearchResultsInfo(),
-
-              // Menu selector & category slider (hidden saat search aktif)
-              if (_searchQuery.isEmpty) ...[
-                MenuSelector(
-                  selectedMenu: selectedMenu,
-                  onMenuSelected: (menu) {
-                    setState(() {
-                      selectedMenu = menu;
-                      if (_categoriesMap[menu]!.isNotEmpty) {
-                        selectedCategory = _categoriesMap[menu]![0].name;
-                      }
-                    });
-                  },
-                ),
-                SubMenuSlider(
-                  subMenus: categoryList,
-                  selectedSubMenu: selectedCategory,
-                  onSubMenuSelected: (category) {
-                    setState(() {
-                      selectedCategory = category;
-                    });
-                  },
-                ),
-              ],
-
-              Expanded(
-                child: Skeletonizer(
-                  enabled: _isLoading,
-                  enableSwitchAnimation: true,
-                  child: filteredProducts.isEmpty && !_isLoading
-                      ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Tidak ada menu yang ditemukan',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Coba kata kunci lain'
-                              : 'Belum ada menu tersedia',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
+                    // Search Widget
+                    SearchMenuWidget(
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: _onClearSearch,
                     ),
-                  )
-                      : ProductGrid(products: filteredProducts),
+
+                    // Search Results Info
+                    _buildSearchResultsInfo(),
+
+                    // Menu selector & category slider (hidden saat search aktif)
+                    if (_searchQuery.isEmpty) ...[
+                      MenuSelector(
+                        selectedMenu: selectedMenu,
+                        onMenuSelected: (menu) {
+                          setState(() {
+                            selectedMenu = menu;
+                            if (_categoriesMap[menu]!.isNotEmpty) {
+                              selectedCategory = _categoriesMap[menu]![0].name;
+                            }
+                          });
+                        },
+                      ),
+                      SubMenuSlider(
+                        subMenus: categoryList,
+                        selectedSubMenu: selectedCategory,
+                        onSubMenuSelected: (category) {
+                          setState(() {
+                            selectedCategory = category;
+                          });
+                        },
+                      ),
+                    ],
+
+                    Expanded(
+                      child: Skeletonizer(
+                        enabled: _isLoading,
+                        enableSwitchAnimation: true,
+                        child: filteredProducts.isEmpty && !_isLoading
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.search_off,
+                                      size: 64,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Tidak ada menu yang ditemukan',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _searchQuery.isNotEmpty
+                                          ? 'Coba kata kunci lain'
+                                          : 'Belum ada menu tersedia',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ProductGrid(products: filteredProducts),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
         floatingActionButton: CheckoutButton(
           isReservation: widget.isReservation,
@@ -867,7 +877,7 @@ class _MenuScreenState extends State<MenuScreen> {
   // }
 
   // ==================== TABLET LAYOUT (GRO MODE) ====================
-  
+
   Widget _buildTabletLayout() {
     return BaseScreenWrapper(
       canPop: false,
@@ -920,14 +930,14 @@ class _MenuScreenState extends State<MenuScreen> {
                 child: _buildMenuColumn(),
               ),
               const VerticalDivider(width: 1, thickness: 1),
-              
+
               // ✅ COLUMN 2: Order Form (36% - larger)
               Expanded(
                 flex: 36,
                 child: _buildOrderFormColumn(),
               ),
               const VerticalDivider(width: 1, thickness: 1),
-              
+
               // ✅ COLUMN 3: Cart (32% - larger)
               Expanded(
                 flex: 32,
@@ -942,40 +952,39 @@ class _MenuScreenState extends State<MenuScreen> {
 
   // ✅ COLUMN 1: Menu List
   Widget _buildMenuColumn() {
-    final List<Product> filteredProducts = _isLoading
-        ? _getDummyProducts()
-        : _getFilteredProducts();
+    final List<Product> filteredProducts =
+        _isLoading ? _getDummyProducts() : _getFilteredProducts();
 
     return Container(
       color: Colors.white,
       child: Column(
         children: [
-          // ✅ FIXED: Wrap info section in shrinkable container
-          // Info banners + search can shrink when keyboard appears
+          // Info banners + search
           Flexible(
-            flex: 0, // ✅ Don't expand, just take needed space but can shrink
+            flex: 0,
             child: Column(
-              mainAxisSize: MainAxisSize.min, // ✅ Only take needed space
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _buildReservationInfo(),
                 _buildOpenBillInfo(),
                 _buildDineInInfo(),
-                
-                // Search bar
+
+                // Search bar - reduced padding to prevent overflow
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: SearchMenuWidget(
                     onSearchChanged: _onSearchChanged,
                     onClearSearch: _onClearSearch,
                   ),
                 ),
-                
+
                 // Search results info
                 _buildSearchResultsInfo(),
               ],
             ),
           ),
-          
+
           // Menu grid (NO CATEGORIES in tablet GRO mode) - 3 COLUMNS
           Expanded(
             child: Skeletonizer(
@@ -1005,9 +1014,11 @@ class _MenuScreenState extends State<MenuScreen> {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(12),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3, // ✅ 3 columns for more items
-                        childAspectRatio: 0.85, // ✅ Wider/shorter cards (was 0.7)
+                        childAspectRatio:
+                            0.85, // ✅ Wider/shorter cards (was 0.7)
                         crossAxisSpacing: 8,
                         mainAxisSpacing: 8,
                       ),
@@ -1026,10 +1037,10 @@ class _MenuScreenState extends State<MenuScreen> {
   // ✅ Compact Menu Card untuk tablet
   Widget _buildCompactMenuCard(Product product) {
     final isSelected = _selectedProduct?.id == product.id;
-    final hasValidImage = product.imageUrl != null && 
-                          product.imageUrl.isNotEmpty && 
-                          product.imageUrl.startsWith('http');
-    
+    final hasValidImage = product.imageUrl != null &&
+        product.imageUrl.isNotEmpty &&
+        product.imageUrl.startsWith('http');
+
     return GestureDetector(
       onTap: () => _resetSelection(product),
       child: Container(
@@ -1056,7 +1067,8 @@ class _MenuScreenState extends State<MenuScreen> {
             // Product image - compact
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(6)),
                 child: hasValidImage
                     ? Image.network(
                         product.imageUrl,
@@ -1077,7 +1089,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
               ),
             ),
-            
+
             // Product info - very compact
             Padding(
               padding: const EdgeInsets.all(6),
@@ -1100,7 +1112,8 @@ class _MenuScreenState extends State<MenuScreen> {
                       locale: 'id_ID',
                       symbol: 'Rp',
                       decimalDigits: 0,
-                    ).format(product.discountPrice ?? product.originalPrice ?? 0),
+                    ).format(
+                        product.discountPrice ?? product.originalPrice ?? 0),
                     style: const TextStyle(
                       fontSize: 9,
                       color: Color(0xFF2E8B57),
@@ -1122,7 +1135,7 @@ class _MenuScreenState extends State<MenuScreen> {
     if (_showCustomAmountForm) {
       return _buildCustomAmountForm();
     }
-    
+
     // ✅ Show placeholder if no product selected
     if (_selectedProduct == null) {
       return Container(
@@ -1184,7 +1197,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Product name
                   Text(
                     _selectedProduct!.name,
@@ -1194,26 +1207,29 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Product Price
                   Text(
                     NumberFormat.currency(
                       locale: 'id_ID',
                       symbol: 'Rp',
                       decimalDigits: 0,
-                    ).format(_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0),
+                    ).format(_selectedProduct!.discountPrice ??
+                        _selectedProduct!.originalPrice ??
+                        0),
                     style: const TextStyle(
                       fontSize: 16,
                       color: Color(0xFF2E8B57),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Quantity selector
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -1221,110 +1237,140 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Jumlah Pesanan', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Jumlah Pesanan',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         Row(
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline),
-                              color: _selectedQuantity > 1 ? Colors.red : Colors.grey,
+                              color: _selectedQuantity > 1
+                                  ? Colors.red
+                                  : Colors.grey,
                               onPressed: _selectedQuantity > 1
                                   ? () => setState(() => _selectedQuantity--)
                                   : null,
                             ),
                             Text(
                               '$_selectedQuantity',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline),
                               color: const Color(0xFF2E8B57),
-                              onPressed: () => setState(() => _selectedQuantity++),
+                              onPressed: () =>
+                                  setState(() => _selectedQuantity++),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // ✅ ADDONS Section
-                  if (_selectedProduct!.addons != null && _selectedProduct!.addons!.isNotEmpty) ...[
+                  if (_selectedProduct!.addons != null &&
+                      _selectedProduct!.addons!.isNotEmpty) ...[
                     ...(_selectedProduct!.addons!.map((addon) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          addon.name,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: addon.options.map((option) {
-                            bool isSelected = _selectedAddonOptions[addon.id] == option;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _selectedAddonOptions.remove(addon.id);
-                                  } else {
-                                    _selectedAddonOptions[addon.id] = option;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFF2E8B57) : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: isSelected ? null : Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: Text(
-                                  '${option.label} ${option.price > 0 ? "+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(option.price)}" : ""}',
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.black,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                    fontSize: 12,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              addon.name,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: addon.options.map((option) {
+                                bool isSelected =
+                                    _selectedAddonOptions[addon.id] == option;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedAddonOptions.remove(addon.id);
+                                      } else {
+                                        _selectedAddonOptions[addon.id] =
+                                            option;
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(0xFF2E8B57)
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: isSelected
+                                          ? null
+                                          : Border.all(
+                                              color: Colors.grey.shade300),
+                                    ),
+                                    child: Text(
+                                      '${option.label} ${option.price > 0 ? "+${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(option.price)}" : ""}',
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.black,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ))),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ))),
                   ],
 
                   // ✅ TOPPINGS Section
-                  if (_selectedProduct!.toppings != null && _selectedProduct!.toppings!.isNotEmpty) ...[
+                  if (_selectedProduct!.toppings != null &&
+                      _selectedProduct!.toppings!.isNotEmpty) ...[
                     const Text(
                       'Extra Toppings',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    ..._selectedProduct!.toppings!.map((topping) => CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: Text(topping.name, style: const TextStyle(fontSize: 13)),
-                      secondary: Text(
-                        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(topping.price),
-                        style: const TextStyle(color: Color(0xFF2E8B57), fontWeight: FontWeight.w600, fontSize: 12),
-                      ),
-                      value: _selectedToppings.contains(topping),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedToppings.add(topping);
-                          } else {
-                            _selectedToppings.remove(topping);
-                          }
-                        });
-                      },
-                      activeColor: const Color(0xFF2E8B57),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    )),
+                    ..._selectedProduct!.toppings!
+                        .map((topping) => CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              title: Text(topping.name,
+                                  style: const TextStyle(fontSize: 13)),
+                              secondary: Text(
+                                NumberFormat.currency(
+                                        locale: 'id_ID',
+                                        symbol: 'Rp',
+                                        decimalDigits: 0)
+                                    .format(topping.price),
+                                style: const TextStyle(
+                                    color: Color(0xFF2E8B57),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12),
+                              ),
+                              value: _selectedToppings.contains(topping),
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedToppings.add(topping);
+                                  } else {
+                                    _selectedToppings.remove(topping);
+                                  }
+                                });
+                              },
+                              activeColor: const Color(0xFF2E8B57),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            )),
                     const SizedBox(height: 8),
                   ],
 
@@ -1338,11 +1384,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     controller: _notesController,
                     decoration: InputDecoration(
                       hintText: 'Tambahkan catatan...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF2E8B57), width: 2),
                       ),
                     ),
                     maxLines: 2,
@@ -1352,7 +1401,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
-          
+
           // ✅ FIXED Footer with Total & Add Button
           Container(
             padding: const EdgeInsets.all(12),
@@ -1373,10 +1422,18 @@ class _MenuScreenState extends State<MenuScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total Harga', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                    Text('Total Harga',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700)),
                     Text(
-                      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(_calculateTotal()),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E8B57)),
+                      NumberFormat.currency(
+                              locale: 'id_ID', symbol: 'Rp', decimalDigits: 0)
+                          .format(_calculateTotal()),
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E8B57)),
                     ),
                   ],
                 ),
@@ -1385,57 +1442,70 @@ class _MenuScreenState extends State<MenuScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                      
-                      List<Map<String, dynamic>> toppingsList = _selectedToppings.map((t) => {
-                        "name": t.name,
-                        "price": t.price,
-                      }).toList();
+                      final cartProvider =
+                          Provider.of<CartProvider>(context, listen: false);
+
+                      List<Map<String, dynamic>> toppingsList =
+                          _selectedToppings
+                              .map((t) => {
+                                    "name": t.name,
+                                    "price": t.price,
+                                  })
+                              .toList();
 
                       List<Map<String, dynamic>> addonList = [];
                       _selectedAddonOptions.forEach((addonId, option) {
-                         if (option != null) {
-                            var addon = _selectedProduct!.addons!.firstWhere((a) => a.id == addonId);
-                            addonList.add({
-                               "name": addon.name,
-                               "label": option.label,
-                               "price": option.price,
-                            });
-                         }
+                        if (option != null) {
+                          var addon = _selectedProduct!.addons!
+                              .firstWhere((a) => a.id == addonId);
+                          addonList.add({
+                            "name": addon.name,
+                            "label": option.label,
+                            "price": option.price,
+                          });
+                        }
                       });
-                      
+
                       final cartItem = CartItem(
                         id: _selectedProduct!.id,
                         name: _selectedProduct!.name,
                         imageUrl: _selectedProduct!.imageUrl,
-                        price: (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0).toInt(),
+                        price: (_selectedProduct!.discountPrice ??
+                                _selectedProduct!.originalPrice ??
+                                0)
+                            .toInt(),
                         totalprice: _calculateTotal().toInt(),
                         quantity: _selectedQuantity,
                         addons: addonList,
                         toppings: toppingsList,
                         notes: _notesController.text,
                       );
-                      
+
                       cartProvider.addToCart(cartItem);
-                      
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('${_selectedProduct!.name} ditambahkan ke keranjang'),
+                          content: Text(
+                              '${_selectedProduct!.name} ditambahkan ke keranjang'),
                           duration: const Duration(seconds: 1),
                           backgroundColor: const Color(0xFF2E8B57),
                         ),
                       );
-                      
+
                       _resetSelection(_selectedProduct!);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E8B57),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                     child: const Text(
                       'Tambah Order',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                   ),
                 ),
@@ -1486,7 +1556,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Info banner
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1497,20 +1567,22 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    Icon(Icons.info_outline,
+                        color: Colors.blue.shade700, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Tambahkan biaya tambahan atau penyesuaian',
-                        style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.blue.shade900),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Nama Item
               const Text(
                 'Nama Item',
@@ -1521,7 +1593,8 @@ class _MenuScreenState extends State<MenuScreen> {
                 controller: nameController,
                 decoration: InputDecoration(
                   hintText: 'Contoh: Biaya Layanan',
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  hintStyle:
+                      TextStyle(color: Colors.grey.shade400, fontSize: 14),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(
@@ -1534,9 +1607,11 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2E8B57), width: 2),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -1545,9 +1620,9 @@ class _MenuScreenState extends State<MenuScreen> {
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Jumlah
               const Text(
                 'Jumlah (Rp)',
@@ -1558,9 +1633,11 @@ class _MenuScreenState extends State<MenuScreen> {
                 controller: amountController,
                 decoration: InputDecoration(
                   hintText: '0',
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  hintStyle:
+                      TextStyle(color: Colors.grey.shade400, fontSize: 14),
                   prefixText: 'Rp ',
-                  prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
+                  prefixStyle:
+                      const TextStyle(color: Colors.black87, fontSize: 14),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(
@@ -1573,25 +1650,28 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2E8B57), width: 2),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Jumlah tidak boleh kosong';
                   }
-                  final amount = int.tryParse(value.replaceAll('.', '').replaceAll(',', ''));
+                  final amount = int.tryParse(
+                      value.replaceAll('.', '').replaceAll(',', ''));
                   if (amount == null || amount <= 0) {
                     return 'Jumlah harus lebih dari 0';
                   }
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Deskripsi
               const Text(
                 'Deskripsi (Opsional)',
@@ -1602,7 +1682,8 @@ class _MenuScreenState extends State<MenuScreen> {
                 controller: descriptionController,
                 decoration: InputDecoration(
                   hintText: 'Tambahkan keterangan',
-                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  hintStyle:
+                      TextStyle(color: Colors.grey.shade400, fontSize: 14),
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(
@@ -1615,15 +1696,17 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2E8B57), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF2E8B57), width: 2),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
                 maxLines: 3,
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Submit button
               SizedBox(
                 width: double.infinity,
@@ -1632,11 +1715,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     if (!formKey.currentState!.validate()) {
                       return;
                     }
-                    
-                    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                    final amountStr = amountController.text.replaceAll('.', '').replaceAll(',', '');
+
+                    final cartProvider =
+                        Provider.of<CartProvider>(context, listen: false);
+                    final amountStr = amountController.text
+                        .replaceAll('.', '')
+                        .replaceAll(',', '');
                     final amount = int.tryParse(amountStr) ?? 0;
-                    
+
                     if (amount == 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1646,7 +1732,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       );
                       return;
                     }
-                    
+
                     // Create custom amount cart item
                     final customAmountItem = CartItem.customAmount(
                       name: nameController.text.trim(),
@@ -1656,19 +1742,20 @@ class _MenuScreenState extends State<MenuScreen> {
                           : descriptionController.text.trim(),
                       dineType: 'Dine-In',
                     );
-                    
+
                     // Add to cart
                     cartProvider.addToCart(customAmountItem);
-                    
+
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${nameController.text} ditambahkan ke keranjang'),
+                        content: Text(
+                            '${nameController.text} ditambahkan ke keranjang'),
                         backgroundColor: const Color(0xFF2E8B57),
                         duration: const Duration(seconds: 2),
                       ),
                     );
-                    
+
                     // Close form
                     setState(() {
                       _showCustomAmountForm = false;
@@ -1745,7 +1832,8 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(12),
@@ -1762,11 +1850,12 @@ class _MenuScreenState extends State<MenuScreen> {
                   ],
                 ),
               ),
-              
+
               // Cart items list
               Expanded(
                 child: cartItems.isEmpty
-                    ? SingleChildScrollView(  // ✅ FIXED: Prevents overflow when keyboard appears
+                    ? SingleChildScrollView(
+                        // ✅ FIXED: Prevents overflow when keyboard appears
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 40),
                           child: Column(
@@ -1803,7 +1892,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         itemCount: cartItems.length,
                         itemBuilder: (context, index) {
                           final item = cartItems[index];
-                          
+
                           // Build addons text
                           String addonsText = '';
                           if (item.addons.isNotEmpty) {
@@ -1814,12 +1903,13 @@ class _MenuScreenState extends State<MenuScreen> {
 
                           // Build toppings text
                           String toppingsText = '';
-                          if (item.toppings is List && (item.toppings as List).isNotEmpty) {
+                          if (item.toppings is List &&
+                              (item.toppings as List).isNotEmpty) {
                             toppingsText = (item.toppings as List)
                                 .map((topping) => topping['name'])
                                 .join(', ');
                           }
-                          
+
                           // ✅ Redesigned cart item with white+shadow
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
@@ -1852,29 +1942,35 @@ class _MenuScreenState extends State<MenuScreen> {
                                               width: 45,
                                               height: 45,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
                                                 return Image.asset(
                                                   'assets/images/product_default_image.png',
-                                                  width: 45, height: 45, fit: BoxFit.cover,
+                                                  width: 45,
+                                                  height: 45,
+                                                  fit: BoxFit.cover,
                                                 );
                                               },
                                             )
                                           : Image.asset(
                                               'assets/images/product_default_image.png',
-                                              width: 45, height: 45, fit: BoxFit.cover,
+                                              width: 45,
+                                              height: 45,
+                                              fit: BoxFit.cover,
                                             ),
                                     ),
                                     const SizedBox(width: 10),
-                                    
+
                                     // Product details
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
-                                               Expanded(
-                                                 child: Text(
+                                              Expanded(
+                                                child: Text(
                                                   item.name,
                                                   style: const TextStyle(
                                                     fontSize: 13,
@@ -1882,16 +1978,22 @@ class _MenuScreenState extends State<MenuScreen> {
                                                     color: Colors.black87,
                                                   ),
                                                   maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                 ),
-                                               ),
-                                               // ✅ Edit button
-                                               IconButton(
-                                                 icon: Icon(Icons.edit_outlined, size: 16, color: Colors.grey.shade600),
-                                                 padding: EdgeInsets.zero,
-                                                 constraints: const BoxConstraints(),
-                                                 onPressed: () => _showEditItemDialog(item),
-                                               ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // ✅ Edit button
+                                              IconButton(
+                                                icon: Icon(Icons.edit_outlined,
+                                                    size: 16,
+                                                    color:
+                                                        Colors.grey.shade600),
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(),
+                                                onPressed: () =>
+                                                    _showEditItemDialog(item),
+                                              ),
                                             ],
                                           ),
                                           Text(
@@ -1910,29 +2012,35 @@ class _MenuScreenState extends State<MenuScreen> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 // Quantity controls (inline)
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     // Quantity controls
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         InkWell(
-                                          onTap: () => cartProvider.decreaseQuantity(index),
+                                          onTap: () => cartProvider
+                                              .decreaseQuantity(index),
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
                                               color: Colors.red.shade50,
-                                              borderRadius: BorderRadius.circular(6),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
-                                            child: Icon(Icons.remove, size: 16, color: Colors.red.shade400),
+                                            child: Icon(Icons.remove,
+                                                size: 16,
+                                                color: Colors.red.shade400),
                                           ),
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12),
                                           child: Text(
                                             '${item.quantity}',
                                             style: const TextStyle(
@@ -1942,14 +2050,18 @@ class _MenuScreenState extends State<MenuScreen> {
                                           ),
                                         ),
                                         InkWell(
-                                          onTap: () => cartProvider.increaseQuantity(index),
+                                          onTap: () => cartProvider
+                                              .increaseQuantity(index),
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
                                               color: Colors.green.shade50,
-                                              borderRadius: BorderRadius.circular(6),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
-                                            child: Icon(Icons.add, size: 16, color: Colors.green.shade600),
+                                            child: Icon(Icons.add,
+                                                size: 16,
+                                                color: Colors.green.shade600),
                                           ),
                                         ),
                                       ],
@@ -1969,64 +2081,93 @@ class _MenuScreenState extends State<MenuScreen> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 // Addons/Toppings/Notes (scrollable if needed)
-                                if (addonsText.isNotEmpty || toppingsText.isNotEmpty || (item.notes != null && item.notes!.isNotEmpty)) ...[
+                                if (addonsText.isNotEmpty ||
+                                    toppingsText.isNotEmpty ||
+                                    (item.notes != null &&
+                                        item.notes!.isNotEmpty)) ...[
                                   const SizedBox(height: 8),
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: Colors.grey.shade200),
+                                      border: Border.all(
+                                          color: Colors.grey.shade200),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         if (addonsText.isNotEmpty)
                                           Row(
                                             children: [
-                                              Icon(Icons.add_circle_outline, size: 12, color: Colors.grey.shade500),
+                                              Icon(Icons.add_circle_outline,
+                                                  size: 12,
+                                                  color: Colors.grey.shade500),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
                                                   addonsText,
-                                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                                                  style: TextStyle(
+                                                      fontSize: 10,
+                                                      color:
+                                                          Colors.grey.shade600),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         if (toppingsText.isNotEmpty) ...[
-                                          if (addonsText.isNotEmpty) const SizedBox(height: 2),
+                                          if (addonsText.isNotEmpty)
+                                            const SizedBox(height: 2),
                                           Row(
                                             children: [
-                                              Icon(Icons.local_pizza_outlined, size: 12, color: Colors.grey.shade500),
+                                              Icon(Icons.local_pizza_outlined,
+                                                  size: 12,
+                                                  color: Colors.grey.shade500),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
                                                   toppingsText,
-                                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                                                  style: TextStyle(
+                                                      fontSize: 10,
+                                                      color:
+                                                          Colors.grey.shade600),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ],
-                                        if (item.notes != null && item.notes!.isNotEmpty) ...[
-                                          if (addonsText.isNotEmpty || toppingsText.isNotEmpty) const SizedBox(height: 2),
+                                        if (item.notes != null &&
+                                            item.notes!.isNotEmpty) ...[
+                                          if (addonsText.isNotEmpty ||
+                                              toppingsText.isNotEmpty)
+                                            const SizedBox(height: 2),
                                           Row(
                                             children: [
-                                              Icon(Icons.note_outlined, size: 12, color: Colors.grey.shade500),
+                                              Icon(Icons.note_outlined,
+                                                  size: 12,
+                                                  color: Colors.grey.shade500),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
                                                   item.notes!,
-                                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                                                  style: TextStyle(
+                                                      fontSize: 10,
+                                                      color:
+                                                          Colors.grey.shade600,
+                                                      fontStyle:
+                                                          FontStyle.italic),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -2042,7 +2183,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         },
                       ),
               ),
-              
+
               // Footer with total and checkout - FIXED at bottom
               Container(
                 padding: const EdgeInsets.all(12),
@@ -2095,11 +2236,14 @@ class _MenuScreenState extends State<MenuScreen> {
                             ? null
                             : () {
                                 // Navigate to checkout screen
-                                Map<String, dynamic> extraData = {'isGroMode': isGroMode};
+                                Map<String, dynamic> extraData = {
+                                  'isGroMode': isGroMode
+                                };
 
                                 if (isReservation && reservationData != null) {
                                   extraData['isReservation'] = true;
-                                  extraData['reservationData'] = reservationData;
+                                  extraData['reservationData'] =
+                                      reservationData;
                                 } else if (isOpenBill && openBillData != null) {
                                   extraData['isOpenBill'] = true;
                                   extraData['openBillData'] = openBillData;
@@ -2111,7 +2255,8 @@ class _MenuScreenState extends State<MenuScreen> {
                                 if (extraData.length > 1) {
                                   context.go('/checkout', extra: extraData);
                                 } else {
-                                  context.go('/checkout', extra: {'isGroMode': isGroMode});
+                                  context.go('/checkout',
+                                      extra: {'isGroMode': isGroMode});
                                 }
                               },
                         style: ElevatedButton.styleFrom(

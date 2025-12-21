@@ -103,7 +103,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
-      
+
       cartProvider.addListener(_onCartChanged);
 
       // 🔍 NEW: Get Outlet ID from logged in user (GRO) as fallback
@@ -113,13 +113,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (userOutlets.isNotEmpty) {
           final firstOutlet = userOutlets.first;
           print("🔍 CHECKOUT: Checking user outlet data: $firstOutlet");
-          
-          if (firstOutlet['outletId'] is Map && firstOutlet['outletId'].containsKey('_id')) {
+
+          if (firstOutlet['outletId'] is Map &&
+              firstOutlet['outletId'].containsKey('_id')) {
             userOutletId = firstOutlet['outletId']['_id']?.toString();
-            print("✅ CHECKOUT: Found outletId from user relation: $userOutletId");
+            print(
+                "✅ CHECKOUT: Found outletId from user relation: $userOutletId");
           } else if (firstOutlet.containsKey('_id')) {
             userOutletId = firstOutlet['_id']?.toString();
-            print("✅ CHECKOUT: Found outletId from direct object: $userOutletId");
+            print(
+                "✅ CHECKOUT: Found outletId from direct object: $userOutletId");
           }
         }
       } catch (e) {
@@ -138,13 +141,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         print("  - name: ${firstItem.name}");
         print("  - outletId: ${firstItem.outletId}");
         print("  - outletName: ${firstItem.outletName}");
-        
+
         setState(() {
           // ✅ FIX: Use item outletId if available, otherwise fallback to userOutletId
           outletId = firstItem.outletId?.toString() ?? userOutletId;
         });
-        print("✅ OutletId set to: $outletId (User fallback: ${userOutletId != null})");
-        
+        print(
+            "✅ OutletId set to: $outletId (User fallback: ${userOutletId != null})");
+
         if (outletId == null) {
           print("⚠️ WARNING: Cart has items but outletId is null!");
           print("⚠️ This will prevent tax calculation!");
@@ -183,24 +187,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (cartProvider.items.isNotEmpty) {
       String? newOutletId = cartProvider.items.first.outletId?.toString();
-      
+
       // ✅ Fallback to user outlet ID if cart item has no outlet ID
       if (newOutletId == null) {
-         try {
-            final userOutlets = authService.getUserOutlets();
-            if (userOutlets.isNotEmpty) {
-              final firstOutlet = userOutlets.first;
-              if (firstOutlet['outletId'] is Map && firstOutlet['outletId'].containsKey('_id')) {
-                newOutletId = firstOutlet['outletId']['_id']?.toString();
-              } else if (firstOutlet.containsKey('_id')) {
-                newOutletId = firstOutlet['_id']?.toString();
-              }
+        try {
+          final userOutlets = authService.getUserOutlets();
+          if (userOutlets.isNotEmpty) {
+            final firstOutlet = userOutlets.first;
+            if (firstOutlet['outletId'] is Map &&
+                firstOutlet['outletId'].containsKey('_id')) {
+              newOutletId = firstOutlet['outletId']['_id']?.toString();
+            } else if (firstOutlet.containsKey('_id')) {
+              newOutletId = firstOutlet['_id']?.toString();
             }
-         } catch(e) {
-           print("Error getting fallback outlet in listener: $e");
-         }
+          }
+        } catch (e) {
+          print("Error getting fallback outlet in listener: $e");
+        }
       }
-      
+
       if (newOutletId != outletId) {
         setState(() {
           outletId = newOutletId;
@@ -324,7 +329,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
       voucher: selectedVoucher,
     );
   }
-
 
   @override
   void dispose() {
@@ -479,25 +483,26 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
         final int discount = calculateDiscount(subtotal);
         final int finalTotal = subtotal - discount;
-        
+
         // ✅ NEW: Tax calculation with toggle support
         // Disable tax for reservation without menu (only reservation fee)
         final bool isReservationOnly = _isReservationWithoutMenu(cartProvider);
-        final bool enableTax = !isReservationOnly; 
-        
-        final int taxAmount = enableTax 
-            ? (_taxCalculation?.totalTaxAmount.round() ?? 0)
-            : 0;
-        
-        
+        final bool enableTax = !isReservationOnly;
+
+        final int taxAmount =
+            enableTax ? (_taxCalculation?.totalTaxAmount.round() ?? 0) : 0;
+
         final int grandTotal = finalTotal + taxAmount;
-        
+
         // ✅ NEW: Down payment with manual input support
         int downPaymentAmount;
-        if (_enableManualDP && _manualDPAmount != null && _manualDPAmount! > 0) {
+        if (_enableManualDP &&
+            _manualDPAmount != null &&
+            _manualDPAmount! > 0) {
           downPaymentAmount = _manualDPAmount!;
         } else {
-          downPaymentAmount = CalculationService.calculateDownPayment(grandTotal);
+          downPaymentAmount =
+              CalculationService.calculateDownPayment(grandTotal);
         }
 
         // Debug print untuk memastikan konsistensi
@@ -513,7 +518,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         print("  DownPayment: $downPaymentAmount");
         print("  _taxCalculation: $_taxCalculation");
         print("  _taxCalculation?.taxDetails: ${_taxCalculation?.taxDetails}");
-        print("  _taxCalculation?.totalTaxAmount: ${_taxCalculation?.totalTaxAmount}\n");
+        print(
+            "  _taxCalculation?.totalTaxAmount: ${_taxCalculation?.totalTaxAmount}\n");
 
         // Debug print untuk memastikan perhitungan
         print("\n💰 CHECKOUT CALCULATION:");
@@ -593,728 +599,751 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     ),
                   ),
-                  if (widget.isGroMode) const GroModeAppBarBadge(), // ✅ Badge di AppBar
+                  if (widget.isGroMode)
+                    const GroModeAppBarBadge(), // ✅ Badge di AppBar
                 ],
               ),
             ),
             resizeToAvoidBottomInset: true,
-            body: Column(
-              children: [
-                Flexible( // ✅ Changed to Flexible to allow shrinking when keyboard appears
-                  flex: 1,
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (cartProvider.isReservation &&
-                              cartProvider.reservationData != null)
-                            ReservationInfoWidget(
-                                data: cartProvider.reservationData!),
+            body: SingleChildScrollView(
+              controller: _scrollController,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (cartProvider.isReservation &&
+                        cartProvider.reservationData != null)
+                      ReservationInfoWidget(
+                          data: cartProvider.reservationData!),
 
-                          if (cartProvider.isReservation &&
-                              cartProvider.reservationData != null)
-                            ReservationTypeSelectorWidget(
-                              data: cartProvider.reservationData!,
-                              finalTotal: finalTotal,
-                              selectedReservationType: selectedReservationType,
-                              hasAttemptedSubmit: hasAttemptedSubmit,
-                              validationErrors: validationErrors,
-                              onChanged: (type) {
-                                setState(() {
-                                  selectedReservationType = type;
-                                  if (hasAttemptedSubmit) {
-                                    validationErrors.remove('reservationType');
-                                  }
-                                });
-                              },
-                            ),
+                    if (cartProvider.isReservation &&
+                        cartProvider.reservationData != null)
+                      ReservationTypeSelectorWidget(
+                        data: cartProvider.reservationData!,
+                        finalTotal: finalTotal,
+                        selectedReservationType: selectedReservationType,
+                        hasAttemptedSubmit: hasAttemptedSubmit,
+                        validationErrors: validationErrors,
+                        onChanged: (type) {
+                          setState(() {
+                            selectedReservationType = type;
+                            if (hasAttemptedSubmit) {
+                              validationErrors.remove('reservationType');
+                            }
+                          });
+                        },
+                      ),
 
-                          if (cartProvider.isOpenBill &&
-                              cartProvider.openBillData != null)
-                            OpenBillInfoWidget(
-                                openBillData: cartProvider.openBillData!),
+                    if (cartProvider.isOpenBill &&
+                        cartProvider.openBillData != null)
+                      OpenBillInfoWidget(
+                          openBillData: cartProvider.openBillData!),
 
-                          if (cartProvider.isDineIn) const DineInInfoWidget(),
+                    if (cartProvider.isDineIn) const DineInInfoWidget(),
 
-                          // Daftar Item Keranjang
-                          if (cartItems.isEmpty)
-                            if (cartProvider.isReservation)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 24.0),
-                                child: Center(
-                                  child: Text(
-                                    "Reservasi tanpa menu (Rp25.000)",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.black87,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 24.0),
-                                child: Center(
-                                  child: Text(
-                                    "Keranjang belanja kosong",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              )
-                          else
-                            ...cartItems.asMap().entries.map((entry) {
-                              CartItem item = entry.value;
-                              return CartItemWidget(
-                                item: item,
-                              );
-                            }),
-
-                          const SizedBox(height: 24),
-
-                          Text(
-                            _getOrderTypeTitle(cartProvider),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-
-                          if (_shouldShowOrderTypeSelector(cartProvider)) ...[
-                            Text(
-                              "*Kami buka 24 Jam",
+                    // Daftar Item Keranjang
+                    if (cartItems.isEmpty)
+                      if (cartProvider.isReservation)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(
+                            child: Text(
+                              "Reservasi tanpa menu (Rp25.000)",
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                                fontSize: 16,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            OrderTypeSelectorWithValidation(
-                              selectedType: selectedOrderType,
-                              onChanged: (type) =>
-                                  setState(() => selectedOrderType = type),
-                              tableNumber: tableNumber,
-                              onTableNumberChanged: (val) =>
-                                  setState(() => tableNumber = val),
-                              deliveryAddress: deliveryAddress,
-                              onDeliveryAddressChanged: (val) =>
-                                  setState(() => deliveryAddress = val),
-                              pickupTime: pickupTime,
-                              onPickupTimeChanged: (time) =>
-                                  setState(() => pickupTime = time),
-                              validationErrors: validationErrors,
-                              hasAttemptedSubmit: hasAttemptedSubmit,
-                            ),
-                          ] else ...[
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green.shade600,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    cartProvider.isReservation
-                                        ? 'Pesanan untuk reservasi Anda'
-                                        : cartProvider.isOpenBill
-                                            ? 'Pesanan untuk meja ${cartProvider.openBillData!.tableNumbers}'
-                                            : 'Pesanan untuk meja ${cartProvider.tableNumber}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 24),
-
-                          if (cartProvider.isReservation) ...[
-                            if (!_isReservationWithoutMenu(cartProvider))
-                              ReservationPaymentTypeWidget(
-                                selectedType: selectedPaymentType,
-                                onChanged: (PaymentType type) {
-                                  setState(() {
-                                    selectedPaymentType = type;
-                                  });
-                                },
-                                totalAmount: grandTotal,
-                                downPaymentAmount: downPaymentAmount,
-                              ),
-                            if (_isReservationWithoutMenu(cartProvider))
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: Colors.blue.shade200),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.payment,
-                                      color: Colors.blue.shade600,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Pembayaran Reservasi',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.blue.shade700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Biaya reservasi tanpa menu: ${_formatCurrency(25000)}',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.blue.shade600,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Pembayaran penuh diperlukan untuk mengkonfirmasi reservasi',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.blue.shade500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(height: 24),
-                          ],
-
-                          // ✅ NEW: Manual DP Input for GRO Reservation
-                          if (widget.isGroMode && cartProvider.isReservation && !_isReservationWithoutMenu(cartProvider)) ...[
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.purple.shade200),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.edit_note, color: Colors.purple.shade600, size: 20),
-                                          const SizedBox(width: 8),
-                                          const Text(
-                                            'Input DP Manual',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Switch(
-                                        value: _enableManualDP,
-                                        activeColor: Colors.purple.shade600,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _enableManualDP = value;
-                                            if (!value) {
-                                              _manualDPAmount = null;
-                                              _manualDPController.clear();
-                                            }
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  if (_enableManualDP) ...[
-                                    const SizedBox(height: 12),
-                                    TextField(
-                                      controller: _manualDPController,
-                                      keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(
-                                        labelText: 'Jumlah DP',
-                                        prefixText: 'Rp ',
-                                        filled: true,
-                                        fillColor: Colors.white,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                          borderSide: BorderSide(color: Colors.purple.shade200),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                          borderSide: BorderSide(color: Colors.purple.shade200),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                          borderSide: BorderSide(color: Colors.purple.shade600, width: 2),
-                                        ),
-                                        helperText: 'Kosongkan untuk menggunakan 50% otomatis',
-                                        helperStyle: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                      ),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
-                                          _manualDPAmount = cleanValue.isEmpty ? null : int.tryParse(cleanValue);
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Total Grand Total:',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                        Text(
-                                          _formatCurrency(grandTotal),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // ✅ NEW: Tax Toggle for GRO (Reservation & Dine-In)
-                          // Removed Tax Toggle - Always show Tax Info if applied
-                          if (widget.isGroMode && _taxCalculation != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange.shade200),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.receipt_long, color: Colors.orange.shade600, size: 20),
-                                      const SizedBox(width: 8),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Pajak & Service',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.orange.shade700,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  // Switch removed
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          PaymentMethodWithValidation(
-                            displayedPaymentMethod: displayedPaymentMethod,
-                            errorMessage: hasAttemptedSubmit
-                                ? validationErrors['paymentMethod']
-                                : null,
-                            isReservation: cartProvider.isReservation, // ✅ NEW
-                            isGroMode: widget.isGroMode, // ✅ NEW
-                            onMethodSelected: (result) {
-                              setState(() {
-                                selectedPaymentMethod =
-                                    result['payment_method'];
-                                selectedPaymentMethodName =
-                                    result['payment_method_name'];
-                                selectedBankName = result['name'];
-                                selectedBankCode = result['bank_code'];
-                                validationErrors.remove('paymentMethod');
-                              });
-                            },
                           ),
-                          const SizedBox(height: 16),
-
-                          VoucherWidget(
-                            voucherCode: selectedVoucher?.code ?? "",
-                            voucherApplied: selectedVoucher != null,
-                            onVoucherSelected: (Voucher voucher) {
-                              setState(() {
-                                selectedVoucher = voucher;
-                                selectedVoucherCode = voucher.code;
-                                discountAmount = calculateDiscount(subtotal);
-                              });
-                              _calculateTaxes();
-                            },
+                        )
+                      else
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(
+                            child: Text(
+                              "Keranjang belanja kosong",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                        ],
+                        )
+                    else
+                      ...cartItems.asMap().entries.map((entry) {
+                        CartItem item = entry.value;
+                        return CartItemWidget(
+                          item: item,
+                        );
+                      }),
+
+                    const SizedBox(height: 24),
+
+                    Text(
+                      _getOrderTypeTitle(cartProvider),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
-                  ),
-                ),
-                CheckoutSummary(
-                  totalPrice: subtotal,
-                  discount: discount,
-                  voucherCode: selectedVoucherCode,
-                  discountType: selectedVoucher?.discountType,
-                  isReservation: cartProvider.isReservation,
-                  isOpenBill: cartProvider.isOpenBill,
-                  selectedPaymentType:
-                      cartProvider.isReservation ? selectedPaymentType : null,
-                  taxCalculation: _taxCalculation,
-                  manualDownPaymentAmount: _manualDPAmount, // ✅ Pass manual DP
-                  onCheckoutPressed: () async {
-                    print("➡️ Tombol checkout ditekan");
 
-                    setState(() {
-                      hasAttemptedSubmit = true;
-                    });
+                    if (_shouldShowOrderTypeSelector(cartProvider)) ...[
+                      Text(
+                        "*Kami buka 24 Jam",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OrderTypeSelectorWithValidation(
+                        selectedType: selectedOrderType,
+                        onChanged: (type) =>
+                            setState(() => selectedOrderType = type),
+                        tableNumber: tableNumber,
+                        onTableNumberChanged: (val) =>
+                            setState(() => tableNumber = val),
+                        deliveryAddress: deliveryAddress,
+                        onDeliveryAddressChanged: (val) =>
+                            setState(() => deliveryAddress = val),
+                        pickupTime: pickupTime,
+                        onPickupTimeChanged: (time) =>
+                            setState(() => pickupTime = time),
+                        validationErrors: validationErrors,
+                        hasAttemptedSubmit: hasAttemptedSubmit,
+                      ),
+                    ] else ...[
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green.shade600,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              cartProvider.isReservation
+                                  ? 'Pesanan untuk reservasi Anda'
+                                  : cartProvider.isOpenBill
+                                      ? 'Pesanan untuk meja ${cartProvider.openBillData!.tableNumbers}'
+                                      : 'Pesanan untuk meja ${cartProvider.tableNumber}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
 
-                    final validationResult =
-                        await CheckoutValidator.validateForm(
-                      cartProvider: cartProvider,
-                      selectedOrderType: selectedOrderType,
-                      deliveryAddress: deliveryAddress,
-                      pickupTime: pickupTime,
-                      tableNumber: tableNumber,
-                      selectedPaymentMethod: selectedPaymentMethod,
-                      selectedPaymentMethodName: selectedPaymentMethodName,
-                      selectedReservationType: selectedReservationType,
-                      calculateDiscount: calculateDiscount,
-                      shouldShowReservationType: _shouldShowReservationType,
-                      canSelectBlocking: _canSelectBlocking,
-                      getMinimumAmountForBlocking: _getMinimumAmountForBlocking,
-                      formatCurrency: _formatCurrency,
-                      isValidPickupTime: _isValidPickupTime,
-                      getMinimumPickupTime: _getMinimumPickupTime,
-                      formatTime: _formatTime,
-                      tableService: _tableService,
-                      isGroMode: widget.isGroMode,
-                    );
-
-                    if (!validationResult['isValid']) {
-                      setState(() {
-                        validationErrors = Map<String, String>.from(
-                            validationResult['errors']);
-                      });
-
-                      if (validationErrors.containsKey('general')) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(validationErrors['general']!),
-                            backgroundColor: Colors.red,
+                    if (cartProvider.isReservation) ...[
+                      if (!_isReservationWithoutMenu(cartProvider))
+                        ReservationPaymentTypeWidget(
+                          selectedType: selectedPaymentType,
+                          onChanged: (PaymentType type) {
+                            setState(() {
+                              selectedPaymentType = type;
+                            });
+                          },
+                          totalAmount: grandTotal,
+                          downPaymentAmount: downPaymentAmount,
+                        ),
+                      if (_isReservationWithoutMenu(cartProvider))
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200),
                           ),
-                        );
-                        return;
-                      }
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.payment,
+                                color: Colors.blue.shade600,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Pembayaran Reservasi',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Biaya reservasi tanpa menu: ${_formatCurrency(25000)}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.blue.shade600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Pembayaran penuh diperlukan untuk mengkonfirmasi reservasi',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+                    ],
 
-                      if (validationResult['firstErrorKey'] != null) {
-                        _scrollToError(validationResult['firstErrorKey']);
-                      }
+                    // ✅ NEW: Manual DP Input for GRO Reservation
+                    if (widget.isGroMode &&
+                        cartProvider.isReservation &&
+                        !_isReservationWithoutMenu(cartProvider)) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.edit_note,
+                                        color: Colors.purple.shade600,
+                                        size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Input DP Manual',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Switch(
+                                  value: _enableManualDP,
+                                  activeColor: Colors.purple.shade600,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _enableManualDP = value;
+                                      if (value) {
+                                        // ✅ Auto-switch to Down Payment when enabled
+                                        selectedPaymentType =
+                                            PaymentType.downPayment;
+                                      } else {
+                                        _manualDPAmount = null;
+                                        _manualDPController.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                            if (_enableManualDP) ...[
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _manualDPController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Jumlah DP',
+                                  prefixText: 'Rp ',
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.purple.shade200),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.purple.shade200),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                        color: Colors.purple.shade600,
+                                        width: 2),
+                                  ),
+                                  helperText:
+                                      'Kosongkan untuk menggunakan 50% otomatis',
+                                  helperStyle: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    final cleanValue =
+                                        value.replaceAll(RegExp(r'[^0-9]'), '');
+                                    _manualDPAmount = cleanValue.isEmpty
+                                        ? null
+                                        : int.tryParse(cleanValue);
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Total Grand Total:',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatCurrency(grandTotal),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
-                      return;
-                    }
+                    // ✅ NEW: Tax Toggle for GRO (Reservation & Dine-In)
+                    // Removed Tax Toggle - Always show Tax Info if applied
+                    if (widget.isGroMode && _taxCalculation != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.receipt_long,
+                                    color: Colors.orange.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Pajak & Service',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      '+${_formatCurrency(_taxCalculation!.totalTaxAmount.round())}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.orange.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            // Switch removed
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
-                    final prefs = await SharedPreferences.getInstance();
-
-                    String? userId;
-                    String userName;
-
-                    if (widget.isGroMode) {
-                      if (cartProvider.reservationData != null) {
-                        userId = null;
-                        userName = 'null';
-
-                        print("🔍 GRO Mode - Using Guest Data:");
-                        print("  Guest Name: $userName");
-                      } else {
-                        userId = null;
-                        userName = 'Dine-In Guest';
-                        print(
-                            "⚠️ GRO Mode - No reservation data, using default");
-                      }
-                    } else {
-                      userId = prefs.getString('userId');
-                      userName = prefs.getString('userName') ?? 'Guest';
-
-                      print("👤 Normal Mode - Using Logged In User:");
-                      print("  User ID: $userId");
-                      print("  User Name: $userName");
-                    }
-
-                    int amountToPay = grandTotal;
-                    if (cartProvider.isReservation &&
-                        selectedPaymentType == PaymentType.downPayment) {
-                      if (_isReservationWithoutMenu(cartProvider)) {
-                        amountToPay = grandTotal;
-                      } else {
-                        amountToPay = downPaymentAmount;
-                      }
-                    }
-
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                    PaymentMethodWithValidation(
+                      displayedPaymentMethod: displayedPaymentMethod,
+                      errorMessage: hasAttemptedSubmit
+                          ? validationErrors['paymentMethod']
+                          : null,
+                      isReservation: cartProvider.isReservation, // ✅ NEW
+                      isGroMode: widget.isGroMode, // ✅ NEW
+                      onMethodSelected: (result) {
+                        setState(() {
+                          selectedPaymentMethod = result['payment_method'];
+                          selectedPaymentMethodName =
+                              result['payment_method_name'];
+                          selectedBankName = result['name'];
+                          selectedBankCode = result['bank_code'];
+                          validationErrors.remove('paymentMethod');
+                        });
                       },
-                    );
+                    ),
+                    const SizedBox(height: 16),
 
-                    // ignore: unused_local_variable
-                    bool isDialogShown = false;
+                    VoucherWidget(
+                      voucherCode: selectedVoucher?.code ?? "",
+                      voucherApplied: selectedVoucher != null,
+                      onVoucherSelected: (Voucher voucher) {
+                        setState(() {
+                          selectedVoucher = voucher;
+                          selectedVoucherCode = voucher.code;
+                          discountAmount = calculateDiscount(subtotal);
+                        });
+                        _calculateTaxes();
+                      },
+                    ),
+                    const SizedBox(height: 24),
 
-                    try {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext dialogContext) {
-                          isDialogShown = true;
-                          return WillPopScope(
-                            onWillPop: () async => false,
-                            child: const Center(
+                    // ✅ CheckoutSummary sekarang di dalam scroll area
+                    CheckoutSummary(
+                      totalPrice: subtotal,
+                      discount: discount,
+                      voucherCode: selectedVoucherCode,
+                      discountType: selectedVoucher?.discountType,
+                      isReservation: cartProvider.isReservation,
+                      isOpenBill: cartProvider.isOpenBill,
+                      selectedPaymentType: cartProvider.isReservation
+                          ? selectedPaymentType
+                          : null,
+                      taxCalculation: _taxCalculation,
+                      manualDownPaymentAmount:
+                          _manualDPAmount, // ✅ Pass manual DP
+                      onCheckoutPressed: () async {
+                        print("➡️ Tombol checkout ditekan");
+
+                        setState(() {
+                          hasAttemptedSubmit = true;
+                        });
+
+                        final validationResult =
+                            await CheckoutValidator.validateForm(
+                          cartProvider: cartProvider,
+                          selectedOrderType: selectedOrderType,
+                          deliveryAddress: deliveryAddress,
+                          pickupTime: pickupTime,
+                          tableNumber: tableNumber,
+                          selectedPaymentMethod: selectedPaymentMethod,
+                          selectedPaymentMethodName: selectedPaymentMethodName,
+                          selectedReservationType: selectedReservationType,
+                          calculateDiscount: calculateDiscount,
+                          shouldShowReservationType: _shouldShowReservationType,
+                          canSelectBlocking: _canSelectBlocking,
+                          getMinimumAmountForBlocking:
+                              _getMinimumAmountForBlocking,
+                          formatCurrency: _formatCurrency,
+                          isValidPickupTime: _isValidPickupTime,
+                          getMinimumPickupTime: _getMinimumPickupTime,
+                          formatTime: _formatTime,
+                          tableService: _tableService,
+                          isGroMode: widget.isGroMode,
+                        );
+
+                        if (!validationResult['isValid']) {
+                          setState(() {
+                            validationErrors = Map<String, String>.from(
+                                validationResult['errors']);
+                          });
+
+                          if (validationErrors.containsKey('general')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(validationErrors['general']!),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (validationResult['firstErrorKey'] != null) {
+                            _scrollToError(validationResult['firstErrorKey']);
+                          }
+
+                          return;
+                        }
+
+                        final prefs = await SharedPreferences.getInstance();
+
+                        String? userId;
+                        String userName;
+
+                        if (widget.isGroMode) {
+                          if (cartProvider.reservationData != null) {
+                            userId = null;
+                            userName = 'null';
+
+                            print("🔍 GRO Mode - Using Guest Data:");
+                            print("  Guest Name: $userName");
+                          } else {
+                            userId = null;
+                            userName = 'Dine-In Guest';
+                            print(
+                                "⚠️ GRO Mode - No reservation data, using default");
+                          }
+                        } else {
+                          userId = prefs.getString('userId');
+                          userName = prefs.getString('userName') ?? 'Guest';
+
+                          print("👤 Normal Mode - Using Logged In User:");
+                          print("  User ID: $userId");
+                          print("  User Name: $userName");
+                        }
+
+                        int amountToPay = grandTotal;
+                        if (cartProvider.isReservation &&
+                            selectedPaymentType == PaymentType.downPayment) {
+                          if (_isReservationWithoutMenu(cartProvider)) {
+                            amountToPay = grandTotal;
+                          } else {
+                            amountToPay = downPaymentAmount;
+                          }
+                        }
+
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return const Center(
                               child: CircularProgressIndicator(),
+                            );
+                          },
+                        );
+
+                        // ignore: unused_local_variable
+                        bool isDialogShown = false;
+
+                        try {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (BuildContext dialogContext) {
+                              isDialogShown = true;
+                              return WillPopScope(
+                                onWillPop: () async => false,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            },
+                          );
+
+                          final orderService = serviceorder.OrderService();
+
+                          // ✅ PERBAIKAN: Gunakan totalprice dari CartItem yang sudah termasuk addons & toppings
+                          final List<Map<String, dynamic>> items = cartItems
+                              .map((item) => {
+                                    'productId': item.id,
+                                    'productName': item.name,
+                                    'price': item.price, // base price saja
+                                    'quantity': item.quantity,
+                                    'addons': item.addons,
+                                    'toppings': item.toppings,
+                                    'notes': item.notes,
+                                    'outletId': item.outletId,
+                                    'outletName': item.outletName,
+                                    'totalprice': item
+                                        .totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
+                                  })
+                              .toList();
+
+                          final Map<String, String?> paymentDetails = {
+                            'method': selectedPaymentMethodName,
+                            'methodName': selectedPaymentMethod,
+                            'bankName': selectedBankName,
+                            'bankCode': selectedBankCode,
+                          };
+
+                          OrderType finalOrderType;
+                          if (cartProvider.isReservation) {
+                            finalOrderType = OrderType.reservation;
+                          } else if (cartProvider.isDineIn) {
+                            finalOrderType = OrderType.dineIn;
+                          } else if (cartProvider.isOpenBill) {
+                            finalOrderType = OrderType.dineIn;
+                          } else {
+                            finalOrderType = selectedOrderType;
+                          }
+
+                          String? groId;
+                          String? guestPhone;
+                          String? guestName;
+                          if (widget.isGroMode) {
+                            groId = prefs.getString('userId');
+                            guestPhone = cartProvider.guestPhone;
+                            guestName = cartProvider.guestName;
+
+                            print("🔍 GRO Mode Checkout:");
+                            print("  GRO ID: $groId");
+                            print("  Guest Name: $guestName");
+                            print("  Guest Phone: $guestPhone");
+                          }
+
+                          print(
+                              "✅ Sebelum createOrder - Memulai pembuatan pesanan...");
+                          print("  User ID: $userId");
+                          print("  User Name: $userName");
+                          print("  Order Type: ${finalOrderType.toString()}");
+                          print("  Is GRO Mode: ${widget.isGroMode}");
+                          print("  Subtotal yang dikirim: $subtotal");
+
+                          final orderResult = await orderService.createOrder(
+                            items: items,
+                            userId: userId ?? 'guest',
+                            userName: guestName ?? 'Guest',
+                            orderType: finalOrderType,
+                            outletId: outletId ?? '',
+                            tableNumber: cartProvider.isDineIn
+                                ? cartProvider.tableNumber
+                                : (finalOrderType == OrderType.dineIn
+                                    ? tableNumber
+                                    : null),
+                            deliveryAddress:
+                                finalOrderType == OrderType.delivery
+                                    ? deliveryAddress
+                                    : null,
+                            pickupTime: finalOrderType == OrderType.pickup
+                                ? pickupTime
+                                : null,
+                            paymentDetails: paymentDetails,
+                            subtotal: subtotal,
+                            discount: discount,
+                            taxDetails: _taxCalculation?.taxDetails,
+                            totalTax: taxAmount,
+                            voucherCode: selectedVoucherCode,
+                            reservationData: cartProvider.isReservation
+                                ? cartProvider.reservationData
+                                : null,
+                            openBillData: cartProvider.openBillData,
+                            reservationType: cartProvider.isReservation &&
+                                    cartProvider.reservationData != null &&
+                                    _shouldShowReservationType(
+                                        cartProvider.reservationData!.areaCode)
+                                ? selectedReservationType
+                                : null,
+                            isGroMode: widget.isGroMode,
+                            groId: groId,
+                            guestPhone: guestPhone,
+                          );
+
+                          print("✅ createOrder berhasil: $orderResult");
+                          print(
+                              "➡️ ini adalah voucher code: $selectedVoucherCode");
+
+                          Navigator.of(context).pop();
+
+                          final extraData = {
+                            'items': List.from(cartItems),
+                            'userId': userId,
+                            'userName': userName,
+                            'orderType': finalOrderType,
+                            'tableNumber': cartProvider.isDineIn
+                                ? cartProvider.tableNumber
+                                : cartProvider.isOpenBill
+                                    ? cartProvider.openBillData?.tableNumbers
+                                    : tableNumber,
+                            'deliveryAddress': deliveryAddress,
+                            'pickupTime': pickupTime,
+                            'paymentDetails': paymentDetails,
+                            'subtotal': subtotal,
+                            'discount': discount,
+                            'total': finalTotal,
+                            'taxAmount': taxAmount,
+                            'taxDetails': _taxCalculation?.taxDetails ?? [],
+                            'grandTotal': grandTotal,
+                            'paymentType': cartProvider.isReservation
+                                ? selectedPaymentType
+                                : null,
+                            'amountToPay': amountToPay,
+                            'voucherCode': selectedVoucherCode,
+                            'id': orderResult['order']?['_id'] ?? '',
+                            'orderId': orderResult['order']?['order_id'] ?? '',
+                            'isGroMode': widget.isGroMode,
+                          };
+
+                          // ✅ FIX: Process open bill data for both GRO and customer flows
+                          if (cartProvider.isOpenBill &&
+                              cartProvider.openBillData != null) {
+                            extraData['isOpenBill'] = true;
+                            extraData['openBillData'] =
+                                cartProvider.openBillData;
+                            extraData['existingReservation'] =
+                                orderResult['existingReservation'];
+                          }
+
+                          // ✅ FIX: Process reservation/down payment data for BOTH GRO and customer flows
+                          // Previously GRO mode returned early and skipped this logic
+                          if (cartProvider.isReservation &&
+                              cartProvider.reservationData != null) {
+                            extraData['reservationData'] =
+                                cartProvider.reservationData;
+                            extraData['isReservation'] = true;
+                            extraData['paymentType'] = selectedPaymentType;
+                            extraData['downPaymentAmount'] = downPaymentAmount;
+
+                            if (_shouldShowReservationType(
+                                cartProvider.reservationData!.areaCode)) {
+                              extraData['reservationType'] =
+                                  selectedReservationType;
+                              extraData['isBlocking'] =
+                                  selectedReservationType ==
+                                      ReservationType.blocking;
+                            }
+
+                            if (selectedPaymentType ==
+                                PaymentType.downPayment) {
+                              extraData['remainingPayment'] =
+                                  finalTotal - downPaymentAmount;
+                              extraData['isDownPayment'] = true;
+                            } else {
+                              extraData['remainingPayment'] = 0;
+                              extraData['isDownPayment'] = false;
+                            }
+                          } else {
+                            extraData['remainingPayment'] = 0;
+                            extraData['isDownPayment'] = false;
+                          }
+
+                          context.push('/paymentConfirmation',
+                              extra: extraData);
+                          cartProvider.clearCart();
+                        } catch (e) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Gagal membuat pesanan: ${e.toString()}'),
+                              backgroundColor: Colors.red,
                             ),
                           );
-                        },
-                      );
-
-                      final orderService = serviceorder.OrderService();
-
-                      // ✅ PERBAIKAN: Gunakan totalprice dari CartItem yang sudah termasuk addons & toppings
-                      final List<Map<String, dynamic>> items = cartItems
-                          .map((item) => {
-                                'productId': item.id,
-                                'productName': item.name,
-                                'price': item.price, // base price saja
-                                'quantity': item.quantity,
-                                'addons': item.addons,
-                                'toppings': item.toppings,
-                                'notes': item.notes,
-                                'outletId': item.outletId,
-                                'outletName': item.outletName,
-                                'totalprice': item
-                                    .totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
-                              })
-                          .toList();
-
-                      final Map<String, String?> paymentDetails = {
-                        'method': selectedPaymentMethodName,
-                        'methodName': selectedPaymentMethod,
-                        'bankName': selectedBankName,
-                        'bankCode': selectedBankCode,
-                      };
-
-                      OrderType finalOrderType;
-                      if (cartProvider.isReservation) {
-                        finalOrderType = OrderType.reservation;
-                      } else if (cartProvider.isDineIn) {
-                        finalOrderType = OrderType.dineIn;
-                      } else if (cartProvider.isOpenBill) {
-                        finalOrderType = OrderType.dineIn;
-                      } else {
-                        finalOrderType = selectedOrderType;
-                      }
-
-                      String? groId;
-                      String? guestPhone;
-                      String? guestName;
-                      if (widget.isGroMode) {
-                        groId = prefs.getString('userId');
-                        guestPhone = cartProvider.guestPhone;
-                        guestName = cartProvider.guestName;
-
-                        print("🔍 GRO Mode Checkout:");
-                        print("  GRO ID: $groId");
-                        print("  Guest Name: $guestName");
-                        print("  Guest Phone: $guestPhone");
-                      }
-
-                      print(
-                          "✅ Sebelum createOrder - Memulai pembuatan pesanan...");
-                      print("  User ID: $userId");
-                      print("  User Name: $userName");
-                      print("  Order Type: ${finalOrderType.toString()}");
-                      print("  Is GRO Mode: ${widget.isGroMode}");
-                      print("  Subtotal yang dikirim: $subtotal");
-
-                      final orderResult = await orderService.createOrder(
-                        items: items,
-                        userId: userId ?? 'guest',
-                        userName: guestName ?? 'Guest',
-                        orderType: finalOrderType,
-                        outletId: outletId ?? '',
-                        tableNumber: cartProvider.isDineIn
-                            ? cartProvider.tableNumber
-                            : (finalOrderType == OrderType.dineIn
-                                ? tableNumber
-                                : null),
-                        deliveryAddress: finalOrderType == OrderType.delivery
-                            ? deliveryAddress
-                            : null,
-                        pickupTime: finalOrderType == OrderType.pickup
-                            ? pickupTime
-                            : null,
-                        paymentDetails: paymentDetails,
-                        subtotal: subtotal,
-                        discount: discount,
-                        taxDetails: _taxCalculation?.taxDetails,
-                        totalTax: taxAmount,
-                        voucherCode: selectedVoucherCode,
-                        reservationData: cartProvider.isReservation
-                            ? cartProvider.reservationData
-                            : null,
-                        openBillData: cartProvider.openBillData,
-                        reservationType: cartProvider.isReservation &&
-                                cartProvider.reservationData != null &&
-                                _shouldShowReservationType(
-                                    cartProvider.reservationData!.areaCode)
-                            ? selectedReservationType
-                            : null,
-                        isGroMode: widget.isGroMode,
-                        groId: groId,
-                        guestPhone: guestPhone,
-                      );
-
-                      print("✅ createOrder berhasil: $orderResult");
-                      print("➡️ ini adalah voucher code: $selectedVoucherCode");
-
-                      Navigator.of(context).pop();
-
-                      final extraData = {
-                        'items': List.from(cartItems),
-                        'userId': userId,
-                        'userName': userName,
-                        'orderType': finalOrderType,
-                        'tableNumber': cartProvider.isDineIn
-                            ? cartProvider.tableNumber
-                            : cartProvider.isOpenBill
-                                ? cartProvider.openBillData?.tableNumbers
-                                : tableNumber,
-                        'deliveryAddress': deliveryAddress,
-                        'pickupTime': pickupTime,
-                        'paymentDetails': paymentDetails,
-                        'subtotal': subtotal,
-                        'discount': discount,
-                        'total': finalTotal,
-                        'taxAmount': taxAmount,
-                        'taxDetails': _taxCalculation?.taxDetails ?? [],
-                        'grandTotal': grandTotal,
-                        'paymentType': cartProvider.isReservation
-                            ? selectedPaymentType
-                            : null,
-                        'amountToPay': amountToPay,
-                        'voucherCode': selectedVoucherCode,
-                        'id': orderResult['order']?['_id'] ?? '',
-                        'orderId': orderResult['order']?['order_id'] ?? '',
-                        'isGroMode': widget.isGroMode,
-                      };
-
-                      // ✅ FIX: Process open bill data for both GRO and customer flows
-                      if (cartProvider.isOpenBill &&
-                          cartProvider.openBillData != null) {
-                        extraData['isOpenBill'] = true;
-                        extraData['openBillData'] = cartProvider.openBillData;
-                        extraData['existingReservation'] =
-                            orderResult['existingReservation'];
-                      }
-
-                      // ✅ FIX: Process reservation/down payment data for BOTH GRO and customer flows
-                      // Previously GRO mode returned early and skipped this logic
-                      if (cartProvider.isReservation &&
-                          cartProvider.reservationData != null) {
-                        extraData['reservationData'] =
-                            cartProvider.reservationData;
-                        extraData['isReservation'] = true;
-                        extraData['paymentType'] = selectedPaymentType;
-                        extraData['downPaymentAmount'] = downPaymentAmount;
-
-                        if (_shouldShowReservationType(
-                            cartProvider.reservationData!.areaCode)) {
-                          extraData['reservationType'] =
-                              selectedReservationType;
-                          extraData['isBlocking'] = selectedReservationType ==
-                              ReservationType.blocking;
                         }
-
-                        if (selectedPaymentType == PaymentType.downPayment) {
-                          extraData['remainingPayment'] =
-                              finalTotal - downPaymentAmount;
-                          extraData['isDownPayment'] = true;
-                        } else {
-                          extraData['remainingPayment'] = 0;
-                          extraData['isDownPayment'] = false;
-                        }
-                      } else {
-                        extraData['remainingPayment'] = 0;
-                        extraData['isDownPayment'] = false;
-                      }
-
-                      context.push('/paymentConfirmation', extra: extraData);
-                      cartProvider.clearCart();
-                    } catch (e) {
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text('Gagal membuat pesanan: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  },
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );
