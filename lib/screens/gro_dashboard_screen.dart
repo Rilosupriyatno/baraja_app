@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
-import '../services/gro_service.dart';
+import '../services/gro_service.dart'; // ✅ Needed for mobile layout stats
 import '../providers/cart_provider.dart';
 import '../widgets/utils/role_based_widget.dart';
 import 'gro_order_management_screen.dart';
@@ -18,110 +18,173 @@ class GroDashboardScreen extends StatefulWidget {
 
 class _GroDashboardScreenState extends State<GroDashboardScreen>
     with RoleCheckMixin {
-  final GROService _groService = GROService();
-  Map<String, dynamic> _dashboardStats = {};
-  int? _actualOrderCount;
-  int? _actualAvailableTables;
-  bool _isLoading = true;
+  final GROService _groService = GROService(); // ✅ Needed for mobile layout
+  
+  // ✅ TABLET: Child screens report their data via callbacks
+  int? _orderCount;       // Updated by GroOrderManagementScreen
+  int? _availableTables;  // Updated by GroTableAvailabilityScreen
+  
+  // ✅ MOBILE: Needs full stats for stats grid
+  Map<String, dynamic> _mobileStats = {};
+  bool _isLoadingMobileStats = true;
+  
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
   String _selectedMenu = 'orders';
-  
-  // ✅ CACHING: Static cache for dashboard stats
-  static Map<String, dynamic>? _cachedStats;
-  static DateTime? _cacheTime;
-  static const _cacheDuration = Duration(minutes: 2);
 
   @override
   void initState() {
     super.initState();
-    _loadDashboardStats();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       cartProvider.setGroMode(true);
+      
+      final size = MediaQuery.of(context).size;
+      final isTablet = size.width >= 768;
+      
+      if (isTablet) {
+        // ✅ TABLET: Fetch table count immediately for sidebar badge
+        // Don't wait for Table Availability screen to mount
+        _loadTableBadgeCount();
+      } else {
+        // ✅ MOBILE: Load full stats for stats grid
+        _loadMobileStats();
+      }
     });
   }
-
-  Future<void> _loadDashboardStats({bool forceRefresh = false}) async {
-    // ✅ Return cached data if valid
-    if (!forceRefresh && _cachedStats != null && _cacheTime != null) {
-      final cacheAge = DateTime.now().difference(_cacheTime!);
-      if (cacheAge < _cacheDuration) {
-        setState(() {
-          _dashboardStats = Map.from(_cachedStats!);
-          _actualOrderCount = _cachedStats!['orderCount'];
-          _actualAvailableTables = _cachedStats!['availableTables'];
-          _isLoading = false;
-        });
-        return;
+  
+  // ✅ NEW: Lightweight fetch just for table badge on tablet
+  Future<void> _loadTableBadgeCount() async {
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final result = await _groService.getTableAvailability(
+        date: dateStr,
+        outletId: "67cbc9560f025d897d69f889",
+      );
+      
+      if (mounted && result['success'] == true && result['data'] != null) {
+        final tables = result['data']['tables'] as List? ?? [];
+        final available = tables.where((t) => t['is_available'] == true).length;
+        setState(() => _availableTables = available);
       }
+    } catch (e) {
+      // Silently fail - badge will show loading
+      debugPrint('⚠️ Error loading table badge: $e');
     }
+  }
+  
+  // ✅ NEW: Lightweight fetch just for order badge on tablet
+  // This is called when date changes while on tables page (order screen not visible)
+  Future<void> _loadOrderBadgeCount() async {
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final result = await _groService.getReservations(
+        date: dateStr,
+        page: 1,
+        limit: 1, // We only need total_records, not actual data
+      );
+      
+      if (mounted && result['success'] == true && result['pagination'] != null) {
+        final totalRecords = result['pagination']['total_records'] ?? 0;
+        setState(() => _orderCount = totalRecords);
+      }
+    } catch (e) {
+      // Silently fail - badge will show loading
+      debugPrint('⚠️ Error loading order badge: $e');
+    }
+  }
+  
+  // ✅ MOBILE ONLY: Load full stats for mobile dashboard cards
+  Future<void> _loadMobileStats() async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     
     setState(() {
-      _isLoading = true;
+      _isLoadingMobileStats = true;
       _errorMessage = null;
     });
 
     try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      
-      // ✅ OPTIMIZED: Only load 1 item to get pagination total_records
-      final results = await Future.wait([
-        _groService.getReservations(
-          page: 1,
-          limit: 1, // Only need pagination meta, not actual data
-          date: dateStr,
-        ),
-        _groService.getTableAvailability(
-          date: dateStr,
-          outletId: "67cbc9560f025d897d69f889",
-        ),
-      ]);
-      
-      final reservationsResult = results[0] as Map<String, dynamic>;
-      final tablesResult = results[1] as Map<String, dynamic>;
+      // Get reservations with stats
+      final result = await _groService.getReservations(
+        page: 1, limit: 1, date: dateStr,
+      );
 
-      // ✅ Get total count from pagination meta (faster than loading all data)
-      if (reservationsResult['success'] == true) {
-        final pagination = reservationsResult['pagination'];
-        final totalRecords = pagination?['total_records'] ?? 0;
-        _actualOrderCount = totalRecords;
-        _dashboardStats['allReservations'] = totalRecords;
+      if (result['success'] == true) {
+        final filtered = result['filtered'] ?? {};
+        final pagination = result['pagination'] ?? {};
+        
+        setState(() {
+          _mobileStats = {
+            'allReservations': pagination['total_records'] ?? 0,
+            'pendingReservations': filtered['pending'] ?? 0,
+            'activeReservations': filtered['active'] ?? 0,
+            'completedReservations': filtered['completed'] ?? 0,
+            'cancelledReservations': filtered['cancelled'] ?? 0,
+          };
+        });
       }
       
-      // ✅ Calculate table stats from actual data (this is already fast)
-      if (tablesResult['success'] == true && tablesResult['data'] != null) {
-        final data = tablesResult['data'];
-        final tables = data['tables'] as List? ?? [];
-        
-        final total = tables.length;
-        final occupied = tables.where((t) => t['is_available'] == false).length;
-        final available = total - occupied;
-        
-        _actualAvailableTables = available;
-        _dashboardStats['totalTables'] = total;
-        _dashboardStats['availableTables'] = available;
-      }
+      // Get table availability
+      final tableResult = await _groService.getTableAvailability(
+        date: dateStr, outletId: "67cbc9560f025d897d69f889",
+      );
       
-      // ✅ Cache the results
-      _cachedStats = {
-        ..._dashboardStats,
-        'orderCount': _actualOrderCount,
-        'availableTables': _actualAvailableTables,
-      };
-      _cacheTime = DateTime.now();
-
-      setState(() {
-        _isLoading = false;
-      });
+      if (tableResult['success'] == true && tableResult['data'] != null) {
+        final tables = tableResult['data']['tables'] as List? ?? [];
+        final available = tables.where((t) => t['is_available'] == true).length;
+        
+        setState(() {
+          _mobileStats['availableTables'] = available;
+          _isLoadingMobileStats = false;
+        });
+      } else {
+        setState(() => _isLoadingMobileStats = false);
+      }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading dashboard: $e';
-        _isLoading = false;
+        _errorMessage = 'Gagal memuat data: $e';
+        _isLoadingMobileStats = false;
       });
     }
   }
+  
+  // ✅ TABLET CALLBACKS: Child screens call these to update badges
+  void _onOrderCountLoaded(int count) {
+    if (mounted && _orderCount != count) {
+      setState(() => _orderCount = count);
+    }
+  }
+  
+  void _onTableCountLoaded(int availableCount) {
+    if (mounted && _availableTables != availableCount) {
+      setState(() => _availableTables = availableCount);
+    }
+  }
+  
+  // ✅ MANUAL REFRESH: Forces child screens to reload via key change
+  int _refreshKey = 0;
+  
+  void _refreshData() {
+    setState(() {
+      _refreshKey++;
+      _orderCount = null;
+      _availableTables = null;
+      _isLoadingMobileStats = true;
+    });
+    
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width >= 768;
+    
+    if (isTablet) {
+      // ✅ TABLET: Reload BOTH badges
+      _loadTableBadgeCount();
+      _loadOrderBadgeCount(); // ✅ NEW: Also load order count on refresh
+    } else {
+      // ✅ MOBILE: Reload full stats
+      _loadMobileStats();
+    }
+  }
+
 
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
@@ -147,8 +210,18 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
+        // ✅ Reset counts when date changes
+        _orderCount = null;
+        _availableTables = null;
+        _refreshKey++;
       });
-      _loadDashboardStats();
+      
+      // ✅ TABLET: Reload BOTH badges immediately (child screen will also reload its own data)
+      final size = MediaQuery.of(context).size;
+      if (size.width >= 768) {
+        _loadTableBadgeCount();
+        _loadOrderBadgeCount(); // ✅ NEW: Also load order count when date changes
+      }
     }
   }
 
@@ -422,33 +495,29 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
               ),
             ),
 
-            // Stats Menu Items
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF2E8B57),
-                ),
-              )
-                  : _errorMessage != null
+            // Stats Menu Items - ✅ FIXED: Flexible allows shrinking when keyboard appears
+            Flexible(
+              fit: FlexFit.loose, // ✅ Allows shrinking instead of forcing expansion
+              child: _errorMessage != null
                   ? _buildErrorStateSidebar()
                   : ListView(
+                shrinkWrap: true, // ✅ Only take needed space
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildStatMenuItem(
                     'Kelola Order',
-                    _actualOrderCount ?? _dashboardStats['allReservations'] ?? 0,
+                    _orderCount, // ✅ SIMPLIFIED: null = loading, number = value
                     Icons.restaurant,
-                    const Color(0xFF2E8B57), // Changed to green
+                    const Color(0xFF2E8B57),
                     'orders',
                     subtitle: 'Semua Pesanan',
                   ),
                   const SizedBox(height: 8),
                   _buildStatMenuItem(
                     'Ketersediaan Meja',
-                    _actualAvailableTables ?? _dashboardStats['availableTables'] ?? 0,
+                    _availableTables, // ✅ SIMPLIFIED: null = loading, number = value
                     Icons.table_restaurant,
-                    const Color(0xFF2E8B57), // Changed from purple to green
+                    const Color(0xFF2E8B57),
                     'tables',
                     subtitle: 'Meja Tersedia',
                   ),
@@ -464,7 +533,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _loadDashboardStats,
+                      onPressed: _refreshData, // ✅ Use new refresh method
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Refresh Data'),
                       style: OutlinedButton.styleFrom(
@@ -553,13 +622,14 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
 
   Widget _buildStatMenuItem(
       String title,
-      int value,
+      int? value, // ✅ CHANGED: nullable for loading state
       IconData icon,
       Color color,
       String menuKey, {
         String? subtitle,
       }) {
     final isSelected = _selectedMenu == menuKey;
+    final isLoading = value == null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -617,40 +687,42 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
                     ],
                   ),
                 ),
-                if (menuKey == 'orders')
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      value.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                // ✅ BADGE: Show loading spinner or value
+                isLoading
+                    ? Container(
+                        width: 40,
+                        height: 28,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          value.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      value.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -658,6 +730,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       ),
     );
   }
+
 
   Widget _buildErrorStateSidebar() {
     return Center(
@@ -675,7 +748,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _loadDashboardStats,
+              onPressed: _refreshData, // ✅ Use new refresh method
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
@@ -697,16 +770,18 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   Widget _buildMainContent() {
     if (_selectedMenu == 'tables') {
       return GroTableAvailabilityScreen(
+        key: ValueKey('tables_$_refreshKey'), // ✅ Force rebuild when refresh
         isGroMode: true,
-        dashboardStats: _dashboardStats, // ✅ Pass stats untuk konsistensi
-        selectedDate: _selectedDate, // ✅ Pass selected date
+        selectedDate: _selectedDate,
+        onTableCountLoaded: _onTableCountLoaded, // ✅ NEW: Callback to update badge
       );
     }
 
     return GroOrderManagementScreen(
+      key: ValueKey('orders_$_refreshKey'), // ✅ Force rebuild when refresh
       filter: 'all',
       initialDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-      dashboardStats: _dashboardStats, // ✅ Pass stats untuk badge
+      onOrderCountLoaded: _onOrderCountLoaded, // ✅ NEW: Callback to update badge
     );
   }
 
@@ -780,7 +855,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             },
           ),
           IconButton(
-            onPressed: _loadDashboardStats,
+            onPressed: _refreshData, // ✅ FIXED: Use new refresh method
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             splashRadius: 24,
@@ -789,8 +864,8 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadDashboardStats,
-        child: _isLoading
+        onRefresh: () async => _refreshData(),
+        child: _isLoadingMobileStats // ✅ FIXED: Use mobile loading state
             ? const Center(
             child: CircularProgressIndicator(color: Color(0xFF2E8B57)))
             : _errorMessage != null
@@ -1137,42 +1212,42 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
       children: [
         _buildStatCard(
           title: 'Riwayat',
-          value: '${_dashboardStats['allReservations'] ?? 0}',
+          value: '${_mobileStats['allReservations'] ?? 0}',
           icon: Icons.history,
           color: const Color(0xFF6366F1),
           onTap: () => _navigateToReservations('all'),
         ),
         _buildStatCard(
           title: 'Menunggu',
-          value: '${_dashboardStats['pendingReservations'] ?? 0}',
+          value: '${_mobileStats['pendingReservations'] ?? 0}',
           icon: Icons.schedule,
           color: const Color(0xFFF59E0B),
           onTap: () => _navigateToReservations('pending'),
         ),
         _buildStatCard(
           title: 'Berlangsung',
-          value: '${_dashboardStats['activeReservations'] ?? 0}',
+          value: '${_mobileStats['activeReservations'] ?? 0}',
           icon: Icons.dining,
           color: const Color(0xFF10B981),
           onTap: () => _navigateToReservations('active'),
         ),
         _buildStatCard(
           title: 'Selesai',
-          value: '${_dashboardStats['completedReservations'] ?? 0}',
+          value: '${_mobileStats['completedReservations'] ?? 0}',
           icon: Icons.check_circle,
           color: const Color(0xFF059669),
           onTap: () => _navigateToReservations('completed'),
         ),
         _buildStatCard(
           title: 'Batal',
-          value: '${_dashboardStats['cancelledReservations'] ?? 0}',
+          value: '${_mobileStats['cancelledReservations'] ?? 0}',
           icon: Icons.cancel,
           color: const Color(0xFFEF4444),
           onTap: () => _navigateToReservations('cancelled'),
         ),
         _buildStatCard(
           title: 'Meja Tersedia',
-          value: '${_dashboardStats['availableTables'] ?? 0}',
+          value: '${_mobileStats['availableTables'] ?? 0}',
           icon: Icons.table_restaurant,
           color: const Color(0xFF8B5CF6),
           onTap: () => _navigateToTableManagement(),
@@ -1409,7 +1484,7 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _loadDashboardStats,
+              onPressed: _loadMobileStats, // ✅ FIXED: Use mobile stats method
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
@@ -1449,10 +1524,10 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     context.push(
       '/gro-reservation-management?filter=$filter&date=$dateStr',
       extra: {
-        'dashboardStats': _dashboardStats, // ✅ Pass stats untuk konsistensi badge
+        'dashboardStats': _mobileStats, // ✅ Use mobile stats
       },
     ).then((_) {
-      _loadDashboardStats();
+      _loadMobileStats(); // ✅ Reload mobile stats on return
     });
   }
 
@@ -1460,10 +1535,9 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     context.push('/gro-table-availability', extra: {
       'date': dateStr,
-      'dashboardStats': _dashboardStats, // ✅ Pass stats untuk konsistensi
-      'selectedDate': _selectedDate, // ✅ Pass selected date
+      'selectedDate': _selectedDate,
     }).then((_) {
-      _loadDashboardStats();
+      _loadMobileStats(); // ✅ Reload mobile stats on return
     });
   }
 }

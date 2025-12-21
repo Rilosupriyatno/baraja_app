@@ -600,7 +600,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
             resizeToAvoidBottomInset: true,
             body: Column(
               children: [
-                Expanded(
+                Flexible( // ✅ Changed to Flexible to allow shrinking when keyboard appears
+                  flex: 1,
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     child: Padding(

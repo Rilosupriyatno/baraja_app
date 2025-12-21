@@ -950,22 +950,31 @@ class _MenuScreenState extends State<MenuScreen> {
       color: Colors.white,
       child: Column(
         children: [
-          // Info banner (jika ada)
-          _buildReservationInfo(),
-          _buildOpenBillInfo(),
-          _buildDineInInfo(),
-          
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SearchMenuWidget(
-              onSearchChanged: _onSearchChanged,
-              onClearSearch: _onClearSearch,
+          // ✅ FIXED: Wrap info section in shrinkable container
+          // Info banners + search can shrink when keyboard appears
+          Flexible(
+            flex: 0, // ✅ Don't expand, just take needed space but can shrink
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // ✅ Only take needed space
+              children: [
+                _buildReservationInfo(),
+                _buildOpenBillInfo(),
+                _buildDineInInfo(),
+                
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SearchMenuWidget(
+                    onSearchChanged: _onSearchChanged,
+                    onClearSearch: _onClearSearch,
+                  ),
+                ),
+                
+                // Search results info
+                _buildSearchResultsInfo(),
+              ],
             ),
           ),
-          
-          // Search results info
-          _buildSearchResultsInfo(),
           
           // Menu grid (NO CATEGORIES in tablet GRO mode) - 3 COLUMNS
           Expanded(
@@ -1757,33 +1766,36 @@ class _MenuScreenState extends State<MenuScreen> {
               // Cart items list
               Expanded(
                 child: cartItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_cart_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Keranjang kosong',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                    ? SingleChildScrollView(  // ✅ FIXED: Prevents overflow when keyboard appears
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shopping_cart_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tambahkan menu',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 14,
+                              const SizedBox(height: 16),
+                              Text(
+                                'Keranjang kosong',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tambahkan menu',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : ListView.builder(
