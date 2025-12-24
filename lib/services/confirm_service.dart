@@ -52,6 +52,14 @@ class ConfirmService {
       if (remainingPayment != null) {
         paymentData['remaining_payment'] = remainingPayment;
       }
+      
+      // ✅ Add DP Already Paid logic
+      if (order.dpAlreadyPaid == true) {
+        paymentData['dp_already_paid'] = true;
+        if (order.dpBankInfo != null) {
+           paymentData['bank_info'] = order.dpBankInfo;
+        }
+      }
 
       _printRequestData(paymentData);
 

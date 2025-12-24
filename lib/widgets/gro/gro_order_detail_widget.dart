@@ -95,6 +95,15 @@ class GroOrderDetailWidget extends StatelessWidget {
           'color': Colors.amber,
         };
       case 'pending':
+        // ✅ FIX: Special handling for Down Payment that is pending
+        if (paymentDetails != null && 
+           (paymentDetails['isDownPayment'] == true || paymentDetails['paymentType'] == 'Down Payment')) {
+           return {
+            'label': 'DP Belum Dibayar',
+            'icon': Icons.pending,
+            'color': Colors.red,
+          };
+        }
         return {
           'label': 'Menunggu Pembayaran',
           'icon': Icons.access_time,
@@ -102,6 +111,14 @@ class GroOrderDetailWidget extends StatelessWidget {
         };
       case 'expire':
       case 'unpaid':
+         // ✅ FIX: Don't show Kadaluarsa if it's a new order or manual DP that might look expired/unpaid
+         if (paymentDetails != null && paymentDetails['paymentType'] == 'Down Payment') {
+           return {
+            'label': 'DP Belum Dibayar',
+            'icon': Icons.pending,
+            'color': Colors.red,
+          };
+         }
         return {
           'label': 'Kadaluarsa',
           'icon': Icons.timer_off,
@@ -115,7 +132,7 @@ class GroOrderDetailWidget extends StatelessWidget {
         };
       default:
         return {
-          'label': 'Status Tidak Diketahui',
+          'label': 'Status Unknown: $status',
           'icon': Icons.help_outline,
           'color': Colors.grey,
         };
@@ -259,10 +276,21 @@ class GroOrderDetailWidget extends StatelessWidget {
     final fpTotalAmount = _getNumericValue(pendingFPDetails?['totalAmount']);
     final paymentType = paymentDetails['paymentType']?.toString() ?? '';
     
-    // ✅ FIX: Sisa Pembayaran = FP.totalAmount jika ada FP, kalau tidak dari DP.remainingAmount
+    // ✅ FIX: Sisa Pembayaran calculation
     final sisaPembayaran = hasPendingFinalPayment && fpTotalAmount > 0 
         ? fpTotalAmount 
         : remainingAmount;
+    
+    // ✅ FIX: Check if we have valid DP data to show
+    // Show if manually flagged as down payment OR has remaining amount OR explicitly isDownPayment
+    final shouldShow = isDownPayment || 
+                       remainingAmount > 0 || 
+                       hasPendingFinalPayment ||
+                       paymentDetails['downPaymentAmount'] != null;
+
+    if (!shouldShow) {
+       return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -404,7 +432,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        formatCurrency(fpAmount),
+                        formatCurrency(sisaPembayaran),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -449,10 +477,10 @@ class GroOrderDetailWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            sisaPembayaran > 0 ? 'Belum Lunas' : 'Lunas',
+                            fpAmount > 0 ? 'Belum Lunas' : 'Lunas',
                             style: TextStyle(
                               fontSize: 12,
-                              color: sisaPembayaran > 0 ? Colors.orange : Colors.green,
+                              color: fpAmount > 0 ? Colors.orange : Colors.green,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -460,7 +488,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatCurrency(sisaPembayaran),
+                      formatCurrency(fpAmount),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -1003,7 +1031,11 @@ class GroOrderDetailWidget extends StatelessWidget {
 
                   PaymentRowWidget(
                     label: 'Metode Pembayaran',
-                    value: orderData['paymentMethod']?.toString() ?? 'Not specified',
+                    // ✅ FIX: Improve payment method lookup
+                    value: orderData['paymentMethod']?.toString() ?? 
+                           paymentDetails?['method']?.toString() ??
+                           paymentDetails?['paymentType']?.toString() ?? 
+                           'Not specified',
                     icon: Icons.credit_card,
                     isTotal: false,
                   ),

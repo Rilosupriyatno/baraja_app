@@ -1538,6 +1538,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               extraData['remainingPayment'] =
                                   finalTotal - downPaymentAmount;
                               extraData['isDownPayment'] = true;
+                              
+                              // ✅ Pass DP Already Paid info to PaymentConfirmationScreen
+                              extraData['dpAlreadyPaid'] = _dpAlreadyPaid;
+                              if (_dpAlreadyPaid && _dpBankCode != null) {
+                                extraData['dpBankInfo'] = {
+                                  'bankCode': _dpBankCode,
+                                  'bankName': _dpBankName,
+                                };
+                              }
                             } else {
                               extraData['remainingPayment'] = 0;
                               extraData['isDownPayment'] = false;

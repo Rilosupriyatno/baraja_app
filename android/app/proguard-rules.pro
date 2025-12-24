@@ -55,3 +55,7 @@
 
 # Prevent R8 from removing classes used by reflection
 -keep class * extends androidx.lifecycle.ViewModel { *; }
+
+# Google Play Core
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
