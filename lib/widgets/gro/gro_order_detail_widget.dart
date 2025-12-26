@@ -28,7 +28,7 @@ class GroOrderDetailWidget extends StatelessWidget {
       final hasPendingFinalPayment = paymentDetails['hasPendingFinalPayment'] == true;
       
       // ✅ FIX: Check if Final Payment has been settled
-      final pendingDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
+      final pendingDetails = paymentDetails['finalPaymentDetails'] as Map<String, dynamic>?;
       final finalPaymentStatus = pendingDetails?['status']?.toString().toLowerCase();
       final isFinalPaymentSettled = finalPaymentStatus == 'settlement' || finalPaymentStatus == 'capture';
 
@@ -158,7 +158,7 @@ class GroOrderDetailWidget extends StatelessWidget {
   Widget _buildPendingFinalPaymentQR(Map<String, dynamic>? paymentDetails) {
     if (paymentDetails == null) return const SizedBox.shrink();
     
-    final pendingDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
+    final pendingDetails = paymentDetails['finalPaymentDetails'] as Map<String, dynamic>?;
     
     if (pendingDetails == null || pendingDetails['status'] != 'pending') {
       return const SizedBox.shrink();
@@ -270,16 +270,25 @@ class GroOrderDetailWidget extends StatelessWidget {
     final remainingAmount = _getNumericValue(paymentDetails['remainingAmount']);
     final isDownPaymentPaid = paymentDetails['downPaymentPaid'] == true;
     
-    // ✅ Get pending Final Payment details
-    final pendingFPDetails = paymentDetails['pendingFinalPaymentDetails'] as Map<String, dynamic>?;
-    final fpAmount = _getNumericValue(pendingFPDetails?['amount']);
-    final fpTotalAmount = _getNumericValue(pendingFPDetails?['totalAmount']);
+    // ✅ Get Final Payment details (renamed from pendingFinalPaymentDetails)
+    final finalPaymentDetails = paymentDetails['finalPaymentDetails'] as Map<String, dynamic>?;
+    // finalPaymentDetails.amount = Sisa pembayaran
+    // finalPaymentDetails.totalAmount = Tambahan order
+    final fpSisaPembayaran = _getNumericValue(finalPaymentDetails?['amount']);
+    final fpTambahanOrder = _getNumericValue(finalPaymentDetails?['totalAmount']);
+    
+    // ✅ Get Down Payment details
+    final dpDetails = paymentDetails['downPaymentDetails'] as Map<String, dynamic>?;
+    final dpAmount = _getNumericValue(dpDetails?['amount']); // Jumlah DP dibayar
+    final dpRemainingAmount = _getNumericValue(dpDetails?['remainingAmount']); // Sisa setelah DP
     final paymentType = paymentDetails['paymentType']?.toString() ?? '';
     
-    // ✅ FIX: Sisa Pembayaran calculation
-    final sisaPembayaran = hasPendingFinalPayment && fpTotalAmount > 0 
-        ? fpTotalAmount 
-        : remainingAmount;
+    // ✅ CLEAR: Sisa Pembayaran calculation
+    // Jika ada Final Payment, gunakan finalPaymentDetails.amount
+    // Jika tidak, gunakan downPaymentDetails.remainingAmount
+    final sisaPembayaran = finalPaymentDetails != null 
+        ? fpSisaPembayaran 
+        : dpRemainingAmount;
     
     // ✅ FIX: Check if we have valid DP data to show
     // Show if manually flagged as down payment OR has remaining amount OR explicitly isDownPayment
@@ -389,8 +398,8 @@ class GroOrderDetailWidget extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               
-              // ✅ NEW: Jumlah Tambahan (FP Amount) - show only when Final Payment pending
-              if (hasPendingFinalPayment && fpAmount > 0)
+              // ✅ Tambahan Order - show only when Final Payment exists and has additional order value
+              if (finalPaymentDetails != null && fpTambahanOrder > 0)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -432,7 +441,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        formatCurrency(sisaPembayaran),
+                        formatCurrency(fpTambahanOrder), // Tambahan Order
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -443,7 +452,7 @@ class GroOrderDetailWidget extends StatelessWidget {
                   ),
                 ),
               
-              if (hasPendingFinalPayment && fpAmount > 0)
+              if (finalPaymentDetails != null && fpTambahanOrder > 0)
                 const SizedBox(height: 8),
 
               // Remaining Amount
@@ -477,24 +486,30 @@ class GroOrderDetailWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            fpAmount > 0 ? 'Belum Lunas' : 'Lunas',
+                            sisaPembayaran > 0
+                                ? 'Belum Lunas'
+                                : 'Lunas',
                             style: TextStyle(
                               fontSize: 12,
-                              color: fpAmount > 0 ? Colors.orange : Colors.green,
+                              color: sisaPembayaran > 0
+                                  ? Colors.orange
+                                  : Colors.green,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+
                         ],
                       ),
                     ),
                     Text(
-                      formatCurrency(fpAmount),
+                      formatCurrency(sisaPembayaran), // Sisa Pembayaran
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: sisaPembayaran > 0 ? Colors.orange : Colors.green,
                       ),
                     ),
+
                   ],
                 ),
               ),
@@ -548,8 +563,8 @@ class GroOrderDetailWidget extends StatelessWidget {
     print('paidAmount: ${paymentDetails?['paidAmount']}');
     print('remainingAmount: ${paymentDetails?['remainingAmount']}');
     print('hasPendingFinalPayment: ${paymentDetails?['hasPendingFinalPayment']}');
-    final pendingFPDetails = paymentDetails?['pendingFinalPaymentDetails'];
-    print('pendingFinalPaymentDetails: $pendingFPDetails');
+    final pendingFPDetails = paymentDetails?['finalPaymentDetails'];
+    print('finalPaymentDetails: $pendingFPDetails');
     if (pendingFPDetails != null) {
       print('  - status: ${pendingFPDetails['status']}');
       print('  - amount: ${pendingFPDetails['amount']}');
@@ -621,6 +636,83 @@ class GroOrderDetailWidget extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  
+                  // ✅ NEW: Customer/Creator Info Section
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        // Guest Name
+                        _buildInfoRow(
+                          icon: Icons.person,
+                          label: 'Nama Tamu',
+                          value: orderData['user']?.toString() ?? 
+                                 orderData['reservation']?['guestName']?.toString() ?? 
+                                 'Guest',
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Order Type
+                        _buildInfoRow(
+                          icon: Icons.restaurant,
+                          label: 'Tipe Order',
+                          value: orderData['orderType']?.toString() ?? 'Unknown',
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Source (Gro/Kasir/Customer)
+                        _buildInfoRow(
+                          icon: Icons.source,
+                          label: 'Sumber Order',
+                          value: orderData['source']?.toString() ?? 'Unknown',
+                          color: Colors.purple,
+                        ),
+                        
+                        // Creator Info (if available)
+                        if (orderData['createdBy'] != null) ...[
+                          const SizedBox(height: 8),
+                          _buildInfoRow(
+                            icon: orderData['createdBy']?['role'] == 'GRO' 
+                                ? Icons.support_agent 
+                                : Icons.point_of_sale,
+                            label: 'Dibuat Oleh',
+                            value: '${orderData['createdBy']?['username'] ?? 'System'} (${orderData['createdBy']?['role'] ?? ''})',
+                            color: orderData['createdBy']?['role'] == 'GRO' 
+                                ? Colors.teal 
+                                : Colors.indigo,
+                          ),
+                        ],
+                        
+                        // Reservation Info (if available)
+                        if (orderData['reservation'] != null) ...[
+                          const SizedBox(height: 8),
+                          _buildInfoRow(
+                            icon: Icons.event,
+                            label: 'Reservasi',
+                            value: orderData['reservation']?['reservationCode']?.toString() ?? '-',
+                            color: Colors.green,
+                          ),
+                          if (orderData['reservation']?['food_serving_time'] != null) ...[
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                              icon: Icons.schedule,
+                              label: 'Penyajian Makanan',
+                              value: _formatDateTime(orderData['reservation']?['food_serving_time']?.toString()),
+                              color: Colors.deepOrange,
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1131,5 +1223,50 @@ class GroOrderDetailWidget extends StatelessWidget {
       return num.tryParse(value) ?? 0;
     }
     return 0;
+  }
+
+  // ✅ NEW: Helper to build info row
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ NEW: Helper to format datetime string
+  String _formatDateTime(String? dateString) {
+    if (dateString == null || dateString.isEmpty) return '-';
+    try {
+      final date = DateTime.parse(dateString);
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+      return '${date.day} ${months[date.month - 1]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return dateString;
+    }
   }
 }

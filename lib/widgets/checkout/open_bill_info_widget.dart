@@ -63,6 +63,42 @@ class OpenBillInfoWidget extends StatelessWidget {
               ),
             ],
           ),
+          // ✅ NEW: Show customer name if available
+          if (openBillData.customerName.isNotEmpty && 
+              openBillData.customerName != 'Guest') ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.person, color: Colors.green.shade700, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Nama Tamu: ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      openBillData.customerName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

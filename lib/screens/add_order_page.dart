@@ -183,13 +183,13 @@ class AddOrderPageState extends State<AddOrderPage> {
 
     cartProvider.addToCart(newItem);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${widget.product.name} ditambahkan ke keranjang'),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Text('${widget.product.name} ditambahkan ke keranjang'),
+    //     backgroundColor: Colors.green,
+    //     duration: const Duration(seconds: 2),
+    //   ),
+    // );
 
     Navigator.pop(context);
   }

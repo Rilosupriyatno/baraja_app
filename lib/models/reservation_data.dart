@@ -106,6 +106,7 @@ class OpenBillData {
   final String areaCode;
   final String tableId;
   final String tableNumbers;
+  final String customerName; // ✅ NEW: Customer Name
 
   OpenBillData({
     required this.reservationId,
@@ -115,6 +116,7 @@ class OpenBillData {
     required this.areaCode,
     required this.tableId,
     required this.tableNumbers,
+    required this.customerName, // ✅ NEW
   });
 
   Map<String, dynamic> toJson() {
@@ -124,6 +126,7 @@ class OpenBillData {
       'area_code': areaCode,
       'tableId': tableId,
       'table_numbers': tableNumbers,
+      'customerName': customerName, // ✅ NEW
     };
   }
 

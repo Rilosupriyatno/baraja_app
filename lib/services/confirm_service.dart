@@ -45,6 +45,12 @@ class ConfirmService {
       // Add reservation payment data if provided
       if (isDownPayment != null) {
         paymentData['is_down_payment'] = isDownPayment;
+        // ✅ FIX: Always send total_order_amount for DP calculation
+        // total_order_amount = gross_amount (total order value)
+        // gross_amount tetap sama, tapi backend perlu tahu total untuk hitung remaining
+        if (isDownPayment == true) {
+          paymentData['total_order_amount'] = order.total + (order.taxAmount ?? 0);
+        }
       }
       if (downPaymentAmount != null) {
         paymentData['down_payment_amount'] = downPaymentAmount;
@@ -53,12 +59,21 @@ class ConfirmService {
         paymentData['remaining_payment'] = remainingPayment;
       }
       
+      // ✅ Debug: Print DP Already Paid values
+      print('🔍 DEBUG - DP Already Paid check:');
+      print('   order.dpAlreadyPaid: ${order.dpAlreadyPaid}');
+      print('   order.dpBankInfo: ${order.dpBankInfo}');
+      
       // ✅ Add DP Already Paid logic
       if (order.dpAlreadyPaid == true) {
         paymentData['dp_already_paid'] = true;
+        print('   ✅ Setting dp_already_paid = true');
         if (order.dpBankInfo != null) {
            paymentData['bank_info'] = order.dpBankInfo;
+           print('   ✅ Setting bank_info = ${order.dpBankInfo}');
         }
+      } else {
+        print('   ⚠️ dpAlreadyPaid is NOT true, skipping');
       }
 
       _printRequestData(paymentData);

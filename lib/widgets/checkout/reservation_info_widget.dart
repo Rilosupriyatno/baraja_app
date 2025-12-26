@@ -3,8 +3,9 @@ import '../../../models/reservation_data.dart';
 
 class ReservationInfoWidget extends StatelessWidget {
   final ReservationData data;
+  final String? guestName; // ✅ NEW: Optional guest name
 
-  const ReservationInfoWidget({super.key, required this.data});
+  const ReservationInfoWidget({super.key, required this.data, this.guestName});
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +82,39 @@ class ReservationInfoWidget extends StatelessWidget {
               ),
             ],
           ),
+          
+          // ✅ NEW: Show guest name if available
+          if (guestName != null && guestName!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.person, color: Colors.green.shade700, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Nama Tamu: ',
+                    style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                  ),
+                  Expanded(
+                    child: Text(
+                      guestName!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

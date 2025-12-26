@@ -41,6 +41,8 @@ class OrderService {
     // ✅ NEW: DP Already Paid for GRO Reservation
     bool dpAlreadyPaid = false,
     Map<String, dynamic>? dpBankInfo,
+    // ✅ FIX: Custom DP Amount
+    int? customDpAmount,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -56,6 +58,8 @@ class OrderService {
       print("  userName: $userName");
       print("  guestPhone: $guestPhone");
       print("  items count: ${items.length}");
+      print("  dpAlreadyPaid: $dpAlreadyPaid");
+      print("  customDpAmount: $customDpAmount");
 
       // ✅ Separate regular items and custom amounts
       final regularItems = <Map<String, dynamic>>[];
@@ -119,6 +123,9 @@ class OrderService {
         // ✅ NEW: DP Already Paid data
         if (dpAlreadyPaid) 'dpAlreadyPaid': true,
         if (dpAlreadyPaid && dpBankInfo != null) 'dpBankInfo': dpBankInfo,
+        // ✅ FIX: Include custom DP amount
+        if (dpAlreadyPaid && customDpAmount != null && customDpAmount > 0) 
+          'customDpAmount': customDpAmount,
       };
 
       if (voucherCode != null && voucherCode.isNotEmpty) {

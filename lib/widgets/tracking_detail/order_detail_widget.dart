@@ -906,6 +906,7 @@ class OrderDetailWidget extends StatelessWidget {
                     areaCode: areaCode,
                     tableId: tableId,
                     tableNumbers: tableNumbers,
+                    customerName: orderData['customerName'] ?? orderData['user'] ?? 'Guest', // ✅ NEW
                   );
 
                   Navigator.push(

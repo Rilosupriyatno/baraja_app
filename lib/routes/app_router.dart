@@ -333,6 +333,10 @@ class AppRouter {
               isDownPayment: extra['isDownPayment'] ?? false,
               taxAmount: extra['taxAmount'] ?? 0,
               taxDetails: (extra['taxDetails'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+              // ✅ FIX: Add DP Already Paid data
+              dpAlreadyPaid: extra['dpAlreadyPaid'] ?? false,
+              dpBankInfo: extra['dpBankInfo'],
+              isGroMode: extra['isGroMode'] ?? false,
             );
           },
         ),

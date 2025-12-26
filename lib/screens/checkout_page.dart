@@ -181,6 +181,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
 
       _initializeTaxData();
+
+      // ✅ Pre-fill guest name for Open Bill
+      if (widget.isOpenBill && widget.openBillData != null) {
+        _guestNameController.text = widget.openBillData!.customerName;
+        print("✅ Pre-filled guest name for Open Bill: ${widget.openBillData!.customerName}");
+      }
+      
+      // ✅ NEW: Pre-fill guest name for Reservation (from CartProvider)
+      if (cartProvider.isReservation && 
+          cartProvider.guestName != null && 
+          cartProvider.guestName!.isNotEmpty) {
+        _guestNameController.text = cartProvider.guestName!;
+        print("✅ Pre-filled guest name for Reservation: ${cartProvider.guestName}");
+      }
+      
       setState(() {});
     });
   }
@@ -645,8 +660,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ NEW: Guest Name Input for GRO Mode
-                    if (widget.isGroMode) ...[
+                    // ✅ UPDATED: Guest Name Input for GRO Mode
+                    // Only show form if NO customer name from OpenBillData or Reservation
+                    if (widget.isGroMode && 
+                        !(widget.isOpenBill && 
+                          widget.openBillData != null && 
+                          widget.openBillData!.customerName.isNotEmpty && 
+                          widget.openBillData!.customerName != 'Guest') &&
+                        !(cartProvider.isReservation && 
+                          cartProvider.guestName != null && 
+                          cartProvider.guestName!.isNotEmpty)) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.only(bottom: 16),
@@ -706,7 +729,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     if (cartProvider.isReservation &&
                         cartProvider.reservationData != null)
                       ReservationInfoWidget(
-                          data: cartProvider.reservationData!),
+                          data: cartProvider.reservationData!,
+                          guestName: cartProvider.guestName),
 
                     if (cartProvider.isReservation &&
                         cartProvider.reservationData != null)
@@ -1557,6 +1581,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     'bankName': _dpBankName,
                                   }
                                 : null,
+                            // ✅ FIX: Pass custom DP amount
+                            customDpAmount: _dpAlreadyPaid ? downPaymentAmount : null,
                           );
 
                           print("✅ createOrder berhasil: $orderResult");

@@ -1499,14 +1499,14 @@ class _MenuScreenState extends State<MenuScreen> {
 
                       cartProvider.addToCart(cartItem);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              '${_selectedProduct!.name} ditambahkan ke keranjang'),
-                          duration: const Duration(seconds: 1),
-                          backgroundColor: const Color(0xFF2E8B57),
-                        ),
-                      );
+                      // ScaffoldMessenger.of(context).showSnackBar(
+                      //   SnackBar(
+                      //     content: Text(
+                      //         '${_selectedProduct!.name} ditambahkan ke keranjang'),
+                      //     duration: const Duration(seconds: 1),
+                      //     backgroundColor: const Color(0xFF2E8B57),
+                      //   ),
+                      // );
 
                       _resetSelection(_selectedProduct!);
                     },
@@ -1759,14 +1759,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     cartProvider.addToCart(customAmountItem);
 
                     // Show success message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            '${_customNameController.text} ditambahkan ke keranjang'),
-                        backgroundColor: const Color(0xFF2E8B57),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                      // ScaffoldMessenger.of(context).showSnackBar(
+                      //   SnackBar(
+                      //     content: Text(
+                      //         '${_customNameController.text} ditambahkan ke keranjang'),
+                      //     backgroundColor: const Color(0xFF2E8B57),
+                      //     duration: const Duration(seconds: 2),
+                      //   ),
+                      // );
 
                     // Clear form dan close
                     _customNameController.clear();

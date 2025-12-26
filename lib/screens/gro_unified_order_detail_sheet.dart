@@ -170,6 +170,11 @@ class _GroUnifiedOrderDetailSheetState
         areaCode: areaCode,
         tableId: tables.isNotEmpty ? tables[0]['_id']?.toString() ?? '' : '',
         tableNumbers: tableNumbers,
+        // ✅ FIX: Ambil nama dari orderDetail atau reservation
+        customerName: _orderDetail?['user']?.toString() ?? 
+                      _orderDetail?['reservation']?['guestName']?.toString() ?? 
+                      _data?['guest_name']?.toString() ?? 
+                      'Guest',
       );
     } else {
       // Dine-in order - tetap sama
@@ -186,6 +191,10 @@ class _GroUnifiedOrderDetailSheetState
         areaCode: 'Dine-in',
         tableId: '',
         tableNumbers: tableNumber,
+        // ✅ FIX: Ambil nama dari orderDetail (backend sudah return 'user' field)
+        customerName: _orderDetail?['user']?.toString() ?? 
+                      _data?['user']?.toString() ??
+                      'Guest',
       );
     }
 
