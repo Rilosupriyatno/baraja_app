@@ -77,6 +77,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int? _manualDPAmount;
   bool _enableTax = true; // ✅ Tax toggle for GRO
   final TextEditingController _manualDPController = TextEditingController();
+  final TextEditingController _guestNameController = TextEditingController(); // ✅ NEW: Guest Name Controller
 
   // ✅ NEW: DP Already Paid (for GRO Reservation)
   bool _dpAlreadyPaid = false;
@@ -345,6 +346,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
     _scrollController.dispose();
     _manualDPController.dispose(); // ✅ NEW: Dispose manual DP controller
+    _guestNameController.dispose(); // ✅ Dispose guest name controller
     super.dispose();
   }
 
@@ -556,8 +558,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
 
         return BaseScreenWrapper(
-          customBackRoute: widget.isGroMode ? '/menu' : '/cart',
+          customBackRoute: null, // ✅ We use onBackPressed for custom logic
           canPop: false,
+          onBackPressed: () {
+            if (widget.isGroMode) {
+              // ✅ GRO tablet mode: back to menu with tablet layout
+              context.go('/menu', extra: {
+                'isGroMode': true,
+                'isReservation': cartProvider.isReservation,
+                'reservationData': cartProvider.reservationData,
+                'isOpenBill': cartProvider.isOpenBill,
+                'openBillData': cartProvider.openBillData,
+              });
+            } else {
+              if (Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/cart', extra: {
+                  'isReservation': cartProvider.isReservation,
+                  'reservationData': cartProvider.reservationData,
+                  'isDineIn': cartProvider.isDineIn,
+                  'tableNumber': cartProvider.tableNumber,
+                  'isOpenBill': cartProvider.isOpenBill,
+                  'openBillData': cartProvider.openBillData,
+                });
+              }
+            }
+          },
           child: Scaffold(
             backgroundColor: Colors.white,
             appBar: AppBar(
@@ -618,6 +645,64 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ✅ NEW: Guest Name Input for GRO Mode
+                    if (widget.isGroMode) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.person,
+                                    color: Colors.blue.shade700, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Nama Tamu',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _guestNameController,
+                              decoration: InputDecoration(
+                                labelText: 'Masukkan Nama Tamu',
+                                hintText: 'Contoh: Budi',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide:
+                                      BorderSide(color: Colors.blue.shade200),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide:
+                                      BorderSide(color: Colors.blue.shade200),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                      color: Colors.blue.shade700, width: 2),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     if (cartProvider.isReservation &&
                         cartProvider.reservationData != null)
                       ReservationInfoWidget(
@@ -1406,7 +1491,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           if (widget.isGroMode) {
                             groId = prefs.getString('userId');
                             guestPhone = cartProvider.guestPhone;
-                            guestName = cartProvider.guestName;
+                            groId = prefs.getString('userId');
+                            guestPhone = cartProvider.guestPhone;
+                            // ✅ Fix: Use input name if available, fallback to provider/default
+                            guestName = _guestNameController.text.isNotEmpty 
+                                ? _guestNameController.text 
+                                : (cartProvider.guestName ?? 'Guest');
 
                             print("🔍 GRO Mode Checkout:");
                             print("  GRO ID: $groId");

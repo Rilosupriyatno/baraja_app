@@ -1095,6 +1095,9 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
 
     final type = reservation['type'] ?? 'reservation';
     final isDineIn = type == 'dine-in-order';
+    final orderTypeLabel = isDineIn
+        ? (reservation['orderType']?.toString().toUpperCase() ?? 'DINE-IN')
+        : 'RESERVASI';
 
     String formattedDate = 'N/A';
     if (date != null) {
@@ -1150,7 +1153,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
                       ),
                     ),
                     child: Text(
-                      isDineIn ? 'DINE-IN' : 'RESERVASI',
+                      orderTypeLabel,
                       style: TextStyle(
                         fontSize: 8, // Reduced from 9
                         fontWeight: FontWeight.bold,
@@ -1558,6 +1561,9 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
 
     final type = reservation['type'] ?? 'reservation';
     final isDineIn = type == 'dine-in-order';
+    final orderTypeLabel = isDineIn
+        ? (reservation['orderType']?.toString().toUpperCase() ?? 'DINE-IN')
+        : 'RESERVASI';
 
     String formattedDate = 'N/A';
     if (date != null) {
@@ -1612,7 +1618,7 @@ class _GroOrderManagementScreenState extends State<GroOrderManagementScreen> {
                       ),
                     ),
                     child: Text(
-                      isDineIn ? 'DINE-IN' : 'RESERVASI',
+                      orderTypeLabel,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,

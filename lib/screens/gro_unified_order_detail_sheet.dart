@@ -272,6 +272,17 @@ class _GroUnifiedOrderDetailSheetState
     );
   }
   Widget _buildHeader() {
+    String title =
+        widget.isReservation ? 'Detail Reservasi' : 'Detail Dine-in Order';
+
+    // ✅ Dynamic title based on order type if available
+    if (!widget.isReservation) {
+      final orderType = _orderDetail?['orderType'] ?? _data?['orderType'];
+      if (orderType != null) {
+        title = 'Detail $orderType';
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -282,7 +293,7 @@ class _GroUnifiedOrderDetailSheetState
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            widget.isReservation ? 'Detail Reservasi' : 'Detail Dine-in Order',
+            title,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Row(

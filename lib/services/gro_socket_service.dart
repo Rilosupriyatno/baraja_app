@@ -41,7 +41,7 @@ class GroSocketService extends ChangeNotifier {
         'reconnectionAttempts': 10,
         'reconnectionDelay': 1000,
         'timeout': 30000,
-        'forceNew': false, // Reuse existing connection
+        'forceNew': true, // ✅ Match SocketService configuration
       });
 
       _setupListeners();

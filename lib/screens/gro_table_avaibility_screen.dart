@@ -187,6 +187,8 @@ class _GroTableAvailabilityScreenState
           GroTableAvailabilityScreen._cachedDate = _selectedDate; // ✅ Store cached date
         }
         
+        if (!mounted) return; // ✅ Prevent setState after dispose
+
         setState(() {
           _tables = tables;
           _summary = summary;
@@ -198,12 +200,14 @@ class _GroTableAvailabilityScreenState
         final availableCount = tables.where((t) => t['is_available'] == true).length;
         widget.onTableCountLoaded?.call(availableCount);
       } else {
+        if (!mounted) return; // ✅ Prevent setState after dispose
         setState(() {
           _errorMessage = result['error'] ?? 'Gagal memuat data';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return; // ✅ Prevent setState after dispose
       setState(() {
         _errorMessage = 'Error loading table availability: $e';
         _isLoading = false;
