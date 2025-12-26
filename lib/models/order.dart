@@ -28,6 +28,9 @@ class Order {
   final DateTime orderTime;
   OrderStatus status;
   final int? taxAmount;
+  // ✅ Added fields for DP Already Paid
+  final bool? dpAlreadyPaid;
+  final Map<String, dynamic>? dpBankInfo;
 
   Order({
     required this.id,
@@ -44,7 +47,9 @@ class Order {
     required this.orderTime,
     this.status = OrderStatus.pending,
     required this.paymentDetails,
-    this.taxAmount
+    this.taxAmount,
+    this.dpAlreadyPaid,
+    this.dpBankInfo,
   });
 
   // Convert to Map for storage
