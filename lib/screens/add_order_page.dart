@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
@@ -60,8 +61,10 @@ class AddOrderPageState extends State<AddOrderPage> {
 
   // Calculate total price
   double calculateTotal() {
-    // PERBAIKAN: Gunakan discountPrice jika ada
-    double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
+    // ✅ FIX: Use toggle to determine which price to use
+    double basePrice = AppConfig.useDiscountPrice
+        ? (widget.product.discountPrice ?? widget.product.originalPrice ?? 0)
+        : (widget.product.originalPrice ?? 0);
     double toppingsTotal = selectedToppings.fold(0, (sum, topping) => sum + topping.price);
 
     double addonOptionsTotal = 0;
@@ -163,7 +166,10 @@ class AddOrderPageState extends State<AddOrderPage> {
       outletName = widget.product.availableAt.first.name;
     }
 
-    double basePrice = widget.product.discountPrice ?? widget.product.originalPrice ?? 0;
+    // ✅ FIX: Use toggle to determine which price to use
+    double basePrice = AppConfig.useDiscountPrice
+        ? (widget.product.discountPrice ?? widget.product.originalPrice ?? 0)
+        : (widget.product.originalPrice ?? 0);
 
     CartItem newItem = CartItem(
       id: widget.product.id,
@@ -262,19 +268,25 @@ class AddOrderPageState extends State<AddOrderPage> {
                         ),
                         const SizedBox(height: 8),
 
-                        // PERBAIKAN: Tampilkan harga diskon dan harga asli jika ada diskon
+                        // ✅ FIX: Use toggle to determine which price to display
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              formatCurrency((product.discountPrice ?? product.originalPrice ?? 0).toInt()),
+                              formatCurrency(
+                                (AppConfig.useDiscountPrice
+                                    ? (product.discountPrice ?? product.originalPrice ?? 0)
+                                    : (product.originalPrice ?? 0))
+                                .toInt()
+                              ),
                               style: TextStyle(
                                 fontSize: 18,
                                 color: primaryColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (product.discountPrice != null && product.originalPrice != null)
+                            // Only show strikethrough if discount is active AND there's a discount
+                            if (AppConfig.useDiscountPrice && product.discountPrice != null && product.originalPrice != null && product.discountPrice != product.originalPrice)
                               Padding(
                                 padding: const EdgeInsets.only(left: 8.0),
                                 child: Text(

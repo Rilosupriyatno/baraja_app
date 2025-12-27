@@ -7,6 +7,7 @@ class CartItemCard extends StatelessWidget {
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
   final VoidCallback? onEdit; // ✅ TAMBAH: Callback untuk edit
+  final Function(String)? onDineTypeChanged; // ✅ NEW: Callback untuk ubah dineType
 
   const CartItemCard({
     super.key,
@@ -14,6 +15,7 @@ class CartItemCard extends StatelessWidget {
     required this.onIncrease,
     required this.onDecrease,
     this.onEdit, // ✅ TAMBAH: Parameter optional
+    this.onDineTypeChanged, // ✅ NEW: Parameter optional
   });
 
   // Method untuk menghitung total harga item termasuk addons dan toppings
@@ -316,6 +318,68 @@ class CartItemCard extends StatelessWidget {
           ),
 
           const SizedBox(height: 8),
+
+          // ✅ NEW: DineType Selector
+          if (onDineTypeChanged != null) ...[
+            const Row(
+              children: [
+                Icon(Icons.restaurant, size: 16, color: Colors.teal),
+                SizedBox(width: 4),
+                Text(
+                  'Tipe Makan:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.teal.withOpacity(0.3)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: item.dineType ?? 'Dine-In',
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Dine-In',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_restaurant, size: 18, color: Colors.teal),
+                          SizedBox(width: 8),
+                          Text('Dine-In'),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Take Away',
+                      child: Row(
+                        children: [
+                          Icon(Icons.takeout_dining, size: 18, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Text('Take Away'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onDineTypeChanged!(value);
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
 
           // Total price at the bottom
           Row(

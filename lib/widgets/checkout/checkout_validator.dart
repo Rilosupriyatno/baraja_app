@@ -89,13 +89,26 @@ class CheckoutValidator {
             errors['tableNumber'] = 'Nomor meja harus diisi';
             firstErrorKey ??= 'tableNumber';
           } else {
-            try {
-              final result = await tableService.checkTableAvailability(tableNumber);
-              if (!result['isAvailable']) {
-                errors['tableNumber'] = result['message'] ?? 'Meja tidak tersedia';
+            // ✅ DOCS: Table Validation Logic
+            // Kondisi:
+            // 1. Jika GRO Mode: KITA SKIP VALIDASI KETERSEDIAAN MEJA.
+            //    Alasan: GRO seringkali perlu memasukkan meja darurat atau meja yang belum terdaftar di sistem.
+            //    Cara Mengaktifkan Kembali: Hapus blok 'if (isGroMode)' di bawah ini dan biarkan logika masuk ke 'else'.
+            
+            if (isGroMode) {
+              // ⚠️ NOTE: Bypass validation for GRO
+              // GRO bisa memasukkan nama meja apapun (selama tidak kosong)
+              print("⚠️ VALIDATION: Skipping table availability check for GRO Mode");
+            } else {
+              // Validasi check ketersediaan meja ke server (Hanya untuk Customer)
+              try {
+                final result = await tableService.checkTableAvailability(tableNumber);
+                if (!result['isAvailable']) {
+                  errors['tableNumber'] = result['message'] ?? 'Meja tidak tersedia';
+                }
+              } catch (e) {
+                errors['tableNumber'] = 'Gagal memvalidasi ketersediaan meja';
               }
-            } catch (e) {
-              errors['tableNumber'] = 'Gagal memvalidasi ketersediaan meja';
             }
           }
           break;

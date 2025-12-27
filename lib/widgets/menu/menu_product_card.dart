@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../../models/product.dart';
 import '../../screens/product_detail_modal.dart';
 import '../../utils/currency_formatter.dart';
@@ -265,8 +266,14 @@ class _MenuProductCardState extends State<MenuProductCard> {
                     maxLines: 1,
                   ),
                   const SizedBox(height: 4),
+                  // ✅ FIX: Use toggle to determine which price to display
                   Text(
-                    formatCurrency(widget.product.discountPrice?.round() ?? 0),
+                    formatCurrency(
+                      (AppConfig.useDiscountPrice
+                          ? (widget.product.discountPrice ?? widget.product.originalPrice ?? 0)
+                          : (widget.product.originalPrice ?? 0))
+                      .round()
+                    ),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

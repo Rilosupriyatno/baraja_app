@@ -90,6 +90,7 @@ class OrderService {
             'addons': item['addons'] ?? [],
             'toppings': item['toppings'] ?? [],
             'notes': item['notes'] ?? '',
+            'dineType': item['dineType'] ?? 'Dine-In', // ✅ NEW: Include dineType
           });
         }
       }

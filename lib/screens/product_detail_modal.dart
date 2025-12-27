@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../models/product.dart';
 import '../services/favorite_service.dart';
 import '../utils/currency_formatter.dart';
@@ -322,11 +323,14 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
+                            // ✅ FIX: Use toggle to determine which price to display
                             Text(
-                              formatCurrency((product.discountPrice ??
-                                  product.originalPrice ??
-                                  0)
-                                  .toInt()),
+                              formatCurrency(
+                                (AppConfig.useDiscountPrice
+                                    ? (product.discountPrice ?? product.originalPrice ?? 0)
+                                    : (product.originalPrice ?? 0))
+                                .toInt()
+                              ),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -397,11 +401,14 @@ class ProductDetailModalState extends State<ProductDetailModal> {
                           color: Colors.grey[600],
                         ),
                       ),
+                      // ✅ FIX: Use toggle to determine which price to display
                       Text(
-                        formatCurrency((product.discountPrice ??
-                            product.originalPrice ??
-                            0)
-                            .toInt()),
+                        formatCurrency(
+                          (AppConfig.useDiscountPrice
+                              ? (product.discountPrice ?? product.originalPrice ?? 0)
+                              : (product.originalPrice ?? 0))
+                          .toInt()
+                        ),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

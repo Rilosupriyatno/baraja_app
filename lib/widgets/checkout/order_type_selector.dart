@@ -12,6 +12,7 @@ class OrderTypeSelector extends StatefulWidget {
   final TimeOfDay? pickupTime;
   final Function(TimeOfDay?) onPickupTimeChanged;
   final bool hideDineInOption;
+  final bool isGroMode; // ✅ NEW: GRO Mode flag
 
   const OrderTypeSelector({
     super.key,
@@ -24,6 +25,7 @@ class OrderTypeSelector extends StatefulWidget {
     required this.pickupTime,
     required this.onPickupTimeChanged,
     this.hideDineInOption = false,
+    this.isGroMode = false, // ✅ NEW: Default to false
   });
 
   @override
@@ -494,6 +496,16 @@ class _OrderTypeSelectorState extends State<OrderTypeSelector> {
     if (tableNumber.isEmpty) {
       setState(() {
         _tableError = null;
+      });
+      return;
+    }
+
+    // ✅ NEW: Skip validation for GRO mode
+    if (widget.isGroMode) {
+      print("⚠️ VALIDATION: Skipping table availability check for GRO Mode (real-time)");
+      setState(() {
+        _tableError = null;
+        _isCheckingTable = false;
       });
       return;
     }

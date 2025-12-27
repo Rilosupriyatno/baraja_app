@@ -160,4 +160,39 @@ class CartItem {
       dineType: map['dineType'] ?? 'Dine-In',
     );
   }
+
+  // ✅ NEW: CopyWith method for easy updates
+  CartItem copyWith({
+    String? id,
+    String? name,
+    String? imageUrl,
+    int? price,
+    int? quantity,
+    List<Map<String, dynamic>>? addons,
+    dynamic toppings,
+    String? notes,
+    String? outletId,
+    String? outletName,
+    int? totalprice,
+    bool? isCustomAmount,
+    String? customAmountDescription,
+    String? dineType,
+  }) {
+    return CartItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      imageUrl: imageUrl ?? this.imageUrl,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      addons: addons ?? this.addons,
+      toppings: toppings ?? this.toppings,
+      notes: notes ?? this.notes,
+      outletId: outletId ?? this.outletId,
+      outletName: outletName ?? this.outletName,
+      totalprice: totalprice ?? this.totalprice,
+      isCustomAmount: isCustomAmount ?? this.isCustomAmount,
+      customAmountDescription: customAmountDescription ?? this.customAmountDescription,
+      dineType: dineType ?? this.dineType,
+    );
+  }
 }

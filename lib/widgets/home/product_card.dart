@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:baraja_app/models/product.dart';
+import '../../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../../utils/currency_formatter.dart';
 import '../../screens/product_detail_modal.dart';
 
@@ -323,10 +324,14 @@ class _ProductCardState extends State<ProductCard> {
                           ),
                         ),
 
-                        // Discount price
+                        // Price - ✅ FIX: Use toggle to determine which price to display
                         Text(
                           formatCurrency(
-                              widget.product.discountPrice?.round() ?? 0),
+                            (AppConfig.useDiscountPrice
+                                ? (widget.product.discountPrice ?? widget.product.originalPrice ?? 0)
+                                : (widget.product.originalPrice ?? 0))
+                            .round()
+                          ),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,

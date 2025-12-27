@@ -800,13 +800,60 @@ class GroOrderDetailWidget extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Text(
-                                  formatCurrency(_getNumericValue(item['price'])),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black87,
-                                  ),
+                                // ✅ FIX: Show discounted price from subtotal/quantity
+                                // If originalSubtotal exists and is higher than subtotal, show both prices
+                                Builder(
+                                  builder: (context) {
+                                    final quantity = _getNumericValue(item['quantity']);
+                                    final subtotal = _getNumericValue(item['subtotal']);
+                                    final originalSubtotal = _getNumericValue(item['originalSubtotal']);
+                                    
+                                    // Calculate per-unit prices
+                                    final unitPrice = quantity > 0 ? subtotal / quantity : subtotal;
+                                    final originalUnitPrice = quantity > 0 && originalSubtotal > 0 
+                                        ? originalSubtotal / quantity 
+                                        : 0;
+                                    
+                                    // Check if there's a discount
+                                    final hasDiscount = originalUnitPrice > 0 && originalUnitPrice > unitPrice;
+                                    
+                                    if (hasDiscount) {
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          // Original price with strikethrough
+                                          Text(
+                                            formatCurrency(originalUnitPrice),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w400,
+                                              color: Colors.grey.shade500,
+                                              decoration: TextDecoration.lineThrough,
+                                            ),
+                                          ),
+                                          // Discounted price
+                                          Text(
+                                            formatCurrency(unitPrice),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF2E8B57),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    } else {
+                                      // No discount, show regular price
+                                      return Text(
+                                        formatCurrency(unitPrice > 0 ? unitPrice : _getNumericValue(item['price'])),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black87,
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -1043,12 +1090,61 @@ class GroOrderDetailWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Subtotal (sudah termasuk customAmount dari backend)
+                  // Subtotal (harga asli sebelum diskon menu)
                   PaymentRowWidget(
                     label: 'Subtotal',
                     value: formatCurrency(_getNumericValue(orderData['totalBeforeDiscount'])),
                     icon: Icons.calculate,
                     isTotal: false,
+                  ),
+
+                  // ✅ NEW: Menu Discount (selisih totalBeforeDiscount - totalAfterDiscount)
+                  Builder(
+                    builder: (context) {
+                      final totalBeforeDiscount = _getNumericValue(orderData['totalBeforeDiscount']);
+                      final totalAfterDiscount = _getNumericValue(orderData['totalAfterDiscount']);
+                      final menuDiscount = totalBeforeDiscount - totalAfterDiscount;
+                      
+                      // Only show if there's a menu discount (before voucher is applied)
+                      // We need to check if voucher exists to calculate properly
+                      final hasVoucher = orderData['voucher'] != null;
+                      
+                      // If no voucher, menuDiscount is the difference
+                      // If has voucher, we need to recalculate (menuDiscount already includes voucher)
+                      // For simplicity, if totalBeforeDiscount > totalAfterDiscount, show the discount
+                      
+                      if (menuDiscount > 0 && !hasVoucher) {
+                        final discountPercentage = totalBeforeDiscount > 0 
+                            ? ((menuDiscount / totalBeforeDiscount) * 100).round() 
+                            : 0;
+                        
+                        return Column(
+                          children: [
+                            const SizedBox(height: 8),
+                            PaymentRowWidget(
+                              label: 'Diskon Menu ($discountPercentage%)',
+                              value: '-${formatCurrency(menuDiscount)}',
+                              icon: Icons.discount,
+                              isTotal: false,
+                            ),
+                            const SizedBox(height: 8),
+                            PaymentRowWidget(
+                              label: 'Subtotal setelah diskon',
+                              value: formatCurrency(totalAfterDiscount),
+                              icon: Icons.price_check,
+                              isTotal: false,
+                            ),
+                          ],
+                        );
+                      } else if (menuDiscount > 0 && hasVoucher) {
+                        // When voucher exists, we show menu discount separately
+                        // Need to calculate menu discount only (before voucher)
+                        // This is complex - for now just show difference
+                        return const SizedBox.shrink(); // Will be handled in voucher section
+                      }
+                      
+                      return const SizedBox.shrink();
+                    },
                   ),
 
                   // Voucher discount
@@ -1124,7 +1220,8 @@ class GroOrderDetailWidget extends StatelessWidget {
                   PaymentRowWidget(
                     label: 'Metode Pembayaran',
                     // ✅ FIX: Improve payment method lookup
-                    value: orderData['paymentMethod']?.toString() ?? 
+                    value: orderData['paymentMethod']?.toString() ??
+                        paymentDetails?['method_type']?.toString() ??
                            paymentDetails?['method']?.toString() ??
                            paymentDetails?['paymentType']?.toString() ?? 
                            'Not specified',

@@ -13,6 +13,7 @@ class OrderTypeSelectorWithValidation extends StatelessWidget {
   final Function(TimeOfDay?) onPickupTimeChanged;
   final Map<String, String> validationErrors;
   final bool hasAttemptedSubmit;
+  final bool isGroMode; // ✅ NEW: GRO Mode flag
 
   const OrderTypeSelectorWithValidation({
     super.key,
@@ -26,6 +27,7 @@ class OrderTypeSelectorWithValidation extends StatelessWidget {
     required this.onPickupTimeChanged,
     required this.validationErrors,
     required this.hasAttemptedSubmit,
+    this.isGroMode = false, // ✅ NEW: Default to false
   });
 
   @override
@@ -42,6 +44,7 @@ class OrderTypeSelectorWithValidation extends StatelessWidget {
           pickupTime: pickupTime,
           onPickupTimeChanged: onPickupTimeChanged,
           hideDineInOption: false,
+          isGroMode: isGroMode, // ✅ NEW: Pass isGroMode to OrderTypeSelector
         ),
         if (selectedType == OrderType.delivery)
           _buildErrorMessage(validationErrors['deliveryAddress']),

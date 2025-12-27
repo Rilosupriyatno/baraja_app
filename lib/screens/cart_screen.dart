@@ -466,6 +466,10 @@ class CartScreenState extends State<CartScreen> {
                             onIncrease: () => cartProvider.increaseQuantity(index),
                             onDecrease: () => cartProvider.decreaseQuantity(index),
                             onEdit: () => _showEditDialog(context, item, index),
+                            onDineTypeChanged: (newDineType) {
+                              final updatedItem = item.copyWith(dineType: newDineType);
+                              cartProvider.updateCartItem(index, updatedItem);
+                            },
                           ),
                         );
                       },

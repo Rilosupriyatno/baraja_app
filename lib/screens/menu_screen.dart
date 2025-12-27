@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import '../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../models/cart_item.dart'; // ✅ Import CartItem
 import '../models/category.dart';
 import '../models/product.dart';
@@ -74,8 +75,10 @@ class _MenuScreenState extends State<MenuScreen> {
   double _calculateTotal() {
     if (_selectedProduct == null) return 0;
 
-    double basePrice =
-        _selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0;
+    // ✅ FIX: Use toggle to determine which price to use
+    double basePrice = AppConfig.useDiscountPrice
+        ? (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0)
+        : (_selectedProduct!.originalPrice ?? 0);
     double toppingsTotal =
         _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
 
@@ -1128,8 +1131,9 @@ class _MenuScreenState extends State<MenuScreen> {
                       locale: 'id_ID',
                       symbol: 'Rp',
                       decimalDigits: 0,
-                    ).format(
-                        product.discountPrice ?? product.originalPrice ?? 0),
+                    ).format(AppConfig.useDiscountPrice
+                        ? (product.discountPrice ?? product.originalPrice ?? 0)
+                        : (product.originalPrice ?? 0)),
                     style: const TextStyle(
                       fontSize: 9,
                       color: Color(0xFF2E8B57),
@@ -1224,15 +1228,15 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   const SizedBox(height: 4),
 
-                  // Product Price
+                  // Product Price - ✅ FIX: Use toggle
                   Text(
                     NumberFormat.currency(
                       locale: 'id_ID',
                       symbol: 'Rp',
                       decimalDigits: 0,
-                    ).format(_selectedProduct!.discountPrice ??
-                        _selectedProduct!.originalPrice ??
-                        0),
+                    ).format(AppConfig.useDiscountPrice
+                        ? (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0)
+                        : (_selectedProduct!.originalPrice ?? 0)),
                     style: const TextStyle(
                       fontSize: 16,
                       color: Color(0xFF2E8B57),
@@ -1486,9 +1490,10 @@ class _MenuScreenState extends State<MenuScreen> {
                         id: _selectedProduct!.id,
                         name: _selectedProduct!.name,
                         imageUrl: _selectedProduct!.imageUrl,
-                        price: (_selectedProduct!.discountPrice ??
-                                _selectedProduct!.originalPrice ??
-                                0)
+                        // ✅ FIX: Use toggle to determine which price to use
+                        price: (AppConfig.useDiscountPrice
+                                ? (_selectedProduct!.discountPrice ?? _selectedProduct!.originalPrice ?? 0)
+                                : (_selectedProduct!.originalPrice ?? 0))
                             .toInt(),
                         totalprice: _calculateTotal().toInt(),
                         quantity: _selectedQuantity,

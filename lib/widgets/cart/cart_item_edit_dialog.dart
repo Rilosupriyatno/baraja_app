@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/app_config.dart'; // ✅ NEW: Import config for discount toggle
 import '../../models/cart_item.dart';
 import '../../models/product.dart';
 import '../../services/product_service.dart';
@@ -114,7 +115,10 @@ class _CartItemEditDialogState extends State<CartItemEditDialog> {
   double _calculateTotal() {
     if (_product == null) return 0;
 
-    double basePrice = _product!.discountPrice ?? _product!.originalPrice ?? 0;
+    // ✅ FIX: Use toggle to determine which price to use
+    double basePrice = AppConfig.useDiscountPrice
+        ? (_product!.discountPrice ?? _product!.originalPrice ?? 0)
+        : (_product!.originalPrice ?? 0);
     double toppingsTotal = _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
 
     double addonOptionsTotal = 0;
@@ -168,7 +172,10 @@ class _CartItemEditDialogState extends State<CartItemEditDialog> {
     });
 
     // Calculate total price per item (base + addons + toppings)
-    double basePrice = _product!.discountPrice ?? _product!.originalPrice ?? 0;
+    // ✅ FIX: Use toggle to determine which price to use
+    double basePrice = AppConfig.useDiscountPrice
+        ? (_product!.discountPrice ?? _product!.originalPrice ?? 0)
+        : (_product!.originalPrice ?? 0);
     double toppingsTotal = _selectedToppings.fold(0, (sum, topping) => sum + topping.price);
     double addonOptionsTotal = 0;
     _selectedAddonOptions.forEach((addonId, option) {

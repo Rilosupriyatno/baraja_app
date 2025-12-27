@@ -828,6 +828,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             setState(() => pickupTime = time),
                         validationErrors: validationErrors,
                         hasAttemptedSubmit: hasAttemptedSubmit,
+                        isGroMode: widget.isGroMode, // ✅ NEW: Pass isGroMode
                       ),
                     ] else ...[
                       Container(
@@ -1488,6 +1489,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     'outletName': item.outletName,
                                     'totalprice': item
                                         .totalprice, // ✅ TAMBAHKAN: total per item (sudah include addons & toppings)
+                                    'dineType': item.dineType ?? 'Dine-In', // ✅ NEW: Include dineType from cart item
                                   })
                               .toList();
 
