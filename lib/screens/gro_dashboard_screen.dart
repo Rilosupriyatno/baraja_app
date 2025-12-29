@@ -145,6 +145,9 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
         // ✅ INVALIDATE CACHE: Ensure fresh data
         GroOrderManagementScreen.invalidateCache();
         GroTableAvailabilityScreen.invalidateCache();
+        
+        // ✅ REALTIME: Force refresh mobile stats
+        _loadMobileStats(forceRefresh: true);
 
         setState(() => _refreshKey++);
         _loadBadgeCountsImmediately();
@@ -191,59 +194,99 @@ class _GroDashboardScreenState extends State<GroDashboardScreen>
   }
 
   // ✅ MOBILE ONLY: Load full stats for mobile dashboard cards
-  Future<void> _loadMobileStats() async {
+  // ✅ OPTIMIZED: Parallel fetching + Stale-while-revalidate pattern + Performance Logging
+  Future<void> _loadMobileStats({bool forceRefresh = false}) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final startTime = DateTime.now();
 
-    setState(() {
-      _isLoadingMobileStats = true;
-      _errorMessage = null;
-    });
+    print('🚀 [GRO DASHBOARD] Starting load (Force: $forceRefresh)...');
+
+    if (!forceRefresh) {
+      setState(() {
+        _isLoadingMobileStats = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
-      // Get reservations with stats
-      final result = await _groService.getReservations(
-        page: 1,
-        limit: 1,
-        date: dateStr,
-      );
+      // ✅ PARALLEL FETCHING: Fetch both stats simultaneously
+      // First attempt: Get whatever is available (Cache or Network)
+      final results = await Future.wait([
+        _groService.getReservations(page: 1, limit: 1, date: dateStr, forceRefresh: forceRefresh),
+        _groService.getTableAvailability(date: dateStr, outletId: "67cbc9560f025d897d69f889", forceRefresh: forceRefresh)
+      ]);
 
-      if (result['success'] == true) {
-        final filtered = result['filtered'] ?? {};
-        final pagination = result['pagination'] ?? {};
+      final loadDuration = DateTime.now().difference(startTime).inMilliseconds;
+      final isFastLoad = loadDuration < 1000;
 
-        setState(() {
-          _mobileStats = {
-            'allReservations': pagination['total_records'] ?? 0,
-            'pendingReservations': filtered['pending'] ?? 0,
-            'activeReservations': filtered['active'] ?? 0,
-            'completedReservations': filtered['completed'] ?? 0,
-            'cancelledReservations': filtered['cancelled'] ?? 0,
-          };
-        });
+      print('⏱️ [GRO DASHBOARD] Data loaded in ${loadDuration}ms');
+      if (isFastLoad) {
+        print('⚡ [GRO DASHBOARD] UI appeared INSTANTLY (from Cache)');
+      } else {
+        print('🐢 [GRO DASHBOARD] UI appeared after network call (Fresh Data)');
       }
 
-      // Get table availability
-      final tableResult = await _groService.getTableAvailability(
-        date: dateStr,
-        outletId: "67cbc9560f025d897d69f889",
-      );
+      final reservationResult = results[0];
+      final tableResult = results[1];
 
-      if (tableResult['success'] == true && tableResult['data'] != null) {
+      _processStatsData(reservationResult, tableResult);
+
+      if (mounted) {
+        setState(() => _isLoadingMobileStats = false);
+      }
+
+      // ✅ SMART REFRESH: If we loaded from cache (fast), trigger a background refresh
+      // to ensure data is up-to-date.
+      if (!forceRefresh && isFastLoad) {
+        print('🔄 [GRO DASHBOARD] Triggering background refresh for fresh data...');
+        _loadMobileStats(forceRefresh: true);
+      }
+
+      if (forceRefresh) {
+         print('✅ [GRO DASHBOARD] UI updated with FRESH data in ${loadDuration}ms');
+      }
+
+    } catch (e) {
+      debugPrint('⚠️ Error loading mobile stats: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat data: $e';
+          _isLoadingMobileStats = false;
+        });
+      }
+    }
+  }
+
+  void _processStatsData(Map<String, dynamic> reservationResult, Map<String, dynamic> tableResult) {
+    // Process Reservation Stats
+    if (reservationResult['success'] == true) {
+        final filtered = reservationResult['filtered'] ?? {};
+        final pagination = reservationResult['pagination'] ?? {};
+
+        if (mounted) {
+          setState(() {
+            _mobileStats = {
+              ..._mobileStats,
+              'allReservations': pagination['total_records'] ?? 0,
+              'pendingReservations': filtered['pending'] ?? 0,
+              'activeReservations': filtered['active'] ?? 0,
+              'completedReservations': filtered['completed'] ?? 0,
+              'cancelledReservations': filtered['cancelled'] ?? 0,
+            };
+          });
+        }
+    }
+
+    // Process Table Availability
+    if (tableResult['success'] == true && tableResult['data'] != null) {
         final tables = tableResult['data']['tables'] as List? ?? [];
         final available = tables.where((t) => t['is_available'] == true).length;
 
-        setState(() {
-          _mobileStats['availableTables'] = available;
-          _isLoadingMobileStats = false;
-        });
-      } else {
-        setState(() => _isLoadingMobileStats = false);
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Gagal memuat data: $e';
-        _isLoadingMobileStats = false;
-      });
+        if (mounted) {
+          setState(() {
+            _mobileStats['availableTables'] = available;
+          });
+        }
     }
   }
 

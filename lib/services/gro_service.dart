@@ -66,6 +66,45 @@ class GROService {
     }
   }
 
+  // ✅ PERSISTENCE: Save cache to disk
+  static Future<void> _persistCache(String key, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cache_$key', json.encode({
+        'data': data,
+        'timestamp': DateTime.now().toIso8601String(),
+      }));
+    } catch (e) {
+      print('⚠️ Error persisting cache for $key: $e');
+    }
+  }
+
+  // ✅ PERSISTENCE: Load cache from disk
+  static Future<Map<String, dynamic>?> _loadCacheFromDisk(String key, Duration maxAge) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString('cache_$key');
+      
+      if (jsonString != null) {
+        final decoded = json.decode(jsonString);
+        final timestamp = DateTime.parse(decoded['timestamp']);
+        final age = DateTime.now().difference(timestamp);
+        
+        // Return data even if stale (let caller decide validity, or use loose maxAge)
+        // For disk cache, we generally accept slightly older data for initial display
+        // ✅ OPTIMIZATION: Allow data up to 24 hours old for "Instant Load"
+        // Since we trigger a background refresh anyway, it's better to show ANYTHING than a loading spinner.
+        if (age < const Duration(hours: 24)) { 
+          print('💾 Loaded disk cache for $key (Age: ${age.inSeconds}s)');
+          return decoded['data'];
+        }
+      }
+    } catch (e) {
+      print('⚠️ Error loading disk cache for $key: $e');
+    }
+    return null;
+  }
+
   // Get auth token from SharedPreferences (with caching)
   Future<String?> _getToken() async {
     if (_cachedToken != null) return _cachedToken;
@@ -101,13 +140,24 @@ class GROService {
     try {
       final cacheKey = '$date:$status:$areaId:$search:$page:$limit';
       
-      // Return cached data if valid and not force refresh
+      // 1. Check Memory Cache
       if (!forceRefresh && 
           _lastReservationsKey == cacheKey &&
           _reservationsCache != null &&
           _isCacheValid(_reservationsCacheTime, _reservationsCacheDuration)) {
-        print('📦 GRO: Using cached reservations data');
+        print('📦 GRO: Using memory cached reservations data');
         return _reservationsCache!;
+      }
+
+      // 2. Check Disk Cache (if memory miss)
+      if (!forceRefresh && _reservationsCache == null) {
+        final diskData = await _loadCacheFromDisk('reservations_$cacheKey', _reservationsCacheDuration);
+        if (diskData != null) {
+          _reservationsCache = diskData;
+          _reservationsCacheTime = DateTime.now(); // Reset time to avoid immediate re-fetch loop if strict check
+          _lastReservationsKey = cacheKey;
+          return diskData;
+        }
       }
 
       final headers = await _getHeaders();
@@ -136,10 +186,11 @@ class GROService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         
-        // Cache the result
+        // Cache the result (Memory + Disk)
         _reservationsCache = responseData;
         _reservationsCacheTime = DateTime.now();
         _lastReservationsKey = cacheKey;
+        _persistCache('reservations_$cacheKey', responseData);
         
         return responseData;
       } else {
@@ -708,13 +759,24 @@ class GROService {
     try {
       final cacheKey = 'dashboard:${date ?? 'today'}';
       
-      // Return cached data if valid and not force refresh
+      // 1. Check Memory Cache
       if (!forceRefresh &&
           _lastDashboardKey == cacheKey &&
           _dashboardCache != null &&
           _isCacheValid(_dashboardCacheTime, _dashboardCacheDuration)) {
-        print('📦 GRO: Using cached dashboard stats');
+        print('📦 GRO: Using memory cached dashboard stats');
         return _dashboardCache!;
+      }
+
+      // 2. Check Disk Cache
+      if (!forceRefresh && _dashboardCache == null) {
+        final diskData = await _loadCacheFromDisk('dashboard_$cacheKey', _dashboardCacheDuration);
+        if (diskData != null) {
+          _dashboardCache = diskData;
+          _dashboardCacheTime = DateTime.now();
+          _lastDashboardKey = cacheKey;
+          return diskData;
+        }
       }
 
       final headers = await _getHeaders();
@@ -739,6 +801,7 @@ class GROService {
         _dashboardCache = responseData;
         _dashboardCacheTime = DateTime.now();
         _lastDashboardKey = cacheKey;
+        _persistCache('dashboard_$cacheKey', responseData);
         
         return responseData;
       } else {
@@ -765,13 +828,24 @@ class GROService {
     try {
       final cacheKey = '$outletId:$date:$time:$areaId';
       
-      // Return cached data if valid and not force refresh
+      // 1. Check Memory Cache
       if (!forceRefresh &&
           _lastTableAvailabilityKey == cacheKey &&
           _tableAvailabilityCache != null &&
           _isCacheValid(_tableAvailabilityCacheTime, _tableAvailabilityCacheDuration)) {
-        print('📦 GRO: Using cached table availability data');
+        print('📦 GRO: Using memory cached table availability data');
         return _tableAvailabilityCache!;
+      }
+
+      // 2. Check Disk Cache
+      if (!forceRefresh && _tableAvailabilityCache == null) {
+        final diskData = await _loadCacheFromDisk('tables_$cacheKey', _tableAvailabilityCacheDuration);
+        if (diskData != null) {
+          _tableAvailabilityCache = diskData;
+          _tableAvailabilityCacheTime = DateTime.now();
+          _lastTableAvailabilityKey = cacheKey;
+          return diskData;
+        }
       }
 
       final headers = await _getHeaders();
@@ -798,6 +872,7 @@ class GROService {
         _tableAvailabilityCache = responseData;
         _tableAvailabilityCacheTime = DateTime.now();
         _lastTableAvailabilityKey = cacheKey;
+        _persistCache('tables_$cacheKey', responseData);
         
         return responseData;
       } else {
