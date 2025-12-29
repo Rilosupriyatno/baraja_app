@@ -16,7 +16,8 @@ class CheckoutSummary extends StatelessWidget {
   final PaymentType? selectedPaymentType;
   final String? discountType;
   final TaxCalculationResult? taxCalculation;
-  final int? manualDownPaymentAmount;
+  final int? manualDownPaymentAmount; // ✅ RESTORED
+  final bool isGroMode; // ✅ NEW: Add isGroMode
 
   const CheckoutSummary({
     super.key,
@@ -30,6 +31,7 @@ class CheckoutSummary extends StatelessWidget {
     this.discountType,
     this.taxCalculation,
     this.manualDownPaymentAmount,
+    this.isGroMode = false, // ✅ NEW
   });
 
   @override
@@ -205,11 +207,13 @@ class CheckoutSummary extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  isReservation && selectedPaymentType == PaymentType.downPayment
-                      ? "Bayar Down Payment ${formatCurrency(amountToPay)}"
-                      : isOpenBill
-                      ? "Bayar Open Bill ${formatCurrency(amountToPay)}"
-                      : "Bayar ${formatCurrency(amountToPay)}",
+                  isGroMode // ✅ NEW: Changed text for GRO mode
+                      ? "Bayar Nanti ${formatCurrency(amountToPay)}"
+                      : isReservation && selectedPaymentType == PaymentType.downPayment
+                          ? "Bayar Down Payment ${formatCurrency(amountToPay)}"
+                          : isOpenBill
+                              ? "Bayar Open Bill ${formatCurrency(amountToPay)}"
+                              : "Bayar ${formatCurrency(amountToPay)}",
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

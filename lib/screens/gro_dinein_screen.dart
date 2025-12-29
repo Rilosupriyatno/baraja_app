@@ -70,8 +70,7 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
   }
 
   bool get _canProceed {
-    return _nameController.text.trim().isNotEmpty &&
-        _phoneController.text.trim().isNotEmpty;
+    return _nameController.text.trim().isNotEmpty;
   }
 
   void _proceedToMenu() {
@@ -174,15 +173,14 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
                         const SizedBox(height: 12),
                         _buildTextField(
                           controller: _phoneController,
-                          label: 'No. Telepon',
+                          label: 'No. Telepon (Opsional)',
                           icon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'No. telepon harus diisi';
-                            }
-                            if (value.length < 10) {
-                              return 'No. telepon minimal 10 digit';
+                            if (value != null &&
+                                value.isNotEmpty &&
+                                value.length < 10) {
+                              return 'No. telepon minimal 10 digit jika diisi';
                             }
                             return null;
                           },
@@ -304,15 +302,12 @@ class _GroDineInGuestFormScreenState extends State<GroDineInGuestFormScreen> {
               const SizedBox(height: 12),
               _buildTextField(
                 controller: _phoneController,
-                label: 'No. Telepon',
+                label: 'No. Telepon (Opsional)',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'No. telepon harus diisi';
-                  }
-                  if (value.length < 10) {
-                    return 'No. telepon minimal 10 digit';
+                  if (value != null && value.isNotEmpty && value.length < 10) {
+                    return 'No. telepon minimal 10 digit jika diisi';
                   }
                   return null;
                 },

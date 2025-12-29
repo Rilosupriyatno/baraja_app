@@ -669,6 +669,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           widget.openBillData!.customerName != 'Guest') &&
                         !(cartProvider.isReservation && 
                           cartProvider.guestName != null && 
+                          cartProvider.guestName!.isNotEmpty) &&
+                        !(cartProvider.isDineIn && // ✅ START CHANGE: Hide if DineIn has guest name
+                          cartProvider.guestName != null && 
                           cartProvider.guestName!.isNotEmpty)) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -1355,6 +1358,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       taxCalculation: _taxCalculation,
                       manualDownPaymentAmount:
                           _manualDPAmount, // ✅ Pass manual DP
+                      isGroMode: widget.isGroMode, // ✅ NEW: Pass GRO Mode
                       onCheckoutPressed: () async {
                         print("➡️ Tombol checkout ditekan");
 
