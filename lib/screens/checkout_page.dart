@@ -1355,7 +1355,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       selectedPaymentType: cartProvider.isReservation
                           ? selectedPaymentType
                           : null,
-                      taxCalculation: _taxCalculation,
+                      taxCalculation: enableTax ? _taxCalculation : null,
                       manualDownPaymentAmount:
                           _manualDPAmount, // ✅ Pass manual DP
                       isGroMode: widget.isGroMode, // ✅ NEW: Pass GRO Mode
@@ -1563,7 +1563,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             paymentDetails: paymentDetails,
                             subtotal: subtotal,
                             discount: discount,
-                            taxDetails: _taxCalculation?.taxDetails,
+                            taxDetails: enableTax ? _taxCalculation?.taxDetails : [],
                             totalTax: taxAmount,
                             voucherCode: selectedVoucherCode,
                             reservationData: cartProvider.isReservation
