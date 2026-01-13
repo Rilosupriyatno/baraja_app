@@ -376,15 +376,24 @@ class AddOrderPageState extends State<AddOrderPage> {
                                     iconSize: 18,
                                     color: quantity > 1 ? primaryColor : Colors.grey,
                                   ),
-                                  Container(
+                                  // ✅ CHANGED: From Text to TextField for direct input
+                                  SizedBox(
                                     width: 50,
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      quantity.toString(),
+                                    child: TextField(
+                                      controller: quantityController,
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.zero,
+                                        isDense: true,
+                                      ),
+                                      onChanged: updateQuantityFromInput,
+                                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                                     ),
                                   ),
                                   IconButton(

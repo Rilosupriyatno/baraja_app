@@ -60,6 +60,7 @@ class _MenuScreenState extends State<MenuScreen> {
   Product? _selectedProduct; // Product yang dipilih untuk order form
   int _selectedQuantity = 1; // Quantity untuk product yang dipilih
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController(text: '1'); // ✅ NEW: For direct qty input
 
   // Addon & Topping states
   Map<String, AddonOption?> _selectedAddonOptions = {};
@@ -97,6 +98,7 @@ class _MenuScreenState extends State<MenuScreen> {
     setState(() {
       _selectedProduct = product;
       _selectedQuantity = 1;
+      _quantityController.text = '1'; // ✅ Reset qty controller too
       _selectedAddonOptions.clear();
       _selectedToppings.clear();
       _notesController.clear();
@@ -129,6 +131,80 @@ class _MenuScreenState extends State<MenuScreen> {
             cartProvider.updateCartItem(index, updatedItem);
           }
         },
+      ),
+    );
+  }
+
+  // ✅ NEW: Helper to show quantity input dialog for cart items
+  void _showQuantityInputDialog(BuildContext context, CartItem item, int index, CartProvider cartProvider) {
+    final TextEditingController qtyController = TextEditingController(text: '${item.quantity}');
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Jumlah ${item.name}'),
+        content: TextField(
+          controller: qtyController,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Masukkan jumlah',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            final qty = int.tryParse(value);
+            if (qty != null && qty > 0) {
+              // Update quantity
+              final updatedItem = CartItem(
+                id: item.id,
+                name: item.name,
+                imageUrl: item.imageUrl,
+                price: item.price,
+                totalprice: item.totalprice,
+                quantity: qty,
+                addons: item.addons,
+                toppings: item.toppings,
+                notes: item.notes,
+                outletId: item.outletId,
+                outletName: item.outletName,
+              );
+              cartProvider.updateCartItem(index, updatedItem);
+            }
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final qty = int.tryParse(qtyController.text);
+              if (qty != null && qty > 0) {
+                final updatedItem = CartItem(
+                  id: item.id,
+                  name: item.name,
+                  imageUrl: item.imageUrl,
+                  price: item.price,
+                  totalprice: item.totalprice,
+                  quantity: qty,
+                  addons: item.addons,
+                  toppings: item.toppings,
+                  notes: item.notes,
+                  outletId: item.outletId,
+                  outletName: item.outletName,
+                );
+                cartProvider.updateCartItem(index, updatedItem);
+              }
+              Navigator.of(dialogContext).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E8B57),
+            ),
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   } // Notes controller
@@ -1267,19 +1343,45 @@ class _MenuScreenState extends State<MenuScreen> {
                                   ? Colors.red
                                   : Colors.grey,
                               onPressed: _selectedQuantity > 1
-                                  ? () => setState(() => _selectedQuantity--)
+                                  ? () => setState(() {
+                                      _selectedQuantity--;
+                                      _quantityController.text = '$_selectedQuantity';
+                                    })
                                   : null,
                             ),
-                            Text(
-                              '$_selectedQuantity',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            // ✅ CHANGED: From Text to TextField for direct input
+                            SizedBox(
+                              width: 60,
+                              child: TextField(
+                                controller: _quantityController,
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  isDense: true,
+                                ),
+                                onChanged: (value) {
+                                  if (value.isEmpty) return;
+                                  final qty = int.tryParse(value);
+                                  if (qty != null && qty > 0) {
+                                    setState(() => _selectedQuantity = qty);
+                                  } else {
+                                    _quantityController.text = '$_selectedQuantity';
+                                  }
+                                },
+                                onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                              ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline),
                               color: const Color(0xFF2E8B57),
-                              onPressed: () =>
-                                  setState(() => _selectedQuantity++),
+                              onPressed: () => setState(() {
+                                _selectedQuantity++;
+                                _quantityController.text = '$_selectedQuantity';
+                              }),
                             ),
                           ],
                         ),
@@ -2016,14 +2118,28 @@ class _MenuScreenState extends State<MenuScreen> {
                                                 onPressed: () =>
                                                     _showEditItemDialog(item),
                                               ),
+                                              const SizedBox(width: 4),
+                                              // ✅ DELETE button - quick remove item
+                                              IconButton(
+                                                icon: Icon(Icons.delete_outline,
+                                                    size: 16,
+                                                    color: Colors.red.shade400),
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(),
+                                                onPressed: () {
+                                                  cartProvider.removeFromCart(index);
+                                                },
+                                              ),
                                             ],
                                           ),
+                                          // ✅ FIX: Show unit price (per item), not totalprice
                                           Text(
                                             NumberFormat.currency(
                                               locale: 'id_ID',
                                               symbol: 'Rp',
                                               decimalDigits: 0,
-                                            ).format(item.totalprice),
+                                            ).format(item.price),
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey.shade600,
@@ -2060,14 +2176,19 @@ class _MenuScreenState extends State<MenuScreen> {
                                                 color: Colors.red.shade400),
                                           ),
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12),
-                                          child: Text(
-                                            '${item.quantity}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
+                                        // ✅ CHANGED: TextField for direct qty input
+                                        GestureDetector(
+                                          onTap: () {
+                                            _showQuantityInputDialog(context, item, index, cartProvider);
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                                            child: Text(
+                                              '${item.quantity}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -2088,13 +2209,13 @@ class _MenuScreenState extends State<MenuScreen> {
                                         ),
                                       ],
                                     ),
-                                    // Total for this item
+                                    // Total for this item - ✅ FIXED: Use getItemTotalPrice instead of double calc
                                     Text(
                                       NumberFormat.currency(
                                         locale: 'id_ID',
                                         symbol: 'Rp',
                                         decimalDigits: 0,
-                                      ).format(item.totalprice * item.quantity),
+                                      ).format(cartProvider.getItemTotalPrice(item)),
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,

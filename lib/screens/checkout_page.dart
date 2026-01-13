@@ -13,6 +13,7 @@ import '../services/table_service.dart';
 import '../services/tax_service.dart';
 import '../services/calculation_service.dart';
 import '../services/auth_service.dart';
+import '../services/payment_methode_service.dart'; // ✅ NEW: For PT bank methods
 
 import '../utils/gro_mode_badge.dart';
 import '../widgets/checkout/cart_item_widget.dart';
@@ -81,8 +82,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   // ✅ NEW: DP Already Paid (for GRO Reservation)
   bool _dpAlreadyPaid = false;
-  String? _dpBankCode; // 'bca' or 'mandiri'
+  String? _dpBankCode; // e.g. 'bca_pt', 'mandiri_pt'
   String? _dpBankName;
+  List<Map<String, dynamic>> _ptBankMethods = []; // ✅ NEW: Dynamic PT bank methods
 
   final TaxService _taxService = TaxService();
   final TableService _tableService = TableService();
@@ -181,6 +183,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       }
 
       _initializeTaxData();
+      _fetchPtBankMethods(); // ✅ NEW: Fetch PT bank methods for DP Already Paid
 
       // ✅ Pre-fill guest name for Open Bill
       if (widget.isOpenBill && widget.openBillData != null) {
@@ -198,6 +201,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
       
       setState(() {});
     });
+  }
+
+  // ✅ NEW: Fetch payment methods with 'pt' in bank_code
+  Future<void> _fetchPtBankMethods() async {
+    try {
+      final paymentService = PaymentMethodeService();
+      final allMethods = await paymentService.fetchPaymentMethods();
+      
+      // Filter methods where bank_code contains 'pt' (case-insensitive)
+      final ptMethods = allMethods.where((method) {
+        final bankCode = (method['bank_code'] ?? '').toString().toLowerCase();
+        return bankCode.contains('pt');
+      }).toList();
+      
+      print("✅ Fetched ${ptMethods.length} PT bank methods:");
+      for (var m in ptMethods) {
+        print("   - ${m['name']} (${m['bank_code']})");
+      }
+      
+      if (mounted) {
+        setState(() {
+          _ptBankMethods = ptMethods;
+        });
+      }
+    } catch (e) {
+      print("❌ Error fetching PT bank methods: $e");
+    }
   }
 
   void _onCartChanged() {
@@ -1186,97 +1216,70 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  // BCA Button
-                                  Expanded(
-                                    child: GestureDetector(
+                              // ✅ DYNAMIC: Show all PT bank methods
+                              if (_ptBankMethods.isEmpty)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _ptBankMethods.map((bank) {
+                                    final bankCode = bank['bank_code']?.toString() ?? '';
+                                    final bankName = bank['name']?.toString() ?? 'Unknown Bank';
+                                    final isSelected = _dpBankCode == bankCode;
+                                    
+                                    // Determine color based on bank name
+                                    Color selectedColor = Colors.blue.shade600;
+                                    if (bankName.toLowerCase().contains('mandiri')) {
+                                      selectedColor = Colors.amber.shade600;
+                                    } else if (bankName.toLowerCase().contains('bni')) {
+                                      selectedColor = Colors.orange.shade600;
+                                    } else if (bankName.toLowerCase().contains('bri')) {
+                                      selectedColor = Colors.blue.shade800;
+                                    }
+                                    
+                                    return GestureDetector(
                                       onTap: () {
                                         setState(() {
-                                          _dpBankCode = 'bca_pt';
-                                          _dpBankName = 'BCA (PT SCN)';
+                                          _dpBankCode = bankCode;
+                                          _dpBankName = bankName;
                                           // ✅ Use Cash flow for instant settlement (no Midtrans)
                                           selectedPaymentMethod = 'cash';
-                                          selectedPaymentMethodName = 'Cash'; // Must match Order enum
-                                          selectedBankName = 'BCA (PT SCN)';
-                                          selectedBankCode = 'bca_pt';
+                                          selectedPaymentMethodName = 'Cash';
+                                          selectedBankName = bankName;
+                                          selectedBankCode = bankCode;
                                           validationErrors.remove('paymentMethod');
                                         });
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 16,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: _dpBankCode == 'bca_pt'
-                                              ? Colors.blue.shade600
-                                              : Colors.white,
+                                          color: isSelected ? selectedColor : Colors.white,
                                           borderRadius: BorderRadius.circular(8),
                                           border: Border.all(
-                                            color: _dpBankCode == 'bca_pt'
-                                                ? Colors.blue.shade600
-                                                : Colors.grey.shade300,
+                                            color: isSelected ? selectedColor : Colors.grey.shade300,
                                           ),
                                         ),
-                                        child: Center(
-                                          child: Text(
-                                            'BCA (PT SCN)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: _dpBankCode == 'bca_pt'
-                                                  ? Colors.white
-                                                  : Colors.grey.shade700,
-                                            ),
+                                        child: Text(
+                                          bankName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: isSelected ? Colors.white : Colors.grey.shade700,
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Mandiri Button
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _dpBankCode = 'mandiri_pt';
-                                          _dpBankName = 'Mandiri (PT SCN)';
-                                          // ✅ Use Cash flow for instant settlement (no Midtrans)
-                                          selectedPaymentMethod = 'cash';
-                                          selectedPaymentMethodName = 'Cash'; // Must match Order enum
-                                          selectedBankName = 'Mandiri (PT SCN)';
-                                          selectedBankCode = 'mandiri_pt';
-                                          validationErrors.remove('paymentMethod');
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        decoration: BoxDecoration(
-                                          color: _dpBankCode == 'mandiri_pt'
-                                              ? Colors.amber.shade600
-                                              : Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: _dpBankCode == 'mandiri_pt'
-                                                ? Colors.amber.shade600
-                                                : Colors.grey.shade300,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'Mandiri (PT SCN)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: _dpBankCode == 'mandiri_pt'
-                                                  ? Colors.white
-                                                  : Colors.grey.shade700,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                    );
+                                  }).toList(),
+                                ),
                               if (_dpBankCode != null) ...[
                                 const SizedBox(height: 12),
                                 Container(
@@ -1541,6 +1544,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           print("  Order Type: ${finalOrderType.toString()}");
                           print("  Is GRO Mode: ${widget.isGroMode}");
                           print("  Subtotal yang dikirim: $subtotal");
+                          // ✅ DEBUG: Tax values being sent to backend
+                          print("  📊 TAX DEBUG:");
+                          print("     enableTax: $enableTax");
+                          print("     taxAmount (will be sent as totalTax): $taxAmount");
+                          print("     taxDetails being sent: ${enableTax ? _taxCalculation?.taxDetails : []}");
+                          print("     _enableTax state: $_enableTax");
 
                           final orderResult = await orderService.createOrder(
                             items: items,
