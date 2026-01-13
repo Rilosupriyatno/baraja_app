@@ -342,93 +342,112 @@ class _GroTableAvailabilityScreenState
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [const Color(0xFF2E8B57), const Color(0xFF2E8B57).withOpacity(0.8)],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Text(
+                  '${_selectedTables.length} Meja Dipilih',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pilih jenis pesanan untuk meja-meja ini:',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                
+                // Capacity info box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E8B57).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF2E8B57).withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people, color: Color(0xFF2E8B57), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Total kapasitas: $_totalSelectedSeats orang',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2E8B57),
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.table_restaurant, color: Colors.white, size: 28),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Pilih Jenis Pesanan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text('${_selectedTables.length} meja dipilih', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF2E8B57).withOpacity(0.1), const Color(0xFF2E8B57).withOpacity(0.05)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2E8B57).withOpacity(0.3)),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.people, color: Color(0xFF2E8B57), size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Kapasitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey)),
-                          Text('$_totalSelectedSeats orang', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2E8B57))),
-                        ],
+                const SizedBox(height: 20),
+                
+                // Dine-In option
+                _buildCleanDialogOption(
+                  icon: Icons.restaurant,
+                  title: 'Dine-In',
+                  subtitle: 'Pesan langsung untuk ${_selectedTables.length} meja',
+                  iconBgColor: const Color(0xFF2E8B57),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToMultiTableDineIn();
+                  },
+                ),
+                const SizedBox(height: 12),
+                
+                // Reservasi option
+                _buildCleanDialogOption(
+                  icon: Icons.event_available,
+                  title: 'Reservasi',
+                  subtitle: 'Buat reservasi untuk ${_selectedTables.length} meja',
+                  iconBgColor: Colors.grey.shade700,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToMultiTableReservation();
+                  },
+                ),
+                const SizedBox(height: 20),
+                
+                // Cancel button
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              _buildDialogOption(
-                icon: Icons.restaurant_menu,
-                title: 'Dine-In',
-                subtitle: 'Pesan langsung untuk ${_selectedTables.length} meja',
-                color: const Color(0xFF3B82F6),
-                onTap: () {
-                  Navigator.pop(context);
-                  _navigateToMultiTableDineIn();
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildDialogOption(
-                icon: Icons.event_available,
-                title: 'Reservasi',
-                subtitle: 'Buat reservasi untuk ${_selectedTables.length} meja',
-                color: const Color(0xFF2E8B57),
-                onTap: () {
-                  Navigator.pop(context);
-                  _navigateToMultiTableReservation();
-                },
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
