@@ -43,6 +43,9 @@ class OrderService {
     Map<String, dynamic>? dpBankInfo,
     // ✅ FIX: Custom DP Amount
     int? customDpAmount,
+    // ✅ NEW: Full Payment Already Paid (Sudah Lunas)
+    bool fullPaymentAlreadyPaid = false,
+    Map<String, dynamic>? fullPaymentBankInfo,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -127,6 +130,10 @@ class OrderService {
         // ✅ FIX: Include custom DP amount
         if (dpAlreadyPaid && customDpAmount != null && customDpAmount > 0) 
           'customDpAmount': customDpAmount,
+        // ✅ NEW: Full Payment Already Paid (Sudah Lunas)
+        if (fullPaymentAlreadyPaid) 'fullPaymentAlreadyPaid': true,
+        if (fullPaymentAlreadyPaid && fullPaymentBankInfo != null) 
+          'fullPaymentBankInfo': fullPaymentBankInfo,
       };
 
       if (voucherCode != null && voucherCode.isNotEmpty) {

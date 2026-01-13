@@ -86,6 +86,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? _dpBankName;
   List<Map<String, dynamic>> _ptBankMethods = []; // ✅ NEW: Dynamic PT bank methods
 
+  // ✅ NEW: Full Payment Already Paid (for GRO - Sudah Lunas)
+  bool _fullPaymentAlreadyPaid = false;
+  String? _fullPaymentBankCode;
+  String? _fullPaymentBankName;
+
   final TaxService _taxService = TaxService();
   final TableService _tableService = TableService();
   TaxCalculationResult? _taxCalculation;
@@ -1312,6 +1317,169 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       const SizedBox(height: 16),
                     ],
 
+                    // ✅ NEW: Full Payment Already Paid Checkbox (GRO + Full Payment only)
+                    if (widget.isGroMode &&
+                        selectedPaymentType == PaymentType.fullPayment) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _fullPaymentAlreadyPaid ? Colors.green.shade50 : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _fullPaymentAlreadyPaid ? Colors.green.shade300 : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: _fullPaymentAlreadyPaid,
+                                  activeColor: Colors.green.shade600,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _fullPaymentAlreadyPaid = value ?? false;
+                                      if (!_fullPaymentAlreadyPaid) {
+                                        _fullPaymentBankCode = null;
+                                        _fullPaymentBankName = null;
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Sudah Lunas (Transfer Bank)',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: _fullPaymentAlreadyPaid ? Colors.green.shade700 : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Centang jika tamu sudah transfer full payment',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Bank Selector (show when checked)
+                            if (_fullPaymentAlreadyPaid) ...[
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Pilih Bank Tujuan Transfer:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // ✅ DYNAMIC: Show all PT bank methods
+                              if (_ptBankMethods.isEmpty)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _ptBankMethods.map((bank) {
+                                    final bankCode = bank['bank_code']?.toString() ?? '';
+                                    final bankName = bank['name']?.toString() ?? 'Unknown Bank';
+                                    final isSelected = _fullPaymentBankCode == bankCode;
+                                    
+                                    // Determine color based on bank name
+                                    Color selectedColor = Colors.blue.shade600;
+                                    if (bankName.toLowerCase().contains('mandiri')) {
+                                      selectedColor = Colors.amber.shade600;
+                                    } else if (bankName.toLowerCase().contains('bni')) {
+                                      selectedColor = Colors.orange.shade600;
+                                    } else if (bankName.toLowerCase().contains('bri')) {
+                                      selectedColor = Colors.blue.shade800;
+                                    }
+                                    
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _fullPaymentBankCode = bankCode;
+                                          _fullPaymentBankName = bankName;
+                                          // ✅ Use Cash flow for instant settlement (no Midtrans)
+                                          selectedPaymentMethod = 'cash';
+                                          selectedPaymentMethodName = 'Cash';
+                                          selectedBankName = bankName;
+                                          selectedBankCode = bankCode;
+                                          validationErrors.remove('paymentMethod');
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 16,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? selectedColor : Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isSelected ? selectedColor : Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          bankName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: isSelected ? Colors.white : Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              if (_fullPaymentBankCode != null) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          color: Colors.green.shade700, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Pembayaran akan langsung tercatat sebagai lunas',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.green.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     PaymentMethodWithValidation(
                       displayedPaymentMethod: displayedPaymentMethod,
@@ -1598,6 +1766,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 : null,
                             // ✅ FIX: Pass custom DP amount
                             customDpAmount: _dpAlreadyPaid ? downPaymentAmount : null,
+                            // ✅ NEW: Full Payment Already Paid (Sudah Lunas)
+                            fullPaymentAlreadyPaid: _fullPaymentAlreadyPaid,
+                            fullPaymentBankInfo: _fullPaymentAlreadyPaid && _fullPaymentBankCode != null
+                                ? {
+                                    'bankCode': _fullPaymentBankCode,
+                                    'bankName': _fullPaymentBankName,
+                                  }
+                                : null,
                           );
 
                           print("✅ createOrder berhasil: $orderResult");
@@ -1681,6 +1857,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             } else {
                               extraData['remainingPayment'] = 0;
                               extraData['isDownPayment'] = false;
+                              
+                              // ✅ NEW: Pass Full Payment Already Paid info
+                              extraData['fullPaymentAlreadyPaid'] = _fullPaymentAlreadyPaid;
+                              if (_fullPaymentAlreadyPaid && _fullPaymentBankCode != null) {
+                                extraData['fullPaymentBankInfo'] = {
+                                  'bankCode': _fullPaymentBankCode,
+                                  'bankName': _fullPaymentBankName,
+                                };
+                              }
                             }
                           } else {
                             extraData['remainingPayment'] = 0;

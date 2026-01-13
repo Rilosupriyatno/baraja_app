@@ -31,6 +31,9 @@ class Order {
   // ✅ Added fields for DP Already Paid
   final bool? dpAlreadyPaid;
   final Map<String, dynamic>? dpBankInfo;
+  // ✅ Added fields for Full Payment Already Paid (Sudah Lunas)
+  final bool? fullPaymentAlreadyPaid;
+  final Map<String, dynamic>? fullPaymentBankInfo;
 
   Order({
     required this.id,
@@ -50,6 +53,8 @@ class Order {
     this.taxAmount,
     this.dpAlreadyPaid,
     this.dpBankInfo,
+    this.fullPaymentAlreadyPaid,
+    this.fullPaymentBankInfo,
   });
 
   // Convert to Map for storage

@@ -76,6 +76,22 @@ class ConfirmService {
         print('   ⚠️ dpAlreadyPaid is NOT true, skipping');
       }
 
+      // ✅ NEW: Full Payment Already Paid (Sudah Lunas) logic
+      print('🔍 DEBUG - Full Payment Already Paid check:');
+      print('   order.fullPaymentAlreadyPaid: ${order.fullPaymentAlreadyPaid}');
+      print('   order.fullPaymentBankInfo: ${order.fullPaymentBankInfo}');
+      
+      if (order.fullPaymentAlreadyPaid == true) {
+        paymentData['full_payment_already_paid'] = true;
+        print('   ✅ Setting full_payment_already_paid = true');
+        if (order.fullPaymentBankInfo != null) {
+           paymentData['bank_info'] = order.fullPaymentBankInfo;
+           print('   ✅ Setting bank_info = ${order.fullPaymentBankInfo}');
+        }
+      } else {
+        print('   ⚠️ fullPaymentAlreadyPaid is NOT true, skipping');
+      }
+
       _printRequestData(paymentData);
 
       final response = await http.post(

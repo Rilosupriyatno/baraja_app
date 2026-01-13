@@ -46,6 +46,9 @@ class PaymentConfirmationScreen extends StatefulWidget {
   // ✅ Added support for DP Already Paid
   final bool? dpAlreadyPaid;
   final Map<String, dynamic>? dpBankInfo;
+  // ✅ NEW: Added support for Full Payment Already Paid (Sudah Lunas)
+  final bool? fullPaymentAlreadyPaid;
+  final Map<String, dynamic>? fullPaymentBankInfo;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -77,6 +80,8 @@ class PaymentConfirmationScreen extends StatefulWidget {
     this.isGroMode = false,
     this.dpAlreadyPaid,
     this.dpBankInfo,
+    this.fullPaymentAlreadyPaid,
+    this.fullPaymentBankInfo,
   });
 
   @override
@@ -129,6 +134,8 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       taxAmount: widget.taxAmount ?? 0,
       dpAlreadyPaid: widget.dpAlreadyPaid,
       dpBankInfo: widget.dpBankInfo,
+      fullPaymentAlreadyPaid: widget.fullPaymentAlreadyPaid,
+      fullPaymentBankInfo: widget.fullPaymentBankInfo,
     );
 
     // Defer the payment handling until after the build phase

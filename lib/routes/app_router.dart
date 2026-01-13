@@ -336,6 +336,9 @@ class AppRouter {
               // ✅ FIX: Add DP Already Paid data
               dpAlreadyPaid: extra['dpAlreadyPaid'] ?? false,
               dpBankInfo: extra['dpBankInfo'],
+              // ✅ NEW: Add Full Payment Already Paid data
+              fullPaymentAlreadyPaid: extra['fullPaymentAlreadyPaid'] ?? false,
+              fullPaymentBankInfo: extra['fullPaymentBankInfo'],
               isGroMode: extra['isGroMode'] ?? false,
             );
           },

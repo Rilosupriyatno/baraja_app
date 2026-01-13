@@ -272,6 +272,9 @@ class GroOrderDetailWidget extends StatelessWidget {
     
     // ✅ Get Final Payment details (renamed from pendingFinalPaymentDetails)
     final finalPaymentDetails = paymentDetails['finalPaymentDetails'] as Map<String, dynamic>?;
+    // ✅ FIX: Check if Final Payment has been settled
+    final finalPaymentStatus = finalPaymentDetails?['status']?.toString().toLowerCase();
+    final isFinalPaymentSettled = finalPaymentStatus == 'settlement' || finalPaymentStatus == 'capture';
     // finalPaymentDetails.amount = Sisa pembayaran
     // finalPaymentDetails.totalAmount = Tambahan order
     final fpSisaPembayaran = _getNumericValue(finalPaymentDetails?['amount']);
@@ -486,14 +489,14 @@ class GroOrderDetailWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            sisaPembayaran > 0
-                                ? 'Belum Lunas'
-                                : 'Lunas',
+                            isFinalPaymentSettled
+                                ? 'Lunas'
+                                : (sisaPembayaran > 0 ? 'Belum Lunas' : 'Lunas'),
                             style: TextStyle(
                               fontSize: 12,
-                              color: sisaPembayaran > 0
-                                  ? Colors.orange
-                                  : Colors.green,
+                              color: isFinalPaymentSettled
+                                  ? Colors.green
+                                  : (sisaPembayaran > 0 ? Colors.orange : Colors.green),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -502,11 +505,11 @@ class GroOrderDetailWidget extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatCurrency(sisaPembayaran), // Sisa Pembayaran
+                      formatCurrency(isFinalPaymentSettled ? 0 : sisaPembayaran), // Sisa Pembayaran (0 if settled)
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: sisaPembayaran > 0 ? Colors.orange : Colors.green,
+                        color: isFinalPaymentSettled ? Colors.green : (sisaPembayaran > 0 ? Colors.orange : Colors.green),
                       ),
                     ),
 
